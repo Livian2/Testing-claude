@@ -10,7 +10,10 @@ import TaxResults from './components/TaxResults';
 import './index.css';
 
 const DEFAULT_DATA: TaxFormData = {
-  personal: { filingStatus: 'single', taxYear: 2025, age: 35 },
+  personal: {
+    filingStatus: 'single', taxYear: 2025, age: 35,
+    livingType: 'koop', monthlyRent: 0,
+  },
   income: {
     grossSalary: 0, freelanceIncome: 0, rentalIncome: 0,
     otherBox1Income: 0, mortgageInterestDeduction: 0, pensionContributions: 0,
@@ -35,7 +38,7 @@ const TABS: { id: Tab; label: string; emoji: string }[] = [
 
 export default function App() {
   const [data, setData] = useState<TaxFormData>(DEFAULT_DATA);
-  const [tab, setTab] = useState<Tab>('income');
+  const [tab, setTab]   = useState<Tab>('income');
 
   const result = useMemo(() => calculateTaxes(data), [data]);
 
@@ -59,7 +62,8 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 bg-slate-100 rounded-xl p-1">
+            {/* Filing status */}
+            <div className="flex items-center gap-0 bg-slate-100 rounded-xl p-1">
               {(['single', 'partner'] as FilingStatus[]).map(s => (
                 <button
                   key={s}
@@ -88,7 +92,7 @@ export default function App() {
         </div>
 
         {/* Tabs */}
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 flex gap-0 overflow-x-auto">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 flex overflow-x-auto">
           {TABS.map(t => (
             <button
               key={t.id}
@@ -115,25 +119,39 @@ export default function App() {
       <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
         {tab === 'income' && (
           <div className="space-y-4">
-            <IncomeSection data={data.income} onChange={income => setData(d => ({ ...d, income }))} />
+            <IncomeSection
+              data={data.income}
+              personal={data.personal}
+              onChange={income => setData(d => ({ ...d, income }))}
+              onPersonalChange={personal => setData(d => ({ ...d, personal }))}
+            />
             <InfoBox>
-              <strong>Box 1</strong> omvat inkomen uit werk, eigen woning en periodieke uitkeringen.
-              Progressief tarief: 35,82% (t/m €38.441) · 37,48% (€38.441–€76.817) · 49,50% (boven €76.817).
+              <strong>Box 1</strong> — progressief tarief: 35,82% (t/m €38.441) · 37,48% (€38.441–€76.817) · 49,50% (boven €76.817).
+              Bij laag inkomen kunt u recht hebben op <strong>zorgtoeslag</strong> en/of <strong>huurtoeslag</strong>.
             </InfoBox>
           </div>
         )}
         {tab === 'expenses' && (
-          <ExpensesSection data={data.expenses} onChange={expenses => setData(d => ({ ...d, expenses }))} />
+          <ExpensesSection
+            data={data.expenses}
+            onChange={expenses => setData(d => ({ ...d, expenses }))}
+          />
         )}
         {tab === 'savings' && (
-          <SavingsSection data={data.savings} onChange={savings => setData(d => ({ ...d, savings }))} />
+          <SavingsSection
+            data={data.savings}
+            onChange={savings => setData(d => ({ ...d, savings }))}
+          />
         )}
         {tab === 'portfolio' && (
           <div className="space-y-4">
-            <PortfolioSection data={data.portfolio} onChange={portfolio => setData(d => ({ ...d, portfolio }))} />
+            <PortfolioSection
+              data={data.portfolio}
+              onChange={portfolio => setData(d => ({ ...d, portfolio }))}
+            />
             <InfoBox>
-              <strong>Box 3</strong> belast vermogen boven het heffingvrij vermogen (€57.000 alleenstaand / €114.000 partners).
-              Peildatum: <strong>1 januari</strong>. Transacties dit jaar beïnvloeden volgend jaar uw Box 3 positie.
+              <strong>Box 3</strong> — peildatum <strong>1 januari</strong>. Vul de ticker in (bijv. <code className="bg-blue-100 px-1 rounded">VWCE.AS</code>) om actuele
+              koersen op te halen. De belastinggrondslag blijft gebaseerd op de waarde op 1 januari.
             </InfoBox>
           </div>
         )}
@@ -144,6 +162,7 @@ export default function App() {
 
       <footer className="max-w-5xl mx-auto px-4 sm:px-6 py-6 text-center text-xs text-slate-400 border-t border-slate-200 mt-4">
         Indicatieve berekening o.b.v. belastingregels 2025. Raadpleeg altijd een belastingadviseur voor persoonlijk advies.
+        Toeslagen zijn benaderd — controleer uw exacte recht op belastingdienst.nl.
       </footer>
     </div>
   );

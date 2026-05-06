@@ -1,22 +1,25 @@
 export type AssetType = 'savings' | 'stocks' | 'etf' | 'bonds' | 'realEstate' | 'crypto' | 'other';
 export type TransactionType = 'buy' | 'sell';
 export type FilingStatus = 'single' | 'partner';
+export type LivingType = 'huur' | 'koop' | 'anders';
 
 export interface SavingsAccount {
   id: string;
   name: string;
   balanceJan1: number;
-  interestRate: number;   // actual rate %, for informational display
+  interestRate: number;
 }
 
 export interface Holding {
   id: string;
   name: string;
   type: AssetType;
-  valueJan1: number;    // Value on 1 January (Box 3 reference date)
+  valueJan1: number;      // Value on 1 January — Box 3 tax base
   quantity: number;
-  pricePerUnit: number;
+  pricePerUnit: number;   // Purchase / reference price
   broker: string;
+  ticker: string;         // Yahoo Finance symbol, e.g. VWCE.AS
+  currentPrice: number;   // Last fetched market price (0 = not fetched)
 }
 
 export interface Transaction {
@@ -66,6 +69,8 @@ export interface PersonalData {
   filingStatus: FilingStatus;
   taxYear: number;
   age: number;
+  livingType: LivingType;
+  monthlyRent: number;    // used when livingType === 'huur'
 }
 
 export interface TaxFormData {
@@ -88,7 +93,7 @@ export interface Box1Result {
 }
 
 export interface Box3Result {
-  totalAssets: number;
+  totalAssets: number;          // Jan 1 tax base
   totalDebts: number;
   netWealth: number;
   exemption: number;
@@ -107,24 +112,34 @@ export interface Box3Result {
   };
 }
 
+export interface Toeslagen {
+  zorgtoeslag: number;
+  huurtoeslag: number;
+  total: number;
+}
+
 export interface TaxResult {
   box1: Box1Result;
   box3: Box3Result;
+  toeslagen: Toeslagen;
   totalTax: number;
   netDisposableIncome: number;
-  totalExpenses: number;      // annual
+  totalExpenses: number;
   annualSavings: number;
-  portfolioCurrentValue: number;
+  portfolioCurrentValue: number;  // based on currentPrice when fetched
+  portfolioJan1Value: number;     // based on valueJan1 (Box 3 tax base)
   portfolioGainLoss: number;
   actualSavingsInterest: number;
+  currentNetWorth: number;        // current market value of all assets
 }
 
-// Computed portfolio position after applying transactions
 export interface Position {
   name: string;
   type: AssetType;
   broker: string;
+  ticker: string;
   quantity: number;
   avgCost: number;
-  currentValue: number;
+  currentPrice: number;   // 0 if not fetched
+  currentValue: number;   // quantity × (currentPrice || avgCost)
 }
