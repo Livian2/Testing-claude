@@ -8,29 +8,42 @@ interface Props {
   onChange: (d: ExpensesData) => void;
 }
 
+const FIELDS: { key: keyof ExpensesData; label: string }[] = [
+  { key: 'housing',    label: 'Woonlasten (huur / hypotheek)' },
+  { key: 'groceries',  label: 'Boodschappen & eten' },
+  { key: 'utilities',  label: 'Energie & water' },
+  { key: 'transport',  label: 'Transport (auto, OV, brandstof)' },
+  { key: 'insurance',  label: 'Verzekeringen' },
+  { key: 'healthcare', label: 'Zorgkosten / eigen risico' },
+  { key: 'education',  label: 'Opleiding & abonnementen' },
+  { key: 'leisure',    label: 'Vrije tijd & entertainment' },
+  { key: 'other',      label: 'Overige kosten' },
+];
+
+const nl = new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
+
 export default function ExpensesSection({ data, onChange }: Props) {
   const set = (key: keyof ExpensesData) => (v: number) => onChange({ ...data, [key]: v });
 
-  const total = Object.values(data).reduce((a, b) => a + b, 0);
+  const monthlyTotal = Object.values(data).reduce((a, b) => a + b, 0);
+  const yearlyTotal  = monthlyTotal * 12;
 
   return (
-    <SectionCard title="Vaste & variabele kosten (per jaar)" icon={<ShoppingCart size={20} />} accent="border-rose-400">
+    <SectionCard title="Vaste & variabele kosten — per maand" icon={<ShoppingCart size={20} />} accent="border-rose-400">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <CurrencyInput label="Woonlasten (huur/hypotheek)" value={data.housing} onChange={set('housing')} />
-        <CurrencyInput label="Boodschappen & eten" value={data.groceries} onChange={set('groceries')} />
-        <CurrencyInput label="Energie & water" value={data.utilities} onChange={set('utilities')} />
-        <CurrencyInput label="Transport (auto, OV, brandstof)" value={data.transport} onChange={set('transport')} />
-        <CurrencyInput label="Verzekeringen" value={data.insurance} onChange={set('insurance')} />
-        <CurrencyInput label="Zorgkosten / eigen risico" value={data.healthcare} onChange={set('healthcare')} />
-        <CurrencyInput label="Opleiding & abonnementen" value={data.education} onChange={set('education')} />
-        <CurrencyInput label="Vrije tijd & entertainment" value={data.leisure} onChange={set('leisure')} />
-        <CurrencyInput label="Overige kosten" value={data.other} onChange={set('other')} />
+        {FIELDS.map(f => (
+          <CurrencyInput key={f.key} label={f.label} value={data[f.key]} onChange={set(f.key)} />
+        ))}
       </div>
-      <div className="mt-4 flex justify-between items-center bg-rose-50 rounded-xl px-4 py-3 border border-rose-100">
-        <span className="text-sm font-medium text-slate-700">Totale jaarkosten</span>
-        <span className="text-base font-bold text-rose-600">
-          {new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(total)}
-        </span>
+      <div className="mt-4 grid grid-cols-2 gap-3">
+        <div className="flex justify-between items-center bg-rose-50 rounded-xl px-4 py-3 border border-rose-100">
+          <span className="text-sm font-medium text-slate-700">Per maand</span>
+          <span className="text-base font-bold text-rose-600">{nl.format(monthlyTotal)}</span>
+        </div>
+        <div className="flex justify-between items-center bg-rose-50 rounded-xl px-4 py-3 border border-rose-100">
+          <span className="text-sm font-medium text-slate-700">Per jaar</span>
+          <span className="text-base font-bold text-rose-700">{nl.format(yearlyTotal)}</span>
+        </div>
       </div>
     </SectionCard>
   );

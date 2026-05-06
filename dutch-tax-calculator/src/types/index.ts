@@ -2,13 +2,21 @@ export type AssetType = 'savings' | 'stocks' | 'etf' | 'bonds' | 'realEstate' | 
 export type TransactionType = 'buy' | 'sell';
 export type FilingStatus = 'single' | 'partner';
 
+export interface SavingsAccount {
+  id: string;
+  name: string;
+  balanceJan1: number;
+  interestRate: number;   // actual rate %, for informational display
+}
+
 export interface Holding {
   id: string;
   name: string;
   type: AssetType;
-  valueJan1: number;   // Value on 1 January (Box 3 reference date)
+  valueJan1: number;    // Value on 1 January (Box 3 reference date)
   quantity: number;
   pricePerUnit: number;
+  broker: string;
 }
 
 export interface Transaction {
@@ -18,19 +26,20 @@ export interface Transaction {
   date: string;
   quantity: number;
   pricePerUnit: number;
+  broker: string;
 }
 
 export interface IncomeData {
   grossSalary: number;
   freelanceIncome: number;
-  rentalIncome: number;            // Box 1 rental (not Box 3 investment property)
+  rentalIncome: number;
   otherBox1Income: number;
   mortgageInterestDeduction: number;
-  pensionContributions: number;    // aftrekbare lijfrentepremies
+  pensionContributions: number;
 }
 
 export interface ExpensesData {
-  housing: number;         // rent or mortgage payment (not deductible in Box 1 unless mortgage interest)
+  housing: number;      // per month
   groceries: number;
   utilities: number;
   transport: number;
@@ -42,15 +51,15 @@ export interface ExpensesData {
 }
 
 export interface SavingsData {
-  bankSavingsJan1: number;       // Bank savings balance on 1 Jan
-  bankSavingsDec31: number;      // Bank savings balance on 31 Dec
+  accounts: SavingsAccount[];
   monthlySavingsContribution: number;
 }
 
 export interface PortfolioData {
   holdings: Holding[];
   transactions: Transaction[];
-  investmentDebts: number;       // Schulden Box 3 (loans for investments)
+  investmentDebts: number;
+  duoDebt: number;
 }
 
 export interface PersonalData {
@@ -103,8 +112,19 @@ export interface TaxResult {
   box3: Box3Result;
   totalTax: number;
   netDisposableIncome: number;
-  totalExpenses: number;
+  totalExpenses: number;      // annual
   annualSavings: number;
   portfolioCurrentValue: number;
   portfolioGainLoss: number;
+  actualSavingsInterest: number;
+}
+
+// Computed portfolio position after applying transactions
+export interface Position {
+  name: string;
+  type: AssetType;
+  broker: string;
+  quantity: number;
+  avgCost: number;
+  currentValue: number;
 }

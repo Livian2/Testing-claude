@@ -1,27 +1,26 @@
 import type {
-  TaxFormData, TaxResult, Box1Result, Box3Result, Holding, Transaction,
+  TaxFormData, TaxResult, Box1Result, Box3Result, Holding, Transaction, Position, AssetType,
 } from '../types';
 
 // ─── 2025 Tax Parameters ───────────────────────────────────────────────────
 
 const BOX1_BRACKETS_2025 = [
-  { limit: 38441,  rate: 0.3582 },
-  { limit: 76817,  rate: 0.3748 },
+  { limit: 38441,    rate: 0.3582 },
+  { limit: 76817,    rate: 0.3748 },
   { limit: Infinity, rate: 0.4950 },
 ];
 
-// Algemene heffingskorting 2025
 function calcAlgemeneHeffingskorting(taxableIncome: number): number {
-  if (taxableIncome <= 24813)  return 3362;
-  if (taxableIncome <= 75518)  return Math.max(0, 3362 - ((taxableIncome - 24813) * (3362 / (75518 - 24813))));
+  if (taxableIncome <= 24813) return 3362;
+  if (taxableIncome <= 75518)
+    return Math.max(0, 3362 - (taxableIncome - 24813) * (3362 / (75518 - 24813)));
   return 0;
 }
 
-// Arbeidskorting 2025 (employment tax credit, only for employment income)
 function calcArbeidskorting(employmentIncome: number): number {
   if (employmentIncome <= 0)     return 0;
   if (employmentIncome <= 11490) return Math.round(employmentIncome * 0.08231);
-  if (employmentIncome <= 24820) return 945 + Math.round((employmentIncome - 11490) * 0.29861);
+  if (employmentIncome <= 24820) return 945  + Math.round((employmentIncome - 11490) * 0.29861);
   if (employmentIncome <= 39957) return 3927 + Math.round((employmentIncome - 24820) * 0.03085);
   if (employmentIncome <= 124935) return 4394 - Math.round((employmentIncome - 39957) * 0.06510);
   return 0;
@@ -33,18 +32,11 @@ export function calculateBox1(data: TaxFormData): Box1Result {
   const { income } = data;
 
   const totalGrossIncome =
-    income.grossSalary +
-    income.freelanceIncome +
-    income.rentalIncome +
-    income.otherBox1Income;
+    income.grossSalary + income.freelanceIncome + income.rentalIncome + income.otherBox1Income;
 
-  const deductions =
-    income.mortgageInterestDeduction +
-    income.pensionContributions;
-
+  const deductions = income.mortgageInterestDeduction + income.pensionContributions;
   const taxableIncome = Math.max(0, totalGrossIncome - deductions);
 
-  // Progressive tax calculation
   let grossTax = 0;
   let remaining = taxableIncome;
   const brackets: Box1Result['brackets'] = [];
@@ -63,7 +55,6 @@ export function calculateBox1(data: TaxFormData): Box1Result {
 
   const algemeneHeffingskorting = calcAlgemeneHeffingskorting(taxableIncome);
   const arbeidskorting = calcArbeidskorting(income.grossSalary + income.freelanceIncome);
-
   const netTax = Math.max(0, grossTax - algemeneHeffingskorting - arbeidskorting);
   const effectiveRate = taxableIncome > 0 ? netTax / taxableIncome : 0;
 
@@ -74,45 +65,42 @@ export function calculateBox1(data: TaxFormData): Box1Result {
 
 // 2025 fictitious return rates (rechtsherstel/overgangswetgeving)
 const BOX3_RATES_2025 = {
-  savings:     0.0144,  // bank savings
-  investments: 0.0588,  // overige bezittingen (stocks, ETF, real estate, crypto, etc.)
-  debtRate:    0.0262,  // schulden (deductible at this rate)
+  savings:     0.0144,
+  investments: 0.0588,
+  debtRate:    0.0262,
 };
 
-const BOX3_TAX_RATE = 0.36;
+const BOX3_TAX_RATE        = 0.36;
+const BOX3_DEBT_THRESHOLD  = 3400;  // drempel per persoon
 const BOX3_EXEMPTION_SINGLE  = 57000;
 const BOX3_EXEMPTION_PARTNER = 114000;
-
-function holdingIsSavings(h: Holding): boolean {
-  return h.type === 'savings';
-}
 
 export function calculateBox3(data: TaxFormData): Box3Result {
   const { savings, portfolio, personal } = data;
   const isPartner = personal.filingStatus === 'partner';
   const exemption = isPartner ? BOX3_EXEMPTION_PARTNER : BOX3_EXEMPTION_SINGLE;
+  const debtThreshold = isPartner ? BOX3_DEBT_THRESHOLD * 2 : BOX3_DEBT_THRESHOLD;
 
-  // Total bank savings (average Jan1 + Dec31 / 2 approximation)
-  const bankSavings = (savings.bankSavingsJan1 + savings.bankSavingsDec31) / 2;
+  // Savings accounts total (Jan 1 balances)
+  const totalBankSavings = savings.accounts.reduce((s, a) => s + a.balanceJan1, 0);
 
-  // Portfolio holdings classified by type
+  // Holdings breakdown
   let savingsFromHoldings = 0;
   let investmentsFromHoldings = 0;
-
   for (const h of portfolio.holdings) {
-    if (holdingIsSavings(h)) {
-      savingsFromHoldings += h.valueJan1;
-    } else {
-      investmentsFromHoldings += h.valueJan1;
-    }
+    if (h.type === 'savings') savingsFromHoldings += h.valueJan1;
+    else investmentsFromHoldings += h.valueJan1;
   }
 
-  const totalSavings = bankSavings + savingsFromHoldings;
+  const totalSavings     = totalBankSavings + savingsFromHoldings;
   const totalInvestments = investmentsFromHoldings;
-  const totalAssets = totalSavings + totalInvestments;
-  const totalDebts = Math.min(portfolio.investmentDebts, totalAssets - 3400); // €3,400 debt threshold
+  const totalAssets      = totalSavings + totalInvestments;
 
-  const netWealth = Math.max(0, totalAssets - Math.max(0, totalDebts));
+  // DUO debt + investment debts, minus threshold
+  const rawDebts    = portfolio.investmentDebts + portfolio.duoDebt;
+  const totalDebts  = Math.max(0, rawDebts - debtThreshold);
+
+  const netWealth     = Math.max(0, totalAssets - totalDebts);
   const taxableWealth = Math.max(0, netWealth - exemption);
 
   if (taxableWealth === 0) {
@@ -126,7 +114,6 @@ export function calculateBox3(data: TaxFormData): Box3Result {
     };
   }
 
-  // Proportional split of taxable wealth between savings and investments
   const savingsShare = totalAssets > 0 ? totalSavings / totalAssets : 0;
   const investShare  = totalAssets > 0 ? totalInvestments / totalAssets : 0;
 
@@ -135,15 +122,14 @@ export function calculateBox3(data: TaxFormData): Box3Result {
 
   const savingsFictitious     = taxableSavings * BOX3_RATES_2025.savings;
   const investmentsFictitious = taxableInvestments * BOX3_RATES_2025.investments;
-  const debtsFictitious       = Math.max(0, totalDebts) * BOX3_RATES_2025.debtRate;
+  const debtsFictitious       = totalDebts * BOX3_RATES_2025.debtRate;
 
   const fictitiousReturn = savingsFictitious + investmentsFictitious - debtsFictitious;
-  const grossTax = Math.max(0, fictitiousReturn * BOX3_TAX_RATE);
-  const netTax = grossTax; // No separate korting on Box 3
+  const grossTax         = Math.max(0, fictitiousReturn * BOX3_TAX_RATE);
 
   return {
     totalAssets, totalDebts, netWealth, exemption, taxableWealth,
-    fictitiousReturn, grossTax, heffingskortingBox3: 0, netTax,
+    fictitiousReturn, grossTax, heffingskortingBox3: 0, netTax: grossTax,
     breakdown: {
       savings: totalSavings, investments: totalInvestments, debts: totalDebts,
       savingsFictitious, investmentsFictitious, debtsFictitious,
@@ -151,46 +137,67 @@ export function calculateBox3(data: TaxFormData): Box3Result {
   };
 }
 
-// ─── Portfolio value ────────────────────────────────────────────────────────
+// ─── Portfolio positions from transactions ─────────────────────────────────
 
-export function calcPortfolioCurrentValue(
-  holdings: Holding[],
-  transactions: Transaction[],
-): { currentValue: number; costBasis: number; gainLoss: number } {
-  type Position = { quantity: number; avgCost: number };
-  const positions = new Map<string, Position>();
+export function computePositions(holdings: Holding[], transactions: Transaction[]): Position[] {
+  type Pos = { type: AssetType; broker: string; quantity: number; avgCost: number };
+  const map = new Map<string, Pos>();
 
+  // Seed from Jan 1 holdings
   for (const h of holdings) {
-    if (h.type !== 'savings') {
-      positions.set(h.name, { quantity: h.quantity, avgCost: h.pricePerUnit });
-    }
+    if (h.type === 'savings') continue;
+    map.set(h.name, { type: h.type, broker: h.broker, quantity: h.quantity, avgCost: h.pricePerUnit });
   }
 
+  // Apply transactions in chronological order
   const sorted = [...transactions].sort((a, b) => a.date.localeCompare(b.date));
-  let realisedGain = 0;
-
   for (const tx of sorted) {
-    const pos = positions.get(tx.holdingName) ?? { quantity: 0, avgCost: 0 };
+    const pos = map.get(tx.holdingName) ?? { type: 'other' as AssetType, broker: tx.broker, quantity: 0, avgCost: 0 };
     if (tx.type === 'buy') {
       const totalQty  = pos.quantity + tx.quantity;
       const totalCost = pos.quantity * pos.avgCost + tx.quantity * tx.pricePerUnit;
-      positions.set(tx.holdingName, { quantity: totalQty, avgCost: totalQty > 0 ? totalCost / totalQty : 0 });
+      map.set(tx.holdingName, {
+        type: pos.type, broker: tx.broker || pos.broker,
+        quantity: totalQty, avgCost: totalQty > 0 ? totalCost / totalQty : 0,
+      });
     } else {
-      realisedGain += tx.quantity * (tx.pricePerUnit - pos.avgCost);
-      positions.set(tx.holdingName, { quantity: Math.max(0, pos.quantity - tx.quantity), avgCost: pos.avgCost });
+      map.set(tx.holdingName, {
+        ...pos, broker: tx.broker || pos.broker,
+        quantity: Math.max(0, pos.quantity - tx.quantity),
+      });
     }
   }
 
-  let currentValue = 0;
-  let costBasis = 0;
-  for (const pos of positions.values()) {
-    currentValue += pos.quantity * pos.avgCost;
-    costBasis    += pos.quantity * pos.avgCost;
-  }
-  // Approximate current value = cost basis + unrealised (we use cost basis as proxy since no live prices)
-  const gainLoss = realisedGain;
+  return Array.from(map.entries())
+    .filter(([, p]) => p.quantity > 0)
+    .map(([name, p]) => ({
+      name, type: p.type, broker: p.broker,
+      quantity: p.quantity, avgCost: p.avgCost,
+      currentValue: p.quantity * p.avgCost,
+    }));
+}
 
-  return { currentValue, costBasis, gainLoss };
+export function calcRealisedGain(holdings: Holding[], transactions: Transaction[]): number {
+  type Pos = { quantity: number; avgCost: number };
+  const map = new Map<string, Pos>();
+  for (const h of holdings) {
+    if (h.type !== 'savings') map.set(h.name, { quantity: h.quantity, avgCost: h.pricePerUnit });
+  }
+
+  let gain = 0;
+  const sorted = [...transactions].sort((a, b) => a.date.localeCompare(b.date));
+  for (const tx of sorted) {
+    const pos = map.get(tx.holdingName) ?? { quantity: 0, avgCost: 0 };
+    if (tx.type === 'buy') {
+      const totalQty  = pos.quantity + tx.quantity;
+      const totalCost = pos.quantity * pos.avgCost + tx.quantity * tx.pricePerUnit;
+      map.set(tx.holdingName, { quantity: totalQty, avgCost: totalQty > 0 ? totalCost / totalQty : 0 });
+    } else {
+      gain += tx.quantity * (tx.pricePerUnit - pos.avgCost);
+      map.set(tx.holdingName, { quantity: Math.max(0, pos.quantity - tx.quantity), avgCost: pos.avgCost });
+    }
+  }
+  return gain;
 }
 
 // ─── Full calculation ───────────────────────────────────────────────────────
@@ -198,36 +205,42 @@ export function calcPortfolioCurrentValue(
 export function calculateTaxes(data: TaxFormData): TaxResult {
   const box1 = calculateBox1(data);
   const box3 = calculateBox3(data);
-
   const totalTax = box1.netTax + box3.netTax;
 
   const { expenses, savings, income } = data;
+  // Monthly → annual
   const totalExpenses =
-    expenses.housing + expenses.groceries + expenses.utilities +
-    expenses.transport + expenses.insurance + expenses.healthcare +
-    expenses.education + expenses.leisure + expenses.other;
+    (expenses.housing + expenses.groceries + expenses.utilities + expenses.transport +
+     expenses.insurance + expenses.healthcare + expenses.education + expenses.leisure +
+     expenses.other) * 12;
 
   const annualSavings = savings.monthlySavingsContribution * 12;
 
   const grossIncome =
     income.grossSalary + income.freelanceIncome + income.rentalIncome + income.otherBox1Income;
-
   const netDisposableIncome = grossIncome - totalTax - totalExpenses;
 
-  const { currentValue, gainLoss } = calcPortfolioCurrentValue(
-    data.portfolio.holdings, data.portfolio.transactions,
+  const positions      = computePositions(data.portfolio.holdings, data.portfolio.transactions);
+  const currentValue   = positions.reduce((s, p) => s + p.currentValue, 0);
+  const gainLoss       = calcRealisedGain(data.portfolio.holdings, data.portfolio.transactions);
+
+  const actualSavingsInterest = savings.accounts.reduce(
+    (s, a) => s + a.balanceJan1 * (a.interestRate / 100), 0,
   );
 
   return {
     box1, box3, totalTax, netDisposableIncome, totalExpenses,
-    annualSavings, portfolioCurrentValue: currentValue, portfolioGainLoss: gainLoss,
+    annualSavings, portfolioCurrentValue: currentValue,
+    portfolioGainLoss: gainLoss, actualSavingsInterest,
   };
 }
 
-// ─── Helpers ────────────────────────────────────────────────────────────────
+// ─── Formatting helpers ─────────────────────────────────────────────────────
 
 export function fmt(n: number): string {
-  return new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n);
+  return new Intl.NumberFormat('nl-NL', {
+    style: 'currency', currency: 'EUR', maximumFractionDigits: 0,
+  }).format(n);
 }
 
 export function fmtPct(n: number): string {

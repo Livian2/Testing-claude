@@ -19,8 +19,8 @@ const DEFAULT_DATA: TaxFormData = {
     housing: 0, groceries: 0, utilities: 0, transport: 0,
     insurance: 0, healthcare: 0, education: 0, leisure: 0, other: 0,
   },
-  savings: { bankSavingsJan1: 0, bankSavingsDec31: 0, monthlySavingsContribution: 0 },
-  portfolio: { holdings: [], transactions: [], investmentDebts: 0 },
+  savings: { accounts: [], monthlySavingsContribution: 0 },
+  portfolio: { holdings: [], transactions: [], investmentDebts: 0, duoDebt: 0 },
 };
 
 type Tab = 'income' | 'expenses' | 'savings' | 'portfolio' | 'results';
