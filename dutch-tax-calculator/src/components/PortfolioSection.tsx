@@ -97,10 +97,15 @@ export default function PortfolioSection({ data, onChange }: Props) {
     setFetchState('loading');
     setFetchMsg('');
     try {
-      // Step 1: resolve ISINs to Yahoo Finance tickers for holdings that have no ticker yet
-      const needsResolution = holdingsSnapshot.filter(
-        h => !h.ticker && h.isin && looksLikeIsin(h.isin)
-      );
+      // Step 1: resolve ISINs → tickers.
+      // Re-resolve if: no ticker yet, OR ticker has no exchange suffix (e.g. "TDIV" instead of
+      // "TDIV.AS") AND an ISIN is available. US stocks from IBKR have no suffix but also no
+      // ISIN, so they are correctly skipped.
+      const needsResolution = holdingsSnapshot.filter(h => {
+        if (!h.isin || !looksLikeIsin(h.isin)) return false;
+        if (!h.ticker) return true;
+        return !h.ticker.includes('.');   // bare ticker without exchange suffix → re-resolve
+      });
       let isinMap: Record<string, string> = {};
       if (needsResolution.length > 0) {
         isinMap = await resolveIsins(needsResolution.map(h => h.isin!));
