@@ -100,8 +100,17 @@ export function parseDeGiro(content: string, brokerName: string): ParseResult {
     const row = rows[i];
     try {
       const dateStr    = row[0]?.trim() ?? '';
-      const product    = row[2]?.trim() ?? '';
-      const isin       = row[3]?.trim() ?? '';
+      const rawProduct = row[2]?.trim() ?? '';
+
+      // Extract ISIN: prefer dedicated column (3), fall back to embedded ISIN in product name
+      const isinInCol  = row[3]?.trim() ?? '';
+      const isinInName = /\b([A-Z]{2}[A-Z0-9]{10})\b/.exec(rawProduct)?.[1] ?? '';
+      const isin       = isinInCol || isinInName;
+      // Clean product name: strip embedded ISIN + surrounding whitespace/parens
+      const product    = isinInName && !isinInCol
+        ? rawProduct.replace(new RegExp(`\\(?${isinInName}\\)?`), '').replace(/\s+/g, ' ').trim()
+        : rawProduct;
+
       const aantalStr  = row[6]?.trim() ?? '';
       const koersStr   = row[7]?.trim() ?? '';
       const currency   = row[8]?.trim() || 'EUR';

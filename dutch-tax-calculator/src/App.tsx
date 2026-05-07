@@ -4,7 +4,6 @@ import type { TaxFormData, FilingStatus } from './types';
 import { calculateTaxes } from './utils/taxCalculations';
 import IncomeSection from './components/IncomeSection';
 import ExpensesSection from './components/ExpensesSection';
-import SavingsSection from './components/SavingsSection';
 import PortfolioSection from './components/PortfolioSection';
 import WoonSection from './components/WoonSection';
 import WaardesSection from './components/WaardesSection';
@@ -42,14 +41,13 @@ const DEFAULT_DATA: TaxFormData = {
   portfolio: { holdings: [], transactions: [], investmentDebts: 0, duoDebt: 0 },
 };
 
-type Tab = 'income' | 'woon' | 'waardes' | 'expenses' | 'savings' | 'portfolio' | 'results';
+type Tab = 'income' | 'woon' | 'waardes' | 'expenses' | 'portfolio' | 'results';
 
 const TABS: { id: Tab; label: string; emoji: string }[] = [
   { id: 'income',    label: 'Inkomen',       emoji: '💼' },
   { id: 'woon',      label: 'Wonen',         emoji: '🏠' },
   { id: 'waardes',   label: 'Waardes 1 jan', emoji: '📋' },
   { id: 'expenses',  label: 'Kosten',        emoji: '🛒' },
-  { id: 'savings',   label: 'Sparen',        emoji: '🐷' },
   { id: 'portfolio', label: 'Beleggen',      emoji: '📈' },
   { id: 'results',   label: 'Berekening',    emoji: '🧮' },
 ];
@@ -62,10 +60,6 @@ export default function App() {
 
   const setPersonal = (patch: Partial<TaxFormData['personal']>) =>
     setData(d => ({ ...d, personal: { ...d.personal, ...patch } }));
-
-  const totalSavingsBalance =
-    data.waardes.spaarrekeningen.reduce((s, a) => s + a.saldoJan1, 0) +
-    data.waardes.betaalrekeningen.reduce((s, a) => s + a.saldoJan1, 0);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-100 to-slate-200">
@@ -175,13 +169,6 @@ export default function App() {
           <ExpensesSection
             data={data.expenses}
             onChange={expenses => setData(d => ({ ...d, expenses }))}
-          />
-        )}
-        {tab === 'savings' && (
-          <SavingsSection
-            data={data.savings}
-            totalSavingsBalance={totalSavingsBalance}
-            onChange={savings => setData(d => ({ ...d, savings }))}
           />
         )}
         {tab === 'portfolio' && (

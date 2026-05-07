@@ -352,6 +352,59 @@ export default function WoonSection({ data, taxYear, onChange }: Props) {
               >
                 <Plus size={13} /> Hypotheek toevoegen
               </button>
+
+              {/* HRA summary */}
+              {(() => {
+                const totaalRente = data.hypotheken.reduce((s, h) => {
+                  if (h.leningBedrag <= 0) return s;
+                  try { return s + berekenHypotheek(h, taxYear).jaarRente; } catch { return s; }
+                }, 0);
+                if (totaalRente <= 0) return null;
+                // HRA aftrekvoet 2026: max 37,48% (2e schijf Box 1)
+                const hraRate = 0.3748;
+                const belastingVoordeel = totaalRente * hraRate;
+                return (
+                  <div className="bg-green-50 border border-green-200 rounded-xl p-4 space-y-2">
+                    <p className="text-xs font-semibold text-green-700 uppercase tracking-wide">Hypotheekrenteaftrek (HRA) — {taxYear}</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
+                      <div>
+                        <p className="text-xs text-slate-500 mb-0.5">Totale jaarrente</p>
+                        <p className="font-bold text-slate-800">{nl.format(totaalRente)}</p>
+                        <p className="text-xs text-slate-400">aftrekbaar van Box 1 inkomen</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-500 mb-0.5">Aftrekvoet (max 2026)</p>
+                        <p className="font-bold text-slate-800">37,48%</p>
+                        <p className="text-xs text-slate-400">2e schijf Box 1 tarief</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-500 mb-0.5">Belastingvoordeel</p>
+                        <p className="font-bold text-green-700">{nl.format(belastingVoordeel)}/jaar</p>
+                        <p className="text-xs text-slate-400">≈ {nl.format(belastingVoordeel / 12)}/mnd</p>
+                      </div>
+                    </div>
+                    {data.hypotheken.length > 1 && (
+                      <div className="border-t border-green-200 pt-2 space-y-1">
+                        {data.hypotheken.map(h => {
+                          if (h.leningBedrag <= 0) return null;
+                          try {
+                            const r = berekenHypotheek(h, taxYear).jaarRente;
+                            return (
+                              <div key={h.id} className="flex justify-between text-xs text-slate-600">
+                                <span>{h.label}</span>
+                                <span className="font-medium">{nl.format(r)}/jaar</span>
+                              </div>
+                            );
+                          } catch { return null; }
+                        })}
+                      </div>
+                    )}
+                    <p className="text-xs text-green-700 border-t border-green-200 pt-2">
+                      De hypotheekrente verlaagt uw belastbaar Box 1 inkomen. Het werkelijke voordeel hangt af van uw marginale tarief — bij een tarief van 35,82% (1e schijf) is het voordeel {nl.format(totaalRente * 0.3582)}/jaar.
+                    </p>
+                  </div>
+                );
+              })()}
             </div>
           )}
         </div>
