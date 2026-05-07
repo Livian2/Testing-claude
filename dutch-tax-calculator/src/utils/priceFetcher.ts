@@ -155,10 +155,41 @@ export async function resolveIsins(isins: string[]): Promise<Record<string, stri
       const quotes = (json?.quotes ?? [])
         .filter(q => q.quoteType === 'ETF' || q.quoteType === 'EQUITY');
       if (quotes.length === 0) return;
-      // Prefer European exchange listings so e.g. TDIV → TDIV.AS not a US OTC ticker
       quotes.sort((a, b) => exchangeScore(a.symbol) - exchangeScore(b.symbol));
       result[isin] = quotes[0].symbol;
     } catch { /* ignore per-ISIN failures */ }
+  }));
+  return result;
+}
+
+/**
+ * Resolve bare ticker symbols (no exchange suffix) to exchange-specific Yahoo Finance
+ * symbols via the search endpoint, using European exchange priority.
+ * e.g. "TDIV" → "TDIV.AS", "VWRL" → "VWRL.AS"
+ */
+export async function resolveBareTickers(tickers: string[]): Promise<Record<string, string>> {
+  const unique = [...new Set(tickers.filter(t => t && !t.includes('.')))];
+  if (unique.length === 0) return {};
+
+  const result: Record<string, string> = {};
+  await Promise.all(unique.map(async (ticker) => {
+    try {
+      const url = `/api/finance/v1/finance/search?q=${encodeURIComponent(ticker)}&quotesCount=10&newsCount=0&enableFuzzyQuery=false`;
+      const res = await fetch(url, { headers: { Accept: 'application/json' } });
+      if (!res.ok) return;
+      const json = await res.json() as { quotes?: { symbol: string; quoteType?: string }[] };
+      // Only accept results whose symbol starts with our ticker followed by a dot
+      // (avoids false matches like TDIVX for query "TDIV")
+      const quotes = (json?.quotes ?? [])
+        .filter(q => q.quoteType === 'ETF' || q.quoteType === 'EQUITY')
+        .filter(q => q.symbol === ticker || q.symbol.startsWith(ticker + '.'));
+      if (quotes.length === 0) return;
+      quotes.sort((a, b) => exchangeScore(a.symbol) - exchangeScore(b.symbol));
+      const best = quotes[0];
+      if (best.symbol.includes('.')) {
+        result[ticker] = best.symbol;
+      }
+    } catch { /* ignore per-ticker failures */ }
   }));
   return result;
 }

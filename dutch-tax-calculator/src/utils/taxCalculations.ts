@@ -206,36 +206,64 @@ export function calculateToeslagen(data: TaxFormData, box1: Box1Result, box3: Bo
 // ─── Portfolio positions ────────────────────────────────────────────────────
 
 export function computePositions(holdings: Holding[], transactions: Transaction[]): Position[] {
-  type Pos = { type: AssetType; broker: string; ticker: string; quantity: number; avgCost: number; currentPrice: number };
-  const map = new Map<string, Pos>();
+  type InternalPos = { name: string; type: AssetType; broker: string; ticker: string; quantity: number; avgCost: number; currentPrice: number };
+
+  // Key by holding id (not name) so same-name holdings at different brokers are tracked separately
+  const byId = new Map<string, InternalPos>();
+  // name → first matching id (for transaction assignment)
+  const nameToId = new Map<string, string>();
 
   for (const h of holdings) {
-    map.set(h.name, {
-      type: h.type, broker: h.broker, ticker: h.ticker,
-      quantity: h.quantity, avgCost: h.pricePerUnit,
-      currentPrice: h.currentPrice,
+    const key = h.id || h.name;
+    byId.set(key, {
+      name: h.name, type: h.type, broker: h.broker, ticker: h.ticker,
+      quantity: h.quantity, avgCost: h.pricePerUnit, currentPrice: h.currentPrice,
     });
+    if (!nameToId.has(h.name)) nameToId.set(h.name, key);
   }
 
   const sorted = [...transactions].sort((a, b) => a.date.localeCompare(b.date));
   for (const tx of sorted) {
-    const pos = map.get(tx.holdingName) ?? { type: 'other' as AssetType, broker: tx.broker, ticker: '', quantity: 0, avgCost: 0, currentPrice: 0 };
+    const key = nameToId.get(tx.holdingName) ?? tx.holdingName;
+    const pos = byId.get(key) ?? { name: tx.holdingName, type: 'other' as AssetType, broker: tx.broker, ticker: '', quantity: 0, avgCost: 0, currentPrice: 0 };
     if (tx.type === 'buy') {
       const totalQty  = pos.quantity + tx.quantity;
       const totalCost = pos.quantity * pos.avgCost + tx.quantity * tx.pricePerUnit;
-      map.set(tx.holdingName, { ...pos, broker: tx.broker || pos.broker, quantity: totalQty, avgCost: totalQty > 0 ? totalCost / totalQty : 0 });
+      byId.set(key, { ...pos, broker: tx.broker || pos.broker, quantity: totalQty, avgCost: totalQty > 0 ? totalCost / totalQty : 0 });
     } else {
-      map.set(tx.holdingName, { ...pos, broker: tx.broker || pos.broker, quantity: Math.max(0, pos.quantity - tx.quantity) });
+      byId.set(key, { ...pos, broker: tx.broker || pos.broker, quantity: Math.max(0, pos.quantity - tx.quantity) });
     }
   }
 
-  return Array.from(map.entries())
-    .filter(([, p]) => p.quantity > 0)
-    .map(([name, p]) => {
-      const price        = p.currentPrice > 0 ? p.currentPrice : p.avgCost;
-      const currentValue = p.quantity * price;
-      return { name, type: p.type, broker: p.broker, ticker: p.ticker, quantity: p.quantity, avgCost: p.avgCost, currentPrice: p.currentPrice, currentValue };
-    });
+  // Merge positions with the same display key (ticker || name) so the same stock at
+  // multiple brokers appears as one row with combined quantity and "DEGIRO + IBKR" broker.
+  const merged = new Map<string, InternalPos & { brokers: string[] }>();
+  for (const pos of byId.values()) {
+    if (pos.quantity <= 0) continue;
+    const displayKey = pos.ticker || pos.name;
+    const existing = merged.get(displayKey);
+    if (existing) {
+      const totalQty  = existing.quantity + pos.quantity;
+      const totalCost = existing.quantity * existing.avgCost + pos.quantity * pos.avgCost;
+      existing.quantity    = totalQty;
+      existing.avgCost     = totalQty > 0 ? totalCost / totalQty : 0;
+      existing.currentPrice = pos.currentPrice > 0 ? pos.currentPrice : existing.currentPrice;
+      if (pos.broker && !existing.brokers.includes(pos.broker)) existing.brokers.push(pos.broker);
+    } else {
+      merged.set(displayKey, { ...pos, brokers: pos.broker ? [pos.broker] : [] });
+    }
+  }
+
+  return Array.from(merged.values()).map(p => {
+    const price        = p.currentPrice > 0 ? p.currentPrice : p.avgCost;
+    const currentValue = p.quantity * price;
+    return {
+      name: p.name, type: p.type,
+      broker: p.brokers.filter(Boolean).join(' + '),
+      ticker: p.ticker, quantity: p.quantity, avgCost: p.avgCost,
+      currentPrice: p.currentPrice, currentValue,
+    };
+  });
 }
 
 export function calcRealisedGain(holdings: Holding[], transactions: Transaction[]): number {

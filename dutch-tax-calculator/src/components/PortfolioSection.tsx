@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import type { PortfolioData, Holding, Transaction, AssetType, TransactionType } from '../types';
 import { computePositions } from '../utils/taxCalculations';
-import { fetchPricesWithFX, resolveIsins, looksLikeIsin } from '../utils/priceFetcher';
+import { fetchPricesWithFX, resolveIsins, resolveBareTickers, looksLikeIsin } from '../utils/priceFetcher';
 import SectionCard from './SectionCard';
 import PieChart from './PieChart';
 import CsvImportPanel from './CsvImportPanel';
@@ -102,29 +102,42 @@ export default function PortfolioSection({ data, onChange }: Props) {
     setFetchState('loading');
     setFetchMsg('');
     try {
-      // Step 1: resolve ISINs → tickers.
-      // Re-resolve if: no ticker yet, OR ticker has no exchange suffix (e.g. "TDIV" instead of
-      // "TDIV.AS") AND an ISIN is available. US stocks from IBKR have no suffix but also no
-      // ISIN, so they are correctly skipped.
-      const needsResolution = holdingsSnapshot.filter(h => {
+      // Step 1a: resolve ISINs → tickers (DEGIRO: has ISIN, bare or no ticker)
+      const needsIsinRes = holdingsSnapshot.filter(h => {
         if (!h.isin || !looksLikeIsin(h.isin)) return false;
         if (!h.ticker) return true;
-        return !h.ticker.includes('.');   // bare ticker without exchange suffix → re-resolve
+        return !h.ticker.includes('.');  // bare ticker without exchange suffix
       });
-      let isinMap: Record<string, string> = {};
-      if (needsResolution.length > 0) {
-        isinMap = await resolveIsins(needsResolution.map(h => h.isin!));
-      }
 
-      // Apply resolved tickers to snapshot (and persist them to state)
+      // Step 1b: resolve bare tickers via search (IBKR: no ISIN, bare ticker like "TDIV")
+      const needsTickerRes = holdingsSnapshot.filter(h => {
+        if (!h.ticker || h.ticker.includes('.')) return false;  // no ticker or already has suffix
+        if (h.isin && looksLikeIsin(h.isin)) return false;     // handled by ISIN resolution
+        return true;
+      });
+
+      const [isinMap, tickerMap] = await Promise.all([
+        needsIsinRes.length > 0 ? resolveIsins(needsIsinRes.map(h => h.isin!)) : Promise.resolve({}),
+        needsTickerRes.length > 0 ? resolveBareTickers(needsTickerRes.map(h => h.ticker)) : Promise.resolve({}),
+      ]);
+
+      // Apply resolved tickers. BUG FIX: also replace bare tickers (no ".") when a
+      // better exchange-specific ticker (with ".") was resolved — previously only holdings
+      // with no ticker at all were updated, so "TDIV" was never replaced with "TDIV.AS".
       const resolvedSnapshot = holdingsSnapshot.map(h => {
-        if (!h.ticker && h.isin && isinMap[h.isin]) {
-          return { ...h, ticker: isinMap[h.isin] };
+        if (h.isin && isinMap[h.isin]) {
+          const resolved = isinMap[h.isin];
+          if (!h.ticker || (!h.ticker.includes('.') && resolved.includes('.'))) {
+            return { ...h, ticker: resolved };
+          }
+        }
+        if (h.ticker && !h.ticker.includes('.') && tickerMap[h.ticker]) {
+          return { ...h, ticker: tickerMap[h.ticker] };
         }
         return h;
       });
 
-      // Step 2: fetch prices for all tickers
+      // Step 2: fetch prices for all resolved tickers
       const tickers = [...new Set(resolvedSnapshot.map(h => h.ticker).filter(Boolean))];
       if (tickers.length === 0) {
         setFetchMsg('Kon geen geldige ticker-symbolen vinden. Controleer uw ISIN-codes of vul tickers handmatig in.');
@@ -143,11 +156,11 @@ export default function PortfolioSection({ data, onChange }: Props) {
         if (!q) return h;
         return {
           ...h,
-          currentPrice:       q.priceEur,
-          currentPriceLocal:  q.priceLocal,
-          currentCurrency:    q.currency,
-          currentRate:        q.rate,
-          fetchedAt:          result.timestamp,
+          currentPrice:        q.priceEur,
+          currentPriceLocal:   q.priceLocal,
+          currentCurrency:     q.currency,
+          currentRate:         q.rate,
+          fetchedAt:           result.timestamp,
           dividendPerShareEur: q.dividendPerShareEur,
           dividendYield:       q.dividendYield,
           exDivDate:           q.exDivDate,
@@ -157,8 +170,8 @@ export default function PortfolioSection({ data, onChange }: Props) {
       onChange({ ...data, holdings: updated });
 
       const found = Object.keys(result.quotes).length;
-      const resolvedCount = Object.keys(isinMap).length;
-      const resolvedNote = resolvedCount > 0 ? ` (${resolvedCount} ISIN automatisch omgezet)` : '';
+      const resolvedTotal = Object.keys(isinMap).length + Object.keys(tickerMap).length;
+      const resolvedNote = resolvedTotal > 0 ? ` (${resolvedTotal} symbolen automatisch omgezet)` : '';
       setFetchMsg(`${found} van ${tickers.length} koers${tickers.length !== 1 ? 'en' : ''} bijgewerkt.${resolvedNote}`);
       setFetchState('ok');
     } catch (err) {
