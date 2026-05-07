@@ -90,7 +90,11 @@ export default function PortfolioSection({ data, onChange }: Props) {
 
   const doFetch = async (holdingsSnapshot: Holding[]) => {
     const tickers = holdingsSnapshot.map(h => h.ticker).filter(Boolean);
-    if (tickers.length === 0) return;
+    if (tickers.length === 0) {
+      setFetchMsg('Geen ticker-symbolen ingevuld. Voeg tickers toe bij uw posities (bijv. VWCE.AS).');
+      setFetchState('error');
+      return;
+    }
     setFetchState('loading');
     setFetchMsg('');
     try {
@@ -117,7 +121,8 @@ export default function PortfolioSection({ data, onChange }: Props) {
       const found = Object.keys(result.quotes).length;
       setFetchMsg(`${found} van ${tickers.length} koers${tickers.length !== 1 ? 'en' : ''} bijgewerkt.`);
       setFetchState('ok');
-    } catch {
+    } catch (err) {
+      console.error('Price fetch failed:', err);
       setFetchMsg('Kon koersen niet ophalen. Controleer uw internetverbinding of de ticker-symbolen.');
       setFetchState('error');
     }
@@ -156,10 +161,12 @@ export default function PortfolioSection({ data, onChange }: Props) {
     { id: 'overview' as InnerTab,     label: 'Overzicht',   icon: <LayoutList size={13} /> },
   ];
 
+  const hasTickers = data.holdings.some(h => h.ticker);
+
   return (
     <SectionCard title="Beleggingsportefeuille — Live tracking" icon={<TrendingUp size={20} />} accent="border-purple-400">
-      {/* Live total banner */}
-      {(totalCurrentValue > 0 || fetchState === 'loading') && (
+      {/* Live total banner — always show when there are holdings with tickers */}
+      {(hasTickers || totalCurrentValue > 0 || fetchState === 'loading') && (
         <div className="mb-4 bg-purple-50 border border-purple-200 rounded-xl px-4 py-3 space-y-2">
           <div className="flex items-center justify-between">
             <div>
@@ -173,7 +180,7 @@ export default function PortfolioSection({ data, onChange }: Props) {
                 className="flex items-center gap-1.5 text-xs bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700 cursor-pointer border-0 disabled:opacity-60"
               >
                 <RefreshCw size={13} className={fetchState === 'loading' ? 'animate-spin' : ''} />
-                {fetchState === 'loading' ? 'Ophalen…' : 'Koersen'}
+                {fetchState === 'loading' ? 'Ophalen…' : 'Koersen bijwerken'}
               </button>
               {lastFetchTime && (
                 <span className="flex items-center gap-1 text-xs text-slate-400">
@@ -194,6 +201,18 @@ export default function PortfolioSection({ data, onChange }: Props) {
                 ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Fetch status message — shown above tabs so it's visible from any tab */}
+      {fetchMsg && (
+        <div className={`flex items-center gap-2 text-xs px-3 py-2 rounded-lg mb-4 ${
+          fetchState === 'ok'
+            ? 'bg-green-50 border border-green-200 text-green-700'
+            : 'bg-red-50 border border-red-200 text-red-700'
+        }`}>
+          {fetchState === 'ok' ? <CheckCircle2 size={13} /> : <AlertCircle size={13} />}
+          {fetchMsg}
         </div>
       )}
 
@@ -220,26 +239,7 @@ export default function PortfolioSection({ data, onChange }: Props) {
               <br />
               <span className="text-slate-400">Belastingwaardes (1 jan) invullen op het tabblad <strong>Waardes 1 jan</strong>.</span>
             </p>
-            {totalCurrentValue === 0 && (
-              <button onClick={handleRefreshPrices} disabled={fetchState === 'loading'}
-                className="flex items-center gap-1.5 text-xs bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700 cursor-pointer border-0 shrink-0 disabled:opacity-60"
-              >
-                <RefreshCw size={13} className={fetchState === 'loading' ? 'animate-spin' : ''} />
-                {fetchState === 'loading' ? 'Ophalen…' : 'Koersen bijwerken'}
-              </button>
-            )}
           </div>
-
-          {fetchMsg && (
-            <div className={`flex items-center gap-2 text-xs px-3 py-2 rounded-lg mb-3 ${
-              fetchState === 'ok'
-                ? 'bg-green-50 border border-green-200 text-green-700'
-                : 'bg-red-50 border border-red-200 text-red-700'
-            }`}>
-              {fetchState === 'ok' ? <CheckCircle2 size={13} /> : <AlertCircle size={13} />}
-              {fetchMsg}
-            </div>
-          )}
 
           {data.holdings.length === 0 ? (
             <div className="text-center py-6 text-slate-400 text-sm border-2 border-dashed border-slate-200 rounded-xl mb-3">
