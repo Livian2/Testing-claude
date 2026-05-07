@@ -18,6 +18,10 @@ export interface Holding {
   currentCurrency?: string;    // original currency (USD, GBP, GBp, …)
   currentRate?: number;        // exchange rate used: 1 local = currentRate EUR
   fetchedAt?: string;          // ISO timestamp of last fetch
+  dividendPerShareEur?: number; // annual dividend per share in EUR (undefined = no div)
+  dividendYield?: number;       // decimal, e.g. 0.025 = 2.5%
+  exDivDate?: string | null;    // ISO date of next/last ex-dividend date
+  divPayDate?: string | null;   // ISO date of next/last payment date
 }
 
 export interface Transaction {

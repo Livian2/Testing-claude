@@ -27,6 +27,10 @@ export interface QuoteData {
   priceLocal: number;      // original exchange price
   currency: string;        // e.g. "USD", "GBp", "EUR"
   rate: number;            // 1 local unit = rate EUR (1.0 for EUR)
+  dividendPerShareEur?: number;  // annual div per share converted to EUR (undefined = accumulating/no div)
+  dividendYield?: number;         // decimal (e.g. 0.025 = 2.5%)
+  exDivDate?: string | null;      // ISO date YYYY-MM-DD
+  divPayDate?: string | null;     // ISO date YYYY-MM-DD
 }
 
 export interface FetchResult {
@@ -41,6 +45,31 @@ interface ChartMeta {
   currency: string;
 }
 
+interface DividendInfo {
+  divRateLocal: number;  // annual dividend in local exchange currency
+  divYield: number;      // decimal
+  exDivDate: string | null;
+  divPayDate: string | null;
+}
+
+interface QuoteSummaryResponse {
+  quoteSummary?: {
+    result?: Array<{
+      summaryDetail?: {
+        trailingAnnualDividendRate?: { raw?: number };
+        trailingAnnualDividendYield?: { raw?: number };
+        dividendRate?: { raw?: number };
+        dividendYield?: { raw?: number };
+        exDividendDate?: { raw?: number };
+      };
+      calendarEvents?: {
+        exDividendDate?: { raw?: number };
+        dividendDate?: { raw?: number };
+      };
+    }>;
+  };
+}
+
 /** Fetch a single ticker via the v8/finance/chart endpoint (no crumb needed). */
 async function fetchChart(ticker: string): Promise<ChartMeta | null> {
   try {
@@ -51,6 +80,36 @@ async function fetchChart(ticker: string): Promise<ChartMeta | null> {
     const meta = json?.chart?.result?.[0]?.meta;
     if (!meta?.regularMarketPrice) return null;
     return meta;
+  } catch {
+    return null;
+  }
+}
+
+/** Fetch dividend data via the v11/quoteSummary endpoint (no crumb needed). */
+async function fetchDividendInfo(ticker: string): Promise<DividendInfo | null> {
+  try {
+    const url = `/api/finance/v11/finance/quoteSummary/${encodeURIComponent(ticker)}?modules=summaryDetail%2CcalendarEvents`;
+    const res = await fetch(url, { headers: { Accept: 'application/json' } });
+    if (!res.ok) return null;
+    const json = await res.json() as QuoteSummaryResponse;
+    const result = json?.quoteSummary?.result?.[0];
+    if (!result) return null;
+
+    const sd = result.summaryDetail ?? {};
+    const ce = result.calendarEvents ?? {};
+
+    const divRateLocal = sd.dividendRate?.raw ?? sd.trailingAnnualDividendRate?.raw ?? 0;
+    const divYield     = sd.dividendYield?.raw ?? sd.trailingAnnualDividendYield?.raw ?? 0;
+
+    if (divRateLocal === 0 && divYield === 0) return null;
+
+    const tsToDate = (ts?: number): string | null =>
+      ts ? new Date(ts * 1000).toISOString().split('T')[0] : null;
+
+    const exDivDate = tsToDate(ce.exDividendDate?.raw ?? sd.exDividendDate?.raw);
+    const divPayDate = tsToDate(ce.dividendDate?.raw);
+
+    return { divRateLocal, divYield, exDivDate, divPayDate };
   } catch {
     return null;
   }
@@ -113,24 +172,27 @@ export async function fetchPricesWithFX(tickers: string[]): Promise<FetchResult>
   const unique = [...new Set(tickers.filter(Boolean))];
   if (unique.length === 0) return { quotes: {}, rates: { EUR: 1 }, timestamp: new Date().toISOString() };
 
-  // Fetch all tickers (stocks + FX pairs) in parallel via v8/chart
+  // Fetch chart data (prices + FX) and dividend info in parallel
   const allTickers = [...unique, ...FX_TICKERS];
-  const results = await Promise.all(allTickers.map(t => fetchChart(t)));
+  const [chartResults, divResults] = await Promise.all([
+    Promise.all(allTickers.map(t => fetchChart(t))),
+    Promise.all(unique.map(t => fetchDividendInfo(t))),
+  ]);
 
   // Build FX rate map: currency → EUR
   const rates: Record<string, number> = { EUR: 1 };
   FX_TICKERS.forEach((fx, i) => {
-    const meta = results[unique.length + i];
+    const meta = chartResults[unique.length + i];
     if (!meta?.regularMarketPrice) return;
     // "USDEUR=X" → key "USD"
     const key = fx.replace('EUR=X', '');
     if (key && key !== fx) rates[key] = meta.regularMarketPrice;
   });
 
-  // Process stock results → convert to EUR
+  // Process stock results → convert prices and dividends to EUR
   const quotes: Record<string, QuoteData> = {};
   unique.forEach((ticker, i) => {
-    const meta = results[i];
+    const meta = chartResults[i];
     if (!meta?.regularMarketPrice) return;
 
     const price    = meta.regularMarketPrice;
@@ -153,7 +215,21 @@ export async function fetchPricesWithFX(tickers: string[]): Promise<FetchResult>
       }
     }
 
-    quotes[ticker] = { priceEur, priceLocal: price, currency, rate };
+    // Convert dividend rate to EUR using the same FX rate as the price
+    const div = divResults[i];
+    let dividendPerShareEur: number | undefined;
+    let dividendYield: number | undefined;
+    let exDivDate: string | null | undefined;
+    let divPayDate: string | null | undefined;
+
+    if (div) {
+      dividendYield       = div.divYield;
+      exDivDate           = div.exDivDate;
+      divPayDate          = div.divPayDate;
+      dividendPerShareEur = div.divRateLocal * rate;
+    }
+
+    quotes[ticker] = { priceEur, priceLocal: price, currency, rate, dividendPerShareEur, dividendYield, exDivDate, divPayDate };
   });
 
   return { quotes, rates, timestamp: new Date().toISOString() };

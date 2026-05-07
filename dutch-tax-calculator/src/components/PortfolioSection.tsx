@@ -43,6 +43,11 @@ const nl0 = new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR',
 type InnerTab = 'holdings' | 'transactions' | 'import' | 'overview';
 type FetchState = 'idle' | 'loading' | 'ok' | 'error';
 
+const fmtDate = (iso: string): string =>
+  new Date(iso + 'T00:00:00').toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' });
+
+const isPast = (iso: string): boolean => new Date(iso + 'T00:00:00') < new Date();
+
 const fmtLocal = (price: number, currency: string) => {
   if (currency === 'GBp' || currency === 'GBX') {
     return `${(price).toFixed(2)} GBp`;
@@ -138,11 +143,15 @@ export default function PortfolioSection({ data, onChange }: Props) {
         if (!q) return h;
         return {
           ...h,
-          currentPrice:      q.priceEur,
-          currentPriceLocal: q.priceLocal,
-          currentCurrency:   q.currency,
-          currentRate:       q.rate,
-          fetchedAt:         result.timestamp,
+          currentPrice:       q.priceEur,
+          currentPriceLocal:  q.priceLocal,
+          currentCurrency:    q.currency,
+          currentRate:        q.rate,
+          fetchedAt:          result.timestamp,
+          dividendPerShareEur: q.dividendPerShareEur,
+          dividendYield:       q.dividendYield,
+          exDivDate:           q.exDivDate,
+          divPayDate:          q.divPayDate,
         };
       });
       onChange({ ...data, holdings: updated });
@@ -336,38 +345,60 @@ export default function PortfolioSection({ data, onChange }: Props) {
                   </div>
 
                   {(h.ticker || h.isin) && (
-                    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-                      {h.currentPrice > 0 ? (
-                        <>
-                          <span className="flex items-center gap-1 text-green-600 font-medium">
-                            <CheckCircle2 size={12} />
-                            <strong>{nl.format(h.currentPrice)}</strong>
+                    <div className="mt-2 space-y-1">
+                      {/* Price row */}
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                        {h.currentPrice > 0 ? (
+                          <>
+                            <span className="flex items-center gap-1 text-green-600 font-medium">
+                              <CheckCircle2 size={12} />
+                              <strong>{nl.format(h.currentPrice)}</strong>
+                            </span>
+                            {h.currentCurrency && h.currentCurrency !== 'EUR' && h.currentPriceLocal !== undefined && (
+                              <span className="text-slate-400">
+                                ({fmtLocal(h.currentPriceLocal, h.currentCurrency)}
+                                {h.currentRate !== undefined && ` · 1 ${h.currentCurrency === 'GBp' ? 'GBp' : h.currentCurrency} = ${h.currentRate.toFixed(4)} €`})
+                              </span>
+                            )}
+                            {h.quantity > 0 && (
+                              <span className="text-slate-500">→ {nl0.format(h.quantity * h.currentPrice)}</span>
+                            )}
+                            {h.pricePerUnit > 0 && (
+                              <span className={`font-semibold ${h.currentPrice >= h.pricePerUnit ? 'text-green-600' : 'text-red-500'}`}>
+                                {h.currentPrice >= h.pricePerUnit ? '▲' : '▼'}{' '}
+                                {(Math.abs((h.currentPrice - h.pricePerUnit) / h.pricePerUnit) * 100).toFixed(1)}%
+                              </span>
+                            )}
+                          </>
+                        ) : (
+                          <span className="text-slate-400">
+                            {fetchState === 'loading'
+                              ? (h.isin && !h.ticker ? 'ISIN omzetten…' : 'Ophalen…')
+                              : (h.isin && !h.ticker ? `ISIN: ${h.isin} — wordt automatisch omgezet bij ophalen` : 'Koers nog niet opgehaald')}
                           </span>
-                          {/* Show local currency price when non-EUR */}
-                          {h.currentCurrency && h.currentCurrency !== 'EUR' && h.currentPriceLocal !== undefined && (
-                            <span className="text-slate-400">
-                              ({fmtLocal(h.currentPriceLocal, h.currentCurrency)}
-                              {h.currentRate !== undefined && ` · 1 ${h.currentCurrency === 'GBp' ? 'GBp' : h.currentCurrency} = ${h.currentRate.toFixed(4)} €`})
+                        )}
+                      </div>
+                      {/* Dividend row */}
+                      {(h.dividendPerShareEur ?? 0) > 0 && (
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-amber-700">
+                          <span className="font-medium">
+                            Div: {nl.format(h.dividendPerShareEur!)}/jr
+                            {h.quantity > 0 && ` (${nl0.format(h.quantity * h.dividendPerShareEur!)} totaal)`}
+                          </span>
+                          {(h.dividendYield ?? 0) > 0 && (
+                            <span>{(h.dividendYield! * 100).toFixed(2)}% yield</span>
+                          )}
+                          {h.exDivDate && (
+                            <span>
+                              {isPast(h.exDivDate) ? 'Vorige ex-div:' : 'Ex-div:'} {fmtDate(h.exDivDate)}
                             </span>
                           )}
-                          {h.quantity > 0 && (
-                            <span className="text-slate-500">
-                              → {nl0.format(h.quantity * h.currentPrice)}
+                          {h.divPayDate && (
+                            <span>
+                              {isPast(h.divPayDate) ? 'Vorige betaling:' : 'Betaling:'} {fmtDate(h.divPayDate)}
                             </span>
                           )}
-                          {h.pricePerUnit > 0 && (
-                            <span className={`font-semibold ${h.currentPrice >= h.pricePerUnit ? 'text-green-600' : 'text-red-500'}`}>
-                              {h.currentPrice >= h.pricePerUnit ? '▲' : '▼'}{' '}
-                              {(Math.abs((h.currentPrice - h.pricePerUnit) / h.pricePerUnit) * 100).toFixed(1)}%
-                            </span>
-                          )}
-                        </>
-                      ) : (
-                        <span className="text-slate-400">
-                          {fetchState === 'loading'
-                            ? (h.isin && !h.ticker ? 'ISIN omzetten…' : 'Ophalen…')
-                            : (h.isin && !h.ticker ? `ISIN: ${h.isin} — wordt automatisch omgezet bij ophalen` : 'Koers nog niet opgehaald')}
-                        </span>
+                        </div>
                       )}
                     </div>
                   )}
@@ -491,20 +522,34 @@ export default function PortfolioSection({ data, onChange }: Props) {
           ) : (
             <>
               {/* Summary row */}
-              <div className="grid grid-cols-3 gap-3 mb-4">
-                <div className="bg-purple-50 border border-purple-200 rounded-xl p-3 text-center">
-                  <p className="text-xs text-slate-500 mb-1">Portefeuillewaarde</p>
-                  <p className="text-base font-bold text-purple-700">{nl0.format(totalCurrentValue)}</p>
-                </div>
-                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-center">
-                  <p className="text-xs text-slate-500 mb-1">Posities</p>
-                  <p className="text-base font-bold text-slate-700">{positions.length}</p>
-                </div>
-                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-center">
-                  <p className="text-xs text-slate-500 mb-1">Transacties</p>
-                  <p className="text-base font-bold text-slate-700">{data.transactions.length}</p>
-                </div>
-              </div>
+              {(() => {
+                const totalAnnualDiv = data.holdings.reduce((s, h) => {
+                  if (!h.dividendPerShareEur || h.quantity <= 0) return s;
+                  return s + h.quantity * h.dividendPerShareEur;
+                }, 0);
+                return (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+                    <div className="bg-purple-50 border border-purple-200 rounded-xl p-3 text-center">
+                      <p className="text-xs text-slate-500 mb-1">Portefeuillewaarde</p>
+                      <p className="text-base font-bold text-purple-700">{nl0.format(totalCurrentValue)}</p>
+                    </div>
+                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-center">
+                      <p className="text-xs text-slate-500 mb-1">Jaarlijks dividend</p>
+                      <p className="text-base font-bold text-amber-700">
+                        {totalAnnualDiv > 0 ? nl0.format(totalAnnualDiv) : '—'}
+                      </p>
+                    </div>
+                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-center">
+                      <p className="text-xs text-slate-500 mb-1">Posities</p>
+                      <p className="text-base font-bold text-slate-700">{positions.length}</p>
+                    </div>
+                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-center">
+                      <p className="text-xs text-slate-500 mb-1">Transacties</p>
+                      <p className="text-base font-bold text-slate-700">{data.transactions.length}</p>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Pie chart */}
               {pieSlices.length > 1 && (
@@ -531,6 +576,7 @@ export default function PortfolioSection({ data, onChange }: Props) {
                           )}
                         </span>
                       </th>
+                      <th className="text-right py-2 pr-3 font-medium hidden md:table-cell">Dividend/jr</th>
                       <th className="text-right py-2 pr-3 font-medium">Rendement</th>
                       <th className="text-right py-2 font-medium">Waarde</th>
                     </tr>
@@ -589,6 +635,30 @@ export default function PortfolioSection({ data, onChange }: Props) {
                             )}
                           </td>
 
+                          {/* Dividend/jr */}
+                          <td className="py-2.5 pr-3 text-right text-xs hidden md:table-cell">
+                            {(() => {
+                              const h = data.holdings.find(hh => hh.name === p.name || hh.ticker === p.ticker);
+                              const div = h?.dividendPerShareEur;
+                              if (!div || div <= 0) return <span className="text-slate-300">—</span>;
+                              const annual = p.quantity * div;
+                              const yld = h.dividendYield ?? 0;
+                              return (
+                                <span className="text-amber-700">
+                                  <span className="font-semibold">{nl0.format(annual)}</span>
+                                  {yld > 0 && (
+                                    <span className="block font-normal text-amber-500">{(yld * 100).toFixed(2)}%</span>
+                                  )}
+                                  {h.exDivDate && (
+                                    <span className="block font-normal text-slate-400" title={isPast(h.exDivDate) ? 'Vorige ex-dividenddatum' : 'Volgende ex-dividenddatum'}>
+                                      {isPast(h.exDivDate) ? '◷' : '◷'} {fmtDate(h.exDivDate)}
+                                    </span>
+                                  )}
+                                </span>
+                              );
+                            })()}
+                          </td>
+
                           {/* Rendement */}
                           <td className="py-2.5 pr-3 text-right text-xs">
                             {gainPct !== null ? (
@@ -613,7 +683,7 @@ export default function PortfolioSection({ data, onChange }: Props) {
                     <tr className="border-t-2 border-slate-200">
                       <td colSpan={4} className="py-2.5 font-semibold text-slate-700 hidden sm:table-cell">Totaal</td>
                       <td colSpan={3} className="py-2.5 font-semibold text-slate-700 sm:hidden">Totaal</td>
-                      <td colSpan={2} className="py-2.5 text-right">
+                      <td colSpan={3} className="py-2.5 text-right">
                         <span className="font-bold text-slate-900">{nl0.format(totalCurrentValue)}</span>
                         {lastFetchTime && (
                           <span className="block text-xs text-slate-400 font-normal flex items-center justify-end gap-1">
