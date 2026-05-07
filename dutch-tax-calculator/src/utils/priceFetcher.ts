@@ -40,12 +40,14 @@ export async function resolveIsins(isins: string[]): Promise<Record<string, stri
   const result: Record<string, string> = {};
   await Promise.all(unique.map(async (isin) => {
     try {
-      const url = `/api/finance/v1/finance/search?q=${encodeURIComponent(isin)}&quotesCount=3&newsCount=0&enableFuzzyQuery=false`;
+      const url = `/api/finance/v1/finance/search?q=${encodeURIComponent(isin)}&quotesCount=5&newsCount=0&enableFuzzyQuery=false`;
       const res = await fetch(url, { headers: { Accept: 'application/json' } });
       if (!res.ok) return;
-      const json = await res.json() as { finance?: { result?: { quotes?: { symbol: string; quoteType?: string }[] }[] } };
-      const quotes = json?.finance?.result?.[0]?.quotes ?? [];
-      // Prefer ETF or EQUITY quotes, take the first match
+      const json = await res.json() as {
+        quotes?: { symbol: string; quoteType?: string }[];
+      };
+      // Yahoo Finance search returns quotes at the top level
+      const quotes = json?.quotes ?? [];
       const match = quotes.find(q => q.quoteType === 'ETF' || q.quoteType === 'EQUITY') ?? quotes[0];
       if (match?.symbol) result[isin] = match.symbol;
     } catch { /* ignore per-ISIN failures */ }
