@@ -81,7 +81,7 @@ const BOX3_EXEMPTION_SINGLE  = 57684;
 const BOX3_EXEMPTION_PARTNER = 115368;
 
 export function calculateBox3(data: TaxFormData): Box3Result {
-  const { waardes, portfolio, personal } = data;
+  const { waardes, schulden, personal } = data;
   const isPartner = personal.filingStatus === 'partner';
   const exemption = isPartner ? BOX3_EXEMPTION_PARTNER : BOX3_EXEMPTION_SINGLE;
   const threshold = isPartner ? BOX3_DEBT_THRESHOLD * 2 : BOX3_DEBT_THRESHOLD;
@@ -97,7 +97,7 @@ export function calculateBox3(data: TaxFormData): Box3Result {
 
   const totalAssets = totalSavings + totalInvestments;
 
-  const rawDebts   = portfolio.investmentDebts + portfolio.duoDebt;
+  const rawDebts   = [...schulden.duo, ...schulden.beleggingen].reduce((s, d) => s + d.bedrag, 0);
   const totalDebts = Math.max(0, rawDebts - threshold);
 
   const netWealth     = Math.max(0, totalAssets - totalDebts);
@@ -248,7 +248,7 @@ export function calculateTaxes(data: TaxFormData): TaxResult {
   const toeslagen = calculateToeslagen(data, box1, box3);
   const totalTax  = Math.max(0, box1.netTax + box3.netTax);
 
-  const { expenses, savings, income, woon, personal, waardes, portfolio } = data;
+  const { expenses, savings, income, woon, personal, waardes, portfolio, schulden } = data;
 
   let maandWoonlast = 0;
   if (woon.woningType === 'hypotheek') {
@@ -291,7 +291,7 @@ export function calculateTaxes(data: TaxFormData): TaxResult {
   const currentNetWorth =
     totalSavingsBalance +
     (portfolioCurrentValue > 0 ? portfolioCurrentValue : portfolioJan1Value) -
-    portfolio.investmentDebts - portfolio.duoDebt;
+    [...schulden.duo, ...schulden.beleggingen].reduce((s, d) => s - d.bedrag, 0);
 
   return {
     box1, box3, toeslagen, totalTax, netDisposableIncome, totalExpenses,

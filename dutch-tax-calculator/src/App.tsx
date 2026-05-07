@@ -4,6 +4,7 @@ import type { TaxFormData, FilingStatus } from './types';
 import { calculateTaxes } from './utils/taxCalculations';
 import IncomeSection from './components/IncomeSection';
 import ExpensesSection from './components/ExpensesSection';
+import SchuldenSection from './components/SchuldenSection';
 import PortfolioSection from './components/PortfolioSection';
 import WoonSection from './components/WoonSection';
 import WaardesSection from './components/WaardesSection';
@@ -38,16 +39,18 @@ const DEFAULT_DATA: TaxFormData = {
     healthcare: 0, education: 0, leisure: 0, other: 0,
   },
   savings: { monthlySavingsContribution: 0 },
-  portfolio: { holdings: [], transactions: [], investmentDebts: 0, duoDebt: 0 },
+  schulden: { duo: [], beleggingen: [] },
+  portfolio: { holdings: [], transactions: [] },
 };
 
-type Tab = 'income' | 'woon' | 'waardes' | 'expenses' | 'portfolio' | 'results';
+type Tab = 'income' | 'woon' | 'waardes' | 'expenses' | 'schulden' | 'portfolio' | 'results';
 
 const TABS: { id: Tab; label: string; emoji: string }[] = [
   { id: 'income',    label: 'Inkomen',       emoji: '💼' },
   { id: 'woon',      label: 'Wonen',         emoji: '🏠' },
   { id: 'waardes',   label: 'Waardes 1 jan', emoji: '📋' },
   { id: 'expenses',  label: 'Kosten',        emoji: '🛒' },
+  { id: 'schulden',  label: 'Schulden',      emoji: '💳' },
   { id: 'portfolio', label: 'Beleggen',      emoji: '📈' },
   { id: 'results',   label: 'Berekening',    emoji: '🧮' },
 ];
@@ -169,6 +172,13 @@ export default function App() {
           <ExpensesSection
             data={data.expenses}
             onChange={expenses => setData(d => ({ ...d, expenses }))}
+          />
+        )}
+        {tab === 'schulden' && (
+          <SchuldenSection
+            data={data.schulden}
+            taxYear={data.personal.taxYear}
+            onChange={schulden => setData(d => ({ ...d, schulden }))}
           />
         )}
         {tab === 'portfolio' && (

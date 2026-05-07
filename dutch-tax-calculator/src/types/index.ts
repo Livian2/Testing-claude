@@ -107,8 +107,21 @@ export interface SavingsData {
 export interface PortfolioData {
   holdings: Holding[];
   transactions: Transaction[];
-  investmentDebts: number;
-  duoDebt: number;
+}
+
+export interface SchuldItem {
+  id: string;
+  label: string;
+  bedrag: number;             // restschuld / outstanding balance (Box 3 value)
+  rentePercentage: number;    // annual interest rate %
+  looptijd: number;           // total loan duration in years
+  rentevastePeriode: number;  // fixed-rate period in years
+  startJaar: number;          // year loan started
+}
+
+export interface SchuldenData {
+  duo: SchuldItem[];
+  beleggingen: SchuldItem[];
 }
 
 export interface PersonalData {
@@ -124,6 +137,7 @@ export interface TaxFormData {
   income: IncomeData;
   expenses: ExpensesData;
   savings: SavingsData;
+  schulden: SchuldenData;
   portfolio: PortfolioData;
 }
 

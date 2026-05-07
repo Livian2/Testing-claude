@@ -6,7 +6,6 @@ import {
 import type { PortfolioData, Holding, Transaction, AssetType, TransactionType } from '../types';
 import { computePositions } from '../utils/taxCalculations';
 import { fetchPricesWithFX, resolveIsins, looksLikeIsin } from '../utils/priceFetcher';
-import CurrencyInput from './CurrencyInput';
 import SectionCard from './SectionCard';
 import PieChart from './PieChart';
 import CsvImportPanel from './CsvImportPanel';
@@ -377,13 +376,6 @@ export default function PortfolioSection({ data, onChange }: Props) {
             <Plus size={13} /> Positie toevoegen
           </button>
 
-          {/* Debts */}
-          <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-slate-100 pt-4">
-            <CurrencyInput label="Beleggingsschulden (Box 3)" hint="Leningen gekoppeld aan beleggingen (drempel €3.700)"
-              value={data.investmentDebts} onChange={v => onChange({ ...data, investmentDebts: v })} />
-            <CurrencyInput label="DUO studieschuld (Box 3)" hint="Resterende studieschuld DUO"
-              value={data.duoDebt} onChange={v => onChange({ ...data, duoDebt: v })} />
-          </div>
         </div>
       )}
 
