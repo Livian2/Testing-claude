@@ -23,6 +23,7 @@ export interface Transaction {
   quantity: number;
   pricePerUnit: number;
   broker: string;
+  orderId?: string;   // external broker ID for deduplication
 }
 
 export interface HypotheekData {

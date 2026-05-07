@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
   TrendingUp, Plus, Trash2, ArrowUpCircle, ArrowDownCircle,
-  LayoutList, RefreshCw, AlertCircle, CheckCircle2,
+  LayoutList, RefreshCw, AlertCircle, CheckCircle2, FileUp,
 } from 'lucide-react';
 import type { PortfolioData, Holding, Transaction, AssetType, TransactionType } from '../types';
 import { computePositions } from '../utils/taxCalculations';
@@ -9,6 +9,7 @@ import { fetchYahooPrices } from '../utils/priceFetcher';
 import CurrencyInput from './CurrencyInput';
 import SectionCard from './SectionCard';
 import PieChart from './PieChart';
+import CsvImportPanel from './CsvImportPanel';
 
 interface Props {
   data: PortfolioData;
@@ -40,7 +41,7 @@ function uid() { return Math.random().toString(36).slice(2); }
 const nl  = new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR', maximumFractionDigits: 2 });
 const nl0 = new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
 
-type InnerTab = 'holdings' | 'transactions' | 'overview';
+type InnerTab = 'holdings' | 'transactions' | 'import' | 'overview';
 type FetchState = 'idle' | 'loading' | 'ok' | 'error';
 
 export default function PortfolioSection({ data, onChange }: Props) {
@@ -114,6 +115,7 @@ export default function PortfolioSection({ data, onChange }: Props) {
   const INNER_TABS = [
     { id: 'holdings' as InnerTab,     label: 'Posities',    icon: <TrendingUp size={13} /> },
     { id: 'transactions' as InnerTab, label: 'Transacties', icon: <ArrowUpCircle size={13} /> },
+    { id: 'import' as InnerTab,       label: 'Importeer',   icon: <FileUp size={13} /> },
     { id: 'overview' as InnerTab,     label: 'Overzicht',   icon: <LayoutList size={13} /> },
   ];
 
@@ -358,6 +360,14 @@ export default function PortfolioSection({ data, onChange }: Props) {
             <Plus size={13} /> Transactie toevoegen
           </button>
         </div>
+      )}
+
+      {/* ── Import ── */}
+      {tab === 'import' && (
+        <CsvImportPanel
+          existingTransactions={data.transactions}
+          onImport={newTxs => setTxs([...data.transactions, ...newTxs])}
+        />
       )}
 
       {/* ── Overview ── */}
