@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   TrendingUp, Plus, Trash2, ArrowUpCircle, ArrowDownCircle,
-  LayoutList, RefreshCw, AlertCircle, CheckCircle2, FileUp,
+  LayoutList, RefreshCw, AlertCircle, CheckCircle2, FileUp, Clock,
 } from 'lucide-react';
 import type { PortfolioData, Holding, Transaction, AssetType, TransactionType } from '../types';
 import { computePositions } from '../utils/taxCalculations';
-import { fetchYahooPrices } from '../utils/priceFetcher';
+import { fetchPricesWithFX } from '../utils/priceFetcher';
 import CurrencyInput from './CurrencyInput';
 import SectionCard from './SectionCard';
 import PieChart from './PieChart';
@@ -44,11 +44,27 @@ const nl0 = new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR',
 type InnerTab = 'holdings' | 'transactions' | 'import' | 'overview';
 type FetchState = 'idle' | 'loading' | 'ok' | 'error';
 
+const fmtLocal = (price: number, currency: string) => {
+  if (currency === 'GBp' || currency === 'GBX') {
+    return `${(price).toFixed(2)} GBp`;
+  }
+  try {
+    return new Intl.NumberFormat('nl-NL', {
+      style: 'currency', currency, minimumFractionDigits: 2, maximumFractionDigits: 2,
+    }).format(price);
+  } catch {
+    return `${price.toFixed(2)} ${currency}`;
+  }
+};
+
 export default function PortfolioSection({ data, onChange }: Props) {
   const [tab, setTab]               = useState<InnerTab>('holdings');
   const [txType, setTxType]         = useState<TransactionType>('buy');
   const [fetchState, setFetchState] = useState<FetchState>('idle');
   const [fetchMsg, setFetchMsg]     = useState('');
+  const [lastFetchTime, setLastFetchTime] = useState<string | null>(null);
+  const [fxRates, setFxRates]            = useState<Record<string, number>>({});
+  const autoFetched = useRef(false);
 
   const setHoldings = (holdings: Holding[])         => onChange({ ...data, holdings });
   const setTxs      = (transactions: Transaction[]) => onChange({ ...data, transactions });
@@ -72,23 +88,33 @@ export default function PortfolioSection({ data, onChange }: Props) {
   const updateTx = (id: string, p: Partial<Transaction>) =>
     setTxs(data.transactions.map(t => t.id === id ? { ...t, ...p } : t));
 
-  const handleRefreshPrices = async () => {
-    const tickers = data.holdings.map(h => h.ticker).filter(Boolean);
-    if (tickers.length === 0) {
-      setFetchMsg('Voeg eerst een ticker-symbool toe bij uw posities (bijv. VWCE.AS).');
-      setFetchState('error');
-      return;
-    }
+  const doFetch = async (holdingsSnapshot: Holding[]) => {
+    const tickers = holdingsSnapshot.map(h => h.ticker).filter(Boolean);
+    if (tickers.length === 0) return;
     setFetchState('loading');
     setFetchMsg('');
     try {
-      const prices = await fetchYahooPrices(tickers);
-      const updated = data.holdings.map(h => {
-        const price = h.ticker ? prices[h.ticker] : undefined;
-        return price !== undefined ? { ...h, currentPrice: price } : h;
+      const result = await fetchPricesWithFX(tickers);
+      setFxRates(result.rates);
+      const now = new Date(result.timestamp);
+      setLastFetchTime(now.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' }));
+
+      const updated = holdingsSnapshot.map(h => {
+        if (!h.ticker) return h;
+        const q = result.quotes[h.ticker];
+        if (!q) return h;
+        return {
+          ...h,
+          currentPrice:      q.priceEur,
+          currentPriceLocal: q.priceLocal,
+          currentCurrency:   q.currency,
+          currentRate:       q.rate,
+          fetchedAt:         result.timestamp,
+        };
       });
       onChange({ ...data, holdings: updated });
-      const found = Object.keys(prices).length;
+
+      const found = Object.keys(result.quotes).length;
       setFetchMsg(`${found} van ${tickers.length} koers${tickers.length !== 1 ? 'en' : ''} bijgewerkt.`);
       setFetchState('ok');
     } catch {
@@ -96,6 +122,18 @@ export default function PortfolioSection({ data, onChange }: Props) {
       setFetchState('error');
     }
   };
+
+  const handleRefreshPrices = () => doFetch(data.holdings);
+
+  // Auto-fetch once on mount when tickers are present
+  useEffect(() => {
+    if (autoFetched.current) return;
+    const hasTickers = data.holdings.some(h => h.ticker);
+    if (!hasTickers) return;
+    autoFetched.current = true;
+    doFetch(data.holdings);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const positions         = computePositions(data.holdings, data.transactions);
   const hasCurrentPrices  = data.holdings.some(h => h.currentPrice > 0);
@@ -122,20 +160,41 @@ export default function PortfolioSection({ data, onChange }: Props) {
   return (
     <SectionCard title="Beleggingsportefeuille — Live tracking" icon={<TrendingUp size={20} />} accent="border-purple-400">
       {/* Live total banner */}
-      {totalCurrentValue > 0 && (
-        <div className="mb-4 flex items-center justify-between bg-purple-50 border border-purple-200 rounded-xl px-4 py-3">
-          <div>
-            <p className="text-xs text-slate-500">Actuele portefeuillewaarde</p>
-            <p className="text-xl font-bold text-purple-700">{nl0.format(totalCurrentValue)}</p>
+      {(totalCurrentValue > 0 || fetchState === 'loading') && (
+        <div className="mb-4 bg-purple-50 border border-purple-200 rounded-xl px-4 py-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs text-slate-500">Actuele portefeuillewaarde</p>
+              <p className="text-xl font-bold text-purple-700">{nl0.format(totalCurrentValue)}</p>
+            </div>
+            <div className="flex flex-col items-end gap-1.5">
+              <button
+                onClick={handleRefreshPrices}
+                disabled={fetchState === 'loading'}
+                className="flex items-center gap-1.5 text-xs bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700 cursor-pointer border-0 disabled:opacity-60"
+              >
+                <RefreshCw size={13} className={fetchState === 'loading' ? 'animate-spin' : ''} />
+                {fetchState === 'loading' ? 'Ophalen…' : 'Koersen'}
+              </button>
+              {lastFetchTime && (
+                <span className="flex items-center gap-1 text-xs text-slate-400">
+                  <Clock size={11} />Bijgewerkt om {lastFetchTime}
+                </span>
+              )}
+            </div>
           </div>
-          <button
-            onClick={handleRefreshPrices}
-            disabled={fetchState === 'loading'}
-            className="flex items-center gap-1.5 text-xs bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700 cursor-pointer border-0 disabled:opacity-60"
-          >
-            <RefreshCw size={13} className={fetchState === 'loading' ? 'animate-spin' : ''} />
-            {fetchState === 'loading' ? 'Ophalen…' : 'Koersen'}
-          </button>
+          {/* FX rates strip */}
+          {Object.keys(fxRates).length > 1 && (
+            <div className="flex flex-wrap gap-x-3 gap-y-1 pt-1 border-t border-purple-200">
+              {Object.entries(fxRates)
+                .filter(([cur]) => cur !== 'EUR')
+                .map(([cur, rate]) => (
+                  <span key={cur} className="text-xs text-slate-500">
+                    1 {cur === 'GBP' ? 'GBP' : cur} = <span className="font-medium text-slate-700">{nl.format(rate)}</span>
+                  </span>
+                ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -242,21 +301,36 @@ export default function PortfolioSection({ data, onChange }: Props) {
                   </div>
 
                   {h.ticker && (
-                    <div className="mt-2 flex items-center gap-3 text-xs">
+                    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
                       {h.currentPrice > 0 ? (
-                        <span className="flex items-center gap-1 text-green-600 font-medium">
-                          <CheckCircle2 size={12} />
-                          Huidige koers: <strong>{nl.format(h.currentPrice)}</strong>
-                          {h.quantity > 0 && <span className="ml-1 text-slate-500">→ {nl0.format(h.quantity * h.currentPrice)}</span>}
-                          {h.pricePerUnit > 0 && h.currentPrice > 0 && (
-                            <span className={`ml-2 font-semibold ${h.currentPrice >= h.pricePerUnit ? 'text-green-600' : 'text-red-500'}`}>
-                              {h.currentPrice >= h.pricePerUnit ? '▲' : '▼'}{' '}
-                              {(((h.currentPrice - h.pricePerUnit) / h.pricePerUnit) * 100).toFixed(1)}%
+                        <>
+                          <span className="flex items-center gap-1 text-green-600 font-medium">
+                            <CheckCircle2 size={12} />
+                            <strong>{nl.format(h.currentPrice)}</strong>
+                          </span>
+                          {/* Show local currency price when non-EUR */}
+                          {h.currentCurrency && h.currentCurrency !== 'EUR' && h.currentPriceLocal !== undefined && (
+                            <span className="text-slate-400">
+                              ({fmtLocal(h.currentPriceLocal, h.currentCurrency)}
+                              {h.currentRate !== undefined && ` · 1 ${h.currentCurrency === 'GBp' ? 'GBp' : h.currentCurrency} = ${h.currentRate.toFixed(4)} €`})
                             </span>
                           )}
-                        </span>
+                          {h.quantity > 0 && (
+                            <span className="text-slate-500">
+                              → {nl0.format(h.quantity * h.currentPrice)}
+                            </span>
+                          )}
+                          {h.pricePerUnit > 0 && (
+                            <span className={`font-semibold ${h.currentPrice >= h.pricePerUnit ? 'text-green-600' : 'text-red-500'}`}>
+                              {h.currentPrice >= h.pricePerUnit ? '▲' : '▼'}{' '}
+                              {(Math.abs((h.currentPrice - h.pricePerUnit) / h.pricePerUnit) * 100).toFixed(1)}%
+                            </span>
+                          )}
+                        </>
                       ) : (
-                        <span className="text-slate-400">Koers nog niet opgehaald</span>
+                        <span className="text-slate-400">
+                          {fetchState === 'loading' ? 'Ophalen…' : 'Koers nog niet opgehaald'}
+                        </span>
                       )}
                     </div>
                   )}
@@ -438,8 +512,17 @@ export default function PortfolioSection({ data, onChange }: Props) {
                           </td>
                           {hasCurrentPrices && (
                             <td className="py-2.5 pr-2 text-right">
-                              {p.currentPrice > 0
-                                ? <span className="text-green-600 font-medium text-xs">{nl.format(p.currentPrice)}</span>
+                              {p.currentPrice > 0 ? (() => {
+                                const h = data.holdings.find(hh => hh.name === p.name || hh.ticker === p.ticker);
+                                return (
+                                  <span className="text-xs">
+                                    <span className="text-green-600 font-medium">{nl.format(p.currentPrice)}</span>
+                                    {h?.currentCurrency && h.currentCurrency !== 'EUR' && h.currentPriceLocal !== undefined && (
+                                      <span className="block text-slate-400">{fmtLocal(h.currentPriceLocal, h.currentCurrency)}</span>
+                                    )}
+                                  </span>
+                                );
+                              })()
                                 : <span className="text-slate-300 text-xs">—</span>}
                             </td>
                           )}

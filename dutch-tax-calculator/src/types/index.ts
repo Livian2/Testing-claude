@@ -9,10 +9,14 @@ export interface Holding {
   name: string;
   type: AssetType;
   quantity: number;
-  pricePerUnit: number;   // purchase / reference price
+  pricePerUnit: number;    // purchase price, EUR
   broker: string;
   ticker: string;
-  currentPrice: number;   // last fetched market price (0 = not fetched)
+  currentPrice: number;        // EUR-equivalent fetched price (0 = not yet fetched)
+  currentPriceLocal?: number;  // original currency price from exchange
+  currentCurrency?: string;    // original currency (USD, GBP, GBp, …)
+  currentRate?: number;        // exchange rate used: 1 local = currentRate EUR
+  fetchedAt?: string;          // ISO timestamp of last fetch
 }
 
 export interface Transaction {

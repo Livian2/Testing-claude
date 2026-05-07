@@ -1,30 +1,104 @@
 /**
- * Fetches current market prices from Yahoo Finance via the Vite dev proxy.
- * Proxy is configured in vite.config.ts → server.proxy['/api/finance'].
- * Works in development only; production deployments need a backend proxy.
+ * Fetches live market prices from Yahoo Finance via the Vite dev-server proxy
+ * (configured in vite.config.ts). Works in development only.
+ *
+ * All returned prices are converted to EUR using live FX rates fetched
+ * in the same call. GBp (British pence) is handled automatically.
  */
-export async function fetchYahooPrices(
-  tickers: string[],
-): Promise<Record<string, number>> {
-  const filtered = [...new Set(tickers.filter(Boolean))];
-  if (filtered.length === 0) return {};
 
-  const symbols = filtered.map(encodeURIComponent).join(',');
-  const url = `/api/finance/v7/finance/quote?symbols=${symbols}&fields=regularMarketPrice,currency,shortName`;
+// Common FX pairs to fetch alongside stock quotes (→ EUR)
+const FX_TICKERS = [
+  'USDEUR=X',  // US Dollar → EUR
+  'GBPEUR=X',  // British Pound → EUR
+  'CHFEUR=X',  // Swiss Franc → EUR
+  'SEKEUR=X',  // Swedish Krona → EUR
+  'NOKEUR=X',  // Norwegian Krone → EUR
+  'DKKEUR=X',  // Danish Krone → EUR
+  'JPYEUR=X',  // Japanese Yen → EUR
+  'CADEUR=X',  // Canadian Dollar → EUR
+  'AUDEUR=X',  // Australian Dollar → EUR
+];
 
-  const res = await fetch(url, {
-    headers: { Accept: 'application/json' },
-  });
+export interface QuoteData {
+  priceEur: number;        // EUR-equivalent (what to store in currentPrice)
+  priceLocal: number;      // original exchange price
+  currency: string;        // e.g. "USD", "GBp", "EUR"
+  rate: number;            // 1 local unit = rate EUR (1.0 for EUR)
+}
 
-  if (!res.ok) throw new Error(`Yahoo Finance responded with ${res.status}`);
+export interface FetchResult {
+  quotes: Record<string, QuoteData>;  // keyed by ticker symbol
+  rates: Record<string, number>;      // currency → EUR rate
+  timestamp: string;                  // ISO timestamp
+}
 
-  const data = await res.json();
-  const results: Record<string, number> = {};
+async function callYahoo(tickers: string[]): Promise<Record<string, unknown>[]> {
+  const symbols = tickers.map(encodeURIComponent).join(',');
+  const url = `/api/finance/v7/finance/quote?symbols=${symbols}&fields=regularMarketPrice,currency,shortName,quoteType`;
+  const res = await fetch(url, { headers: { Accept: 'application/json' } });
+  if (!res.ok) throw new Error(`Yahoo Finance: HTTP ${res.status}`);
+  const json = await res.json();
+  return (json as { quoteResponse?: { result?: Record<string, unknown>[] } })?.quoteResponse?.result ?? [];
+}
 
-  for (const quote of data?.quoteResponse?.result ?? []) {
-    if (typeof quote.regularMarketPrice === 'number') {
-      results[quote.symbol] = quote.regularMarketPrice;
-    }
+export async function fetchPricesWithFX(tickers: string[]): Promise<FetchResult> {
+  const unique = [...new Set(tickers.filter(Boolean))];
+  if (unique.length === 0) return { quotes: {}, rates: { EUR: 1 }, timestamp: new Date().toISOString() };
+
+  // Fetch stock quotes + FX rates in parallel
+  const [stockRows, fxRows] = await Promise.all([
+    callYahoo(unique),
+    callYahoo(FX_TICKERS),
+  ]);
+
+  // Build FX rate map: currency → EUR (e.g. USD → 0.923)
+  const rates: Record<string, number> = { EUR: 1 };
+  for (const q of fxRows) {
+    const sym   = q.symbol as string ?? '';
+    const price = q.regularMarketPrice as number;
+    if (!sym || typeof price !== 'number') continue;
+    // "USDEUR=X" → currency key "USD"
+    const key = sym.replace('EUR=X', '');
+    if (key && key !== sym) rates[key] = price;
   }
-  return results;
+
+  // Process stock rows → convert to EUR
+  const quotes: Record<string, QuoteData> = {};
+  for (const q of stockRows) {
+    const sym   = q.symbol as string ?? '';
+    const price = q.regularMarketPrice as number;
+    if (!sym || typeof price !== 'number') continue;
+
+    const currency = (q.currency as string) ?? 'EUR';
+    let priceEur = price;
+    let rate     = 1;
+
+    if (currency === 'EUR') {
+      rate = 1;
+    } else if (currency === 'GBp' || currency === 'GBX') {
+      // British pence: 100 GBp = 1 GBP
+      const gbpRate = rates['GBP'] ?? 1;
+      rate     = gbpRate / 100;
+      priceEur = price * rate;
+    } else {
+      const r = rates[currency];
+      if (r !== undefined) {
+        rate     = r;
+        priceEur = price * r;
+      }
+      // if no FX rate found, keep priceEur === price (fallback, will show currency warning)
+    }
+
+    quotes[sym] = { priceEur, priceLocal: price, currency, rate };
+  }
+
+  return { quotes, rates, timestamp: new Date().toISOString() };
+}
+
+/** Backward-compat wrapper: returns only the EUR prices. */
+export async function fetchYahooPrices(tickers: string[]): Promise<Record<string, number>> {
+  const result = await fetchPricesWithFX(tickers);
+  return Object.fromEntries(
+    Object.entries(result.quotes).map(([k, v]) => [k, v.priceEur])
+  );
 }
