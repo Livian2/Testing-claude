@@ -4,23 +4,15 @@ export type FilingStatus = 'single' | 'partner';
 export type WoningType = 'huur' | 'hypotheek';
 export type HypotheekType = 'lineair' | 'aflossingsvrijij' | 'annuiteit';
 
-export interface SavingsAccount {
-  id: string;
-  name: string;
-  balanceJan1: number;
-  interestRate: number;
-}
-
 export interface Holding {
   id: string;
   name: string;
   type: AssetType;
-  valueJan1: number;      // Value on 1 January — Box 3 tax base
   quantity: number;
-  pricePerUnit: number;   // Purchase / reference price
+  pricePerUnit: number;   // purchase / reference price
   broker: string;
-  ticker: string;         // Yahoo Finance symbol, e.g. VWCE.AS
-  currentPrice: number;   // Last fetched market price (0 = not fetched)
+  ticker: string;
+  currentPrice: number;   // last fetched market price (0 = not fetched)
 }
 
 export interface Transaction {
@@ -34,6 +26,8 @@ export interface Transaction {
 }
 
 export interface HypotheekData {
+  id: string;
+  label: string;
   type: HypotheekType;
   leningBedrag: number;
   rentePercentage: number;
@@ -45,10 +39,41 @@ export interface HypotheekData {
 export interface WoonData {
   woningType: WoningType;
   maandhuur: number;
-  hypotheek: HypotheekData;
-  gwe: number;    // gas/water/elektra per month
-  vve: number;    // VVE bijdrage per month
-  overig: number; // overige woonkosten per month
+  hypotheken: HypotheekData[];
+  gwe: number;
+  vve: number;
+  overig: number;
+}
+
+// ---- Waardes 1 januari (Box 3 grondslag) ----
+
+export interface BeleggingRekening {
+  id: string;
+  naam: string;
+  broker: string;
+  type: AssetType;
+  waardeJan1: number;
+}
+
+export interface SpaarRekening {
+  id: string;
+  naam: string;
+  instelling: string;
+  saldoJan1: number;
+  rentePercentage: number;
+}
+
+export interface BetaalRekening {
+  id: string;
+  naam: string;
+  instelling: string;
+  saldoJan1: number;
+}
+
+export interface WaardesData {
+  beleggingen: BeleggingRekening[];
+  spaarrekeningen: SpaarRekening[];
+  betaalrekeningen: BetaalRekening[];
 }
 
 export interface IncomeData {
@@ -70,7 +95,6 @@ export interface ExpensesData {
 }
 
 export interface SavingsData {
-  accounts: SavingsAccount[];
   monthlySavingsContribution: number;
 }
 
@@ -90,6 +114,7 @@ export interface PersonalData {
 export interface TaxFormData {
   personal: PersonalData;
   woon: WoonData;
+  waardes: WaardesData;
   income: IncomeData;
   expenses: ExpensesData;
   savings: SavingsData;
@@ -97,6 +122,7 @@ export interface TaxFormData {
 }
 
 // ---- Results ----
+
 export interface Box1Result {
   taxableIncome: number;
   grossTax: number;
@@ -108,7 +134,7 @@ export interface Box1Result {
 }
 
 export interface Box3Result {
-  totalAssets: number;          // Jan 1 tax base
+  totalAssets: number;
   totalDebts: number;
   netWealth: number;
   exemption: number;
@@ -141,11 +167,11 @@ export interface TaxResult {
   netDisposableIncome: number;
   totalExpenses: number;
   annualSavings: number;
-  portfolioCurrentValue: number;  // based on currentPrice when fetched
-  portfolioJan1Value: number;     // based on valueJan1 (Box 3 tax base)
+  portfolioCurrentValue: number;
+  portfolioJan1Value: number;
   portfolioGainLoss: number;
   actualSavingsInterest: number;
-  currentNetWorth: number;        // current market value of all assets
+  currentNetWorth: number;
 }
 
 export interface Position {
@@ -155,6 +181,6 @@ export interface Position {
   ticker: string;
   quantity: number;
   avgCost: number;
-  currentPrice: number;   // 0 if not fetched
-  currentValue: number;   // quantity × (currentPrice || avgCost)
+  currentPrice: number;
+  currentValue: number;
 }

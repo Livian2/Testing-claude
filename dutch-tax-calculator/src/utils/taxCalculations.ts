@@ -33,11 +33,15 @@ function calcArbeidskorting(employmentIncome: number): number {
 export function calculateBox1(data: TaxFormData): Box1Result {
   const { income, woon, personal } = data;
 
-  // Calculate mortgage interest deduction from WoonData
+  // Sum mortgage interest deduction from all hypotheken
   let mortgageInterestDeduction = 0;
-  if (woon.woningType === 'hypotheek' && woon.hypotheek.leningBedrag > 0) {
-    const hyp = berekenHypotheek(woon.hypotheek, personal.taxYear);
-    mortgageInterestDeduction = hyp.jaarRente;
+  if (woon.woningType === 'hypotheek') {
+    for (const hyp of woon.hypotheken) {
+      if (hyp.leningBedrag > 0) {
+        const b = berekenHypotheek(hyp, personal.taxYear);
+        mortgageInterestDeduction += b.jaarRente;
+      }
+    }
   }
 
   const totalGrossIncome =
@@ -77,23 +81,21 @@ const BOX3_EXEMPTION_SINGLE  = 57684;
 const BOX3_EXEMPTION_PARTNER = 115368;
 
 export function calculateBox3(data: TaxFormData): Box3Result {
-  const { savings, portfolio, personal } = data;
-  const isPartner   = personal.filingStatus === 'partner';
-  const exemption   = isPartner ? BOX3_EXEMPTION_PARTNER : BOX3_EXEMPTION_SINGLE;
-  const threshold   = isPartner ? BOX3_DEBT_THRESHOLD * 2 : BOX3_DEBT_THRESHOLD;
+  const { waardes, portfolio, personal } = data;
+  const isPartner = personal.filingStatus === 'partner';
+  const exemption = isPartner ? BOX3_EXEMPTION_PARTNER : BOX3_EXEMPTION_SINGLE;
+  const threshold = isPartner ? BOX3_DEBT_THRESHOLD * 2 : BOX3_DEBT_THRESHOLD;
 
-  const totalBankSavings = savings.accounts.reduce((s, a) => s + a.balanceJan1, 0);
+  // Savings = spaarrekeningen + betaalrekeningen + beleggingen of type 'savings'
+  const totalSavings =
+    waardes.spaarrekeningen.reduce((s, a) => s + a.saldoJan1, 0) +
+    waardes.betaalrekeningen.reduce((s, a) => s + a.saldoJan1, 0) +
+    waardes.beleggingen.filter(b => b.type === 'savings').reduce((s, b) => s + b.waardeJan1, 0);
 
-  let savingsFromHoldings = 0;
-  let investmentsFromHoldings = 0;
-  for (const h of portfolio.holdings) {
-    if (h.type === 'savings') savingsFromHoldings  += h.valueJan1;
-    else                      investmentsFromHoldings += h.valueJan1;
-  }
+  const totalInvestments =
+    waardes.beleggingen.filter(b => b.type !== 'savings').reduce((s, b) => s + b.waardeJan1, 0);
 
-  const totalSavings     = totalBankSavings + savingsFromHoldings;
-  const totalInvestments = investmentsFromHoldings;
-  const totalAssets      = totalSavings + totalInvestments;
+  const totalAssets = totalSavings + totalInvestments;
 
   const rawDebts   = portfolio.investmentDebts + portfolio.duoDebt;
   const totalDebts = Math.max(0, rawDebts - threshold);
@@ -143,7 +145,6 @@ export function calculateToeslagen(data: TaxFormData, box1: Box1Result, box3: Bo
 
   const toetsingsinkomen = box1.taxableIncome + Math.max(0, box3.fictitiousReturn);
 
-  // ── Zorgtoeslag ──────────────────────────────────────────────────────────
   const ZORG_DREMPEL       = 24213;
   const ZORG_MAX_SINGLE    = 1912;
   const ZORG_MAX_PARTNER   = 3261;
@@ -160,7 +161,6 @@ export function calculateToeslagen(data: TaxFormData, box1: Box1Result, box3: Bo
     zorgtoeslag  = Math.max(0, zorgMax - afbouw * rate);
   }
 
-  // ── Huurtoeslag ─────────────────────────────────────────────────────────
   const NORM_HUUR      = 652 * 12;
   const AFTOPPING_HUUR = 662 * 12;
   const MAX_HUUR       = 900 * 12;
@@ -170,12 +170,7 @@ export function calculateToeslagen(data: TaxFormData, box1: Box1Result, box3: Bo
   let huurtoeslag = 0;
   const jaarHuur  = woon.woningType === 'huur' ? woon.maandhuur * 12 : 0;
 
-  if (
-    woon.woningType === 'huur' &&
-    jaarHuur > 0 &&
-    jaarHuur <= MAX_HUUR &&
-    toetsingsinkomen <= HUUR_LIMIT
-  ) {
+  if (woon.woningType === 'huur' && jaarHuur > 0 && jaarHuur <= MAX_HUUR && toetsingsinkomen <= HUUR_LIMIT) {
     const effectiefHuur = Math.min(jaarHuur, AFTOPPING_HUUR);
     const baseToeslag   = Math.max(0, effectiefHuur - NORM_HUUR);
     const incomeFactor  = Math.max(0, 1 - Math.max(0, toetsingsinkomen - HUUR_DREMPEL) / (HUUR_LIMIT - HUUR_DREMPEL));
@@ -196,7 +191,6 @@ export function computePositions(holdings: Holding[], transactions: Transaction[
   const map = new Map<string, Pos>();
 
   for (const h of holdings) {
-    if (h.type === 'savings') continue;
     map.set(h.name, {
       type: h.type, broker: h.broker, ticker: h.ticker,
       quantity: h.quantity, avgCost: h.pricePerUnit,
@@ -210,18 +204,9 @@ export function computePositions(holdings: Holding[], transactions: Transaction[
     if (tx.type === 'buy') {
       const totalQty  = pos.quantity + tx.quantity;
       const totalCost = pos.quantity * pos.avgCost + tx.quantity * tx.pricePerUnit;
-      map.set(tx.holdingName, {
-        ...pos,
-        broker: tx.broker || pos.broker,
-        quantity: totalQty,
-        avgCost: totalQty > 0 ? totalCost / totalQty : 0,
-      });
+      map.set(tx.holdingName, { ...pos, broker: tx.broker || pos.broker, quantity: totalQty, avgCost: totalQty > 0 ? totalCost / totalQty : 0 });
     } else {
-      map.set(tx.holdingName, {
-        ...pos,
-        broker: tx.broker || pos.broker,
-        quantity: Math.max(0, pos.quantity - tx.quantity),
-      });
+      map.set(tx.holdingName, { ...pos, broker: tx.broker || pos.broker, quantity: Math.max(0, pos.quantity - tx.quantity) });
     }
   }
 
@@ -237,9 +222,7 @@ export function computePositions(holdings: Holding[], transactions: Transaction[
 export function calcRealisedGain(holdings: Holding[], transactions: Transaction[]): number {
   type Pos = { quantity: number; avgCost: number };
   const map = new Map<string, Pos>();
-  for (const h of holdings) {
-    if (h.type !== 'savings') map.set(h.name, { quantity: h.quantity, avgCost: h.pricePerUnit });
-  }
+  for (const h of holdings) map.set(h.name, { quantity: h.quantity, avgCost: h.pricePerUnit });
 
   let gain = 0;
   const sorted = [...transactions].sort((a, b) => a.date.localeCompare(b.date));
@@ -265,13 +248,15 @@ export function calculateTaxes(data: TaxFormData): TaxResult {
   const toeslagen = calculateToeslagen(data, box1, box3);
   const totalTax  = Math.max(0, box1.netTax + box3.netTax);
 
-  const { expenses, savings, income, woon, personal } = data;
+  const { expenses, savings, income, woon, personal, waardes, portfolio } = data;
 
-  // Woonlasten: mortgage payment or rent + GWE + VVE + overig
   let maandWoonlast = 0;
-  if (woon.woningType === 'hypotheek' && woon.hypotheek.leningBedrag > 0) {
-    const hyp = berekenHypotheek(woon.hypotheek, personal.taxYear);
-    maandWoonlast = hyp.maandlast;
+  if (woon.woningType === 'hypotheek') {
+    for (const hyp of woon.hypotheken) {
+      if (hyp.leningBedrag > 0) {
+        maandWoonlast += berekenHypotheek(hyp, personal.taxYear).maandlast;
+      }
+    }
   } else if (woon.woningType === 'huur') {
     maandWoonlast = woon.maandhuur;
   }
@@ -288,21 +273,25 @@ export function calculateTaxes(data: TaxFormData): TaxResult {
     income.grossSalary + income.freelanceIncome + income.rentalIncome + income.otherBox1Income;
   const netDisposableIncome = grossIncome - totalTax + toeslagen.total - totalExpenses;
 
-  const positions = computePositions(data.portfolio.holdings, data.portfolio.transactions);
+  const positions = computePositions(portfolio.holdings, portfolio.transactions);
 
   const portfolioCurrentValue = positions.reduce((s, p) => s + p.currentValue, 0);
-  const portfolioJan1Value    = data.portfolio.holdings
-    .filter(h => h.type !== 'savings')
-    .reduce((s, h) => s + h.valueJan1, 0);
+  const portfolioJan1Value    = waardes.beleggingen.reduce((s, b) => s + b.waardeJan1, 0);
 
-  const gainLoss = calcRealisedGain(data.portfolio.holdings, data.portfolio.transactions);
+  const gainLoss = calcRealisedGain(portfolio.holdings, portfolio.transactions);
 
-  const actualSavingsInterest = savings.accounts.reduce(
-    (s, a) => s + a.balanceJan1 * (a.interestRate / 100), 0,
+  const actualSavingsInterest = waardes.spaarrekeningen.reduce(
+    (s, a) => s + a.saldoJan1 * (a.rentePercentage / 100), 0,
   );
 
-  const totalSavingsBalance = savings.accounts.reduce((s, a) => s + a.balanceJan1, 0);
-  const currentNetWorth     = totalSavingsBalance + portfolioCurrentValue - data.portfolio.investmentDebts - data.portfolio.duoDebt;
+  const totalSavingsBalance =
+    waardes.spaarrekeningen.reduce((s, a) => s + a.saldoJan1, 0) +
+    waardes.betaalrekeningen.reduce((s, a) => s + a.saldoJan1, 0);
+
+  const currentNetWorth =
+    totalSavingsBalance +
+    (portfolioCurrentValue > 0 ? portfolioCurrentValue : portfolioJan1Value) -
+    portfolio.investmentDebts - portfolio.duoDebt;
 
   return {
     box1, box3, toeslagen, totalTax, netDisposableIncome, totalExpenses,

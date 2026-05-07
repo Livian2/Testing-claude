@@ -7,49 +7,51 @@ import ExpensesSection from './components/ExpensesSection';
 import SavingsSection from './components/SavingsSection';
 import PortfolioSection from './components/PortfolioSection';
 import WoonSection from './components/WoonSection';
+import WaardesSection from './components/WaardesSection';
 import TaxResults from './components/TaxResults';
 import './index.css';
 
 const DEFAULT_DATA: TaxFormData = {
-  personal: {
-    filingStatus: 'single', taxYear: 2026, age: 35,
-  },
+  personal: { filingStatus: 'single', taxYear: 2026, age: 35 },
   woon: {
     woningType: 'hypotheek',
     maandhuur: 0,
-    hypotheek: {
-      type: 'annuiteit',
-      leningBedrag: 0,
-      rentePercentage: 0,
-      rentevastePeriode: 10,
-      looptijd: 30,
-      startJaar: 2026,
-    },
-    gwe: 0,
-    vve: 0,
-    overig: 0,
+    hypotheken: [
+      {
+        id: 'hyp-1', label: 'Hypotheek 1',
+        type: 'annuiteit', leningBedrag: 0, rentePercentage: 0,
+        rentevastePeriode: 10, looptijd: 30, startJaar: 2026,
+      },
+    ],
+    gwe: 0, vve: 0, overig: 0,
+  },
+  waardes: {
+    beleggingen: [],
+    spaarrekeningen: [],
+    betaalrekeningen: [],
   },
   income: {
     grossSalary: 0, freelanceIncome: 0, rentalIncome: 0,
     otherBox1Income: 0, pensionContributions: 0,
   },
   expenses: {
-    groceries: 0, transport: 0,
-    insurance: 0, healthcare: 0, education: 0, leisure: 0, other: 0,
+    groceries: 0, transport: 0, insurance: 0,
+    healthcare: 0, education: 0, leisure: 0, other: 0,
   },
-  savings: { accounts: [], monthlySavingsContribution: 0 },
+  savings: { monthlySavingsContribution: 0 },
   portfolio: { holdings: [], transactions: [], investmentDebts: 0, duoDebt: 0 },
 };
 
-type Tab = 'income' | 'woon' | 'expenses' | 'savings' | 'portfolio' | 'results';
+type Tab = 'income' | 'woon' | 'waardes' | 'expenses' | 'savings' | 'portfolio' | 'results';
 
 const TABS: { id: Tab; label: string; emoji: string }[] = [
-  { id: 'income',    label: 'Inkomen',    emoji: '💼' },
-  { id: 'woon',      label: 'Wonen',      emoji: '🏠' },
-  { id: 'expenses',  label: 'Kosten',     emoji: '🛒' },
-  { id: 'savings',   label: 'Sparen',     emoji: '🐷' },
-  { id: 'portfolio', label: 'Beleggen',   emoji: '📈' },
-  { id: 'results',   label: 'Berekening', emoji: '🧮' },
+  { id: 'income',    label: 'Inkomen',       emoji: '💼' },
+  { id: 'woon',      label: 'Wonen',         emoji: '🏠' },
+  { id: 'waardes',   label: 'Waardes 1 jan', emoji: '📋' },
+  { id: 'expenses',  label: 'Kosten',        emoji: '🛒' },
+  { id: 'savings',   label: 'Sparen',        emoji: '🐷' },
+  { id: 'portfolio', label: 'Beleggen',      emoji: '📈' },
+  { id: 'results',   label: 'Berekening',    emoji: '🧮' },
 ];
 
 export default function App() {
@@ -60,6 +62,10 @@ export default function App() {
 
   const setPersonal = (patch: Partial<TaxFormData['personal']>) =>
     setData(d => ({ ...d, personal: { ...d.personal, ...patch } }));
+
+  const totalSavingsBalance =
+    data.waardes.spaarrekeningen.reduce((s, a) => s + a.saldoJan1, 0) +
+    data.waardes.betaalrekeningen.reduce((s, a) => s + a.saldoJan1, 0);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-100 to-slate-200">
@@ -78,7 +84,6 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Filing status */}
             <div className="flex items-center gap-0 bg-slate-100 rounded-xl p-1">
               {(['single', 'partner'] as FilingStatus[]).map(s => (
                 <button
@@ -113,7 +118,7 @@ export default function App() {
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
-              className={`flex items-center gap-1.5 px-4 py-2.5 text-sm whitespace-nowrap border-b-2 transition-colors cursor-pointer bg-transparent border-x-0 border-t-0 ${
+              className={`flex items-center gap-1.5 px-3 py-2.5 text-sm whitespace-nowrap border-b-2 transition-colors cursor-pointer bg-transparent border-x-0 border-t-0 ${
                 tab === t.id
                   ? 'border-orange-500 text-orange-600 font-medium'
                   : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
@@ -140,8 +145,8 @@ export default function App() {
               onChange={income => setData(d => ({ ...d, income }))}
             />
             <InfoBox>
-              <strong>Box 1</strong> — progressief tarief: 35,82% (t/m €40.021) · 37,48% (€40.021–€77.536) · 49,50% (boven €77.536).
-              Hypotheekrente wordt automatisch meegenomen als u een hypotheek heeft ingevuld op het <em>Wonen</em>-tabblad.
+              <strong>Box 1</strong> — 35,82% (t/m €40.021) · 37,48% (€40.021–€77.536) · 49,50% (boven €77.536).
+              Hypotheekrente wordt automatisch meegenomen als aftrekpost vanuit het <em>Wonen</em>-tabblad.
             </InfoBox>
           </div>
         )}
@@ -152,6 +157,20 @@ export default function App() {
             onChange={woon => setData(d => ({ ...d, woon }))}
           />
         )}
+        {tab === 'waardes' && (
+          <div className="space-y-4">
+            <WaardesSection
+              data={data.waardes}
+              onChange={waardes => setData(d => ({ ...d, waardes }))}
+            />
+            <InfoBox>
+              <strong>Box 3</strong> — peildatum <strong>1 januari {data.personal.taxYear}</strong>.
+              Voer de waarden in zoals ze op 1 januari stonden. Fictief rendement 2026:
+              spaargeld <strong>1,03%</strong> · beleggingen <strong>5,88%</strong> · schulden <strong>2,62%</strong>.
+              Heffingvrij vermogen: <strong>€57.684</strong> / <strong>€115.368</strong> (partners).
+            </InfoBox>
+          </div>
+        )}
         {tab === 'expenses' && (
           <ExpensesSection
             data={data.expenses}
@@ -161,6 +180,7 @@ export default function App() {
         {tab === 'savings' && (
           <SavingsSection
             data={data.savings}
+            totalSavingsBalance={totalSavingsBalance}
             onChange={savings => setData(d => ({ ...d, savings }))}
           />
         )}
@@ -171,8 +191,8 @@ export default function App() {
               onChange={portfolio => setData(d => ({ ...d, portfolio }))}
             />
             <InfoBox>
-              <strong>Box 3</strong> — peildatum <strong>1 januari</strong>. Vul de ticker in (bijv. <code className="bg-blue-100 px-1 rounded">VWCE.AS</code>) om actuele
-              koersen op te halen. De belastinggrondslag blijft gebaseerd op de waarde op 1 januari.
+              Vul tickers in (bijv. <code className="bg-blue-100 px-1 rounded">VWCE.AS</code>) voor live koersen.
+              Box 3 belastingwaardes (1 jan) invullen op het tabblad <strong>Waardes 1 jan</strong>.
             </InfoBox>
           </div>
         )}
@@ -183,7 +203,6 @@ export default function App() {
 
       <footer className="max-w-5xl mx-auto px-4 sm:px-6 py-6 text-center text-xs text-slate-400 border-t border-slate-200 mt-4">
         Indicatieve berekening o.b.v. belastingregels 2026. Raadpleeg altijd een belastingadviseur voor persoonlijk advies.
-        Toeslagen zijn benaderd — controleer uw exacte recht op belastingdienst.nl.
       </footer>
     </div>
   );
