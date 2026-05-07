@@ -136,7 +136,6 @@ export default function PortfolioSection({ data, onChange }: Props) {
   }, []);
 
   const positions         = computePositions(data.holdings, data.transactions);
-  const hasCurrentPrices  = data.holdings.some(h => h.currentPrice > 0);
   const totalCurrentValue = positions.reduce((s, p) => s + p.currentValue, 0);
 
   const pieSlices = Object.entries(
@@ -477,76 +476,113 @@ export default function PortfolioSection({ data, onChange }: Props) {
                 </div>
               )}
 
-              {/* Positions table with gain/loss */}
+              {/* Positions table */}
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-slate-200 text-xs text-slate-500">
-                      <th className="text-left py-2 pr-2 font-medium">Naam</th>
-                      <th className="text-left py-2 pr-2 font-medium hidden sm:table-cell">Broker</th>
-                      <th className="text-right py-2 pr-2 font-medium">Aantal</th>
-                      <th className="text-right py-2 pr-2 font-medium hidden sm:table-cell">Gem. koers</th>
-                      {hasCurrentPrices && <th className="text-right py-2 pr-2 font-medium">Koers</th>}
-                      {hasCurrentPrices && <th className="text-right py-2 pr-2 font-medium">Rendement</th>}
+                      <th className="text-left py-2 pr-3 font-medium">Naam</th>
+                      <th className="text-left py-2 pr-3 font-medium hidden sm:table-cell">Broker</th>
+                      <th className="text-right py-2 pr-3 font-medium">Aantal</th>
+                      <th className="text-right py-2 pr-3 font-medium hidden sm:table-cell">Gem. koers</th>
+                      <th className="text-right py-2 pr-3 font-medium">
+                        <span className="flex items-center justify-end gap-1">
+                          Huidige koers
+                          {fetchState === 'loading' && (
+                            <RefreshCw size={10} className="animate-spin text-indigo-500" />
+                          )}
+                        </span>
+                      </th>
+                      <th className="text-right py-2 pr-3 font-medium">Rendement</th>
                       <th className="text-right py-2 font-medium">Waarde</th>
                     </tr>
                   </thead>
                   <tbody>
                     {positions.map((p, i) => {
-                      const gainPct = p.avgCost > 0 && p.currentPrice > 0
+                      const holding = data.holdings.find(hh => hh.name === p.name || hh.ticker === p.ticker);
+                      const hasFetched = p.currentPrice > 0;
+                      const gainPct = p.avgCost > 0 && hasFetched
                         ? ((p.currentPrice - p.avgCost) / p.avgCost) * 100
                         : null;
                       const gainAbs = gainPct !== null ? p.quantity * (p.currentPrice - p.avgCost) : null;
+
                       return (
                         <tr key={i} className="border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors">
-                          <td className="py-2.5 pr-2 font-medium text-slate-800">
+                          {/* Naam + ticker */}
+                          <td className="py-2.5 pr-3 font-medium text-slate-800">
                             <div>{p.name || '—'}</div>
                             {p.ticker && <div className="text-xs text-slate-400 font-mono">{p.ticker}</div>}
                           </td>
-                          <td className="py-2.5 pr-2 text-slate-500 text-xs hidden sm:table-cell">{p.broker || '—'}</td>
-                          <td className="py-2.5 pr-2 text-right text-slate-700">
+
+                          {/* Broker */}
+                          <td className="py-2.5 pr-3 text-slate-500 text-xs hidden sm:table-cell">
+                            {p.broker || '—'}
+                          </td>
+
+                          {/* Aantal */}
+                          <td className="py-2.5 pr-3 text-right text-slate-700">
                             {p.quantity.toLocaleString('nl-NL', { maximumFractionDigits: 4 })}
                           </td>
-                          <td className="py-2.5 pr-2 text-right text-slate-500 text-xs hidden sm:table-cell">
+
+                          {/* Gem. aankoopkoers */}
+                          <td className="py-2.5 pr-3 text-right text-slate-500 text-xs hidden sm:table-cell">
                             {nl.format(p.avgCost)}
                           </td>
-                          {hasCurrentPrices && (
-                            <td className="py-2.5 pr-2 text-right">
-                              {p.currentPrice > 0 ? (() => {
-                                const h = data.holdings.find(hh => hh.name === p.name || hh.ticker === p.ticker);
-                                return (
-                                  <span className="text-xs">
-                                    <span className="text-green-600 font-medium">{nl.format(p.currentPrice)}</span>
-                                    {h?.currentCurrency && h.currentCurrency !== 'EUR' && h.currentPriceLocal !== undefined && (
-                                      <span className="block text-slate-400">{fmtLocal(h.currentPriceLocal, h.currentCurrency)}</span>
-                                    )}
+
+                          {/* Huidige koers — always present, shows spinner/dash when not yet loaded */}
+                          <td className="py-2.5 pr-3 text-right">
+                            {fetchState === 'loading' && !hasFetched ? (
+                              <span className="text-slate-300 text-xs flex items-center justify-end gap-1">
+                                <RefreshCw size={10} className="animate-spin" />
+                              </span>
+                            ) : hasFetched ? (
+                              <span className="text-xs leading-tight">
+                                <span className="font-semibold text-green-700">{nl.format(p.currentPrice)}</span>
+                                {/* Local currency below EUR price */}
+                                {holding?.currentCurrency && holding.currentCurrency !== 'EUR' &&
+                                  holding.currentPriceLocal !== undefined && (
+                                  <span className="block text-slate-400 font-normal">
+                                    {fmtLocal(holding.currentPriceLocal, holding.currentCurrency)}
                                   </span>
-                                );
-                              })()
-                                : <span className="text-slate-300 text-xs">—</span>}
-                            </td>
-                          )}
-                          {hasCurrentPrices && (
-                            <td className="py-2.5 pr-2 text-right text-xs">
-                              {gainPct !== null ? (
-                                <span className={gainPct >= 0 ? 'text-green-600 font-medium' : 'text-red-500 font-medium'}>
-                                  {gainPct >= 0 ? '▲' : '▼'} {Math.abs(gainPct).toFixed(1)}%
-                                  <br />
-                                  <span className="text-slate-400">{nl0.format(gainAbs!)}</span>
-                                </span>
-                              ) : <span className="text-slate-300">—</span>}
-                            </td>
-                          )}
-                          <td className="py-2.5 text-right font-semibold text-slate-800">{nl0.format(p.currentValue)}</td>
+                                )}
+                              </span>
+                            ) : (
+                              <span className="text-slate-300 text-xs">—</span>
+                            )}
+                          </td>
+
+                          {/* Rendement */}
+                          <td className="py-2.5 pr-3 text-right text-xs">
+                            {gainPct !== null ? (
+                              <span className={gainPct >= 0 ? 'text-green-600 font-semibold' : 'text-red-500 font-semibold'}>
+                                {gainPct >= 0 ? '▲' : '▼'} {Math.abs(gainPct).toFixed(1)}%
+                                <span className="block font-normal text-slate-400">{nl0.format(gainAbs!)}</span>
+                              </span>
+                            ) : (
+                              <span className="text-slate-300">—</span>
+                            )}
+                          </td>
+
+                          {/* Waarde */}
+                          <td className="py-2.5 text-right font-semibold text-slate-800">
+                            {nl0.format(p.currentValue)}
+                          </td>
                         </tr>
                       );
                     })}
                   </tbody>
                   <tfoot>
                     <tr className="border-t-2 border-slate-200">
-                      <td colSpan={hasCurrentPrices ? 6 : 4} className="py-2.5 font-semibold text-slate-700 hidden sm:table-cell">Totaal</td>
-                      <td colSpan={hasCurrentPrices ? 4 : 2} className="py-2.5 font-semibold text-slate-700 sm:hidden">Totaal</td>
-                      <td className="py-2.5 text-right font-bold text-slate-900">{nl0.format(totalCurrentValue)}</td>
+                      <td colSpan={4} className="py-2.5 font-semibold text-slate-700 hidden sm:table-cell">Totaal</td>
+                      <td colSpan={3} className="py-2.5 font-semibold text-slate-700 sm:hidden">Totaal</td>
+                      <td colSpan={2} className="py-2.5 text-right">
+                        <span className="font-bold text-slate-900">{nl0.format(totalCurrentValue)}</span>
+                        {lastFetchTime && (
+                          <span className="block text-xs text-slate-400 font-normal flex items-center justify-end gap-1">
+                            <Clock size={10} />{lastFetchTime}
+                          </span>
+                        )}
+                      </td>
                     </tr>
                   </tfoot>
                 </table>
