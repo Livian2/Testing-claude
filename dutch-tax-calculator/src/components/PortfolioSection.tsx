@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import type { PortfolioData, Holding, Transaction, AssetType, TransactionType } from '../types';
 import { computePositions } from '../utils/taxCalculations';
-import { fetchPricesWithFX } from '../utils/priceFetcher';
+import { fetchPricesWithFX, resolveIsins, looksLikeIsin } from '../utils/priceFetcher';
 import CurrencyInput from './CurrencyInput';
 import SectionCard from './SectionCard';
 import PieChart from './PieChart';
@@ -89,21 +89,46 @@ export default function PortfolioSection({ data, onChange }: Props) {
     setTxs(data.transactions.map(t => t.id === id ? { ...t, ...p } : t));
 
   const doFetch = async (holdingsSnapshot: Holding[]) => {
-    const tickers = holdingsSnapshot.map(h => h.ticker).filter(Boolean);
-    if (tickers.length === 0) {
-      setFetchMsg('Geen ticker-symbolen ingevuld. Voeg tickers toe bij uw posities (bijv. VWCE.AS).');
+    const hasAnyTicker = holdingsSnapshot.some(h => h.ticker || h.isin);
+    if (!hasAnyTicker) {
+      setFetchMsg('Geen ticker-symbolen of ISIN-codes ingevuld. Voeg tickers toe bij uw posities (bijv. VWCE.AS).');
       setFetchState('error');
       return;
     }
     setFetchState('loading');
     setFetchMsg('');
     try {
+      // Step 1: resolve ISINs to Yahoo Finance tickers for holdings that have no ticker yet
+      const needsResolution = holdingsSnapshot.filter(
+        h => !h.ticker && h.isin && looksLikeIsin(h.isin)
+      );
+      let isinMap: Record<string, string> = {};
+      if (needsResolution.length > 0) {
+        isinMap = await resolveIsins(needsResolution.map(h => h.isin!));
+      }
+
+      // Apply resolved tickers to snapshot (and persist them to state)
+      const resolvedSnapshot = holdingsSnapshot.map(h => {
+        if (!h.ticker && h.isin && isinMap[h.isin]) {
+          return { ...h, ticker: isinMap[h.isin] };
+        }
+        return h;
+      });
+
+      // Step 2: fetch prices for all tickers
+      const tickers = [...new Set(resolvedSnapshot.map(h => h.ticker).filter(Boolean))];
+      if (tickers.length === 0) {
+        setFetchMsg('Kon geen geldige ticker-symbolen vinden. Controleer uw ISIN-codes of vul tickers handmatig in.');
+        setFetchState('error');
+        return;
+      }
+
       const result = await fetchPricesWithFX(tickers);
       setFxRates(result.rates);
       const now = new Date(result.timestamp);
       setLastFetchTime(now.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' }));
 
-      const updated = holdingsSnapshot.map(h => {
+      const updated = resolvedSnapshot.map(h => {
         if (!h.ticker) return h;
         const q = result.quotes[h.ticker];
         if (!q) return h;
@@ -119,7 +144,9 @@ export default function PortfolioSection({ data, onChange }: Props) {
       onChange({ ...data, holdings: updated });
 
       const found = Object.keys(result.quotes).length;
-      setFetchMsg(`${found} van ${tickers.length} koers${tickers.length !== 1 ? 'en' : ''} bijgewerkt.`);
+      const resolvedCount = Object.keys(isinMap).length;
+      const resolvedNote = resolvedCount > 0 ? ` (${resolvedCount} ISIN automatisch omgezet)` : '';
+      setFetchMsg(`${found} van ${tickers.length} koers${tickers.length !== 1 ? 'en' : ''} bijgewerkt.${resolvedNote}`);
       setFetchState('ok');
     } catch (err) {
       console.error('Price fetch failed:', err);
@@ -257,9 +284,14 @@ export default function PortfolioSection({ data, onChange }: Props) {
                         onChange={e => updateHolding(h.id, { name: e.target.value })} />
                     </div>
                     <div className="col-span-5 sm:col-span-2 flex flex-col gap-1">
-                      <label className="text-xs text-slate-500">Ticker</label>
+                      <label className="text-xs text-slate-500">
+                        Ticker
+                        {h.isin && !h.ticker && (
+                          <span className="ml-1 text-indigo-400">(auto via ISIN)</span>
+                        )}
+                      </label>
                       <input className="border border-slate-300 rounded-lg px-2 py-1.5 text-sm bg-white outline-none focus:ring-2 focus:ring-indigo-400 font-mono"
-                        placeholder="VWCE.AS" value={h.ticker}
+                        placeholder={h.isin ? h.isin : 'VWCE.AS'} value={h.ticker}
                         onChange={e => updateHolding(h.id, { ticker: e.target.value.toUpperCase() })} />
                     </div>
                     <div className="col-span-6 sm:col-span-2 flex flex-col gap-1">
@@ -299,7 +331,7 @@ export default function PortfolioSection({ data, onChange }: Props) {
                     </div>
                   </div>
 
-                  {h.ticker && (
+                  {(h.ticker || h.isin) && (
                     <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
                       {h.currentPrice > 0 ? (
                         <>
@@ -328,7 +360,9 @@ export default function PortfolioSection({ data, onChange }: Props) {
                         </>
                       ) : (
                         <span className="text-slate-400">
-                          {fetchState === 'loading' ? 'Ophalen…' : 'Koers nog niet opgehaald'}
+                          {fetchState === 'loading'
+                            ? (h.isin && !h.ticker ? 'ISIN omzetten…' : 'Ophalen…')
+                            : (h.isin && !h.ticker ? `ISIN: ${h.isin} — wordt automatisch omgezet bij ophalen` : 'Koers nog niet opgehaald')}
                         </span>
                       )}
                     </div>
@@ -439,7 +473,14 @@ export default function PortfolioSection({ data, onChange }: Props) {
       {tab === 'import' && (
         <CsvImportPanel
           existingTransactions={data.transactions}
-          onImport={newTxs => setTxs([...data.transactions, ...newTxs])}
+          existingHoldings={data.holdings}
+          onImport={(newTxs, newHoldings) => {
+            onChange({
+              ...data,
+              transactions: [...data.transactions, ...newTxs],
+              holdings:     [...data.holdings, ...newHoldings],
+            });
+          }}
         />
       )}
 

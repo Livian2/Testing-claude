@@ -12,6 +12,7 @@ export interface Holding {
   pricePerUnit: number;    // purchase price, EUR
   broker: string;
   ticker: string;
+  isin?: string;               // ISIN for auto-resolution to Yahoo ticker
   currentPrice: number;        // EUR-equivalent fetched price (0 = not yet fetched)
   currentPriceLocal?: number;  // original currency price from exchange
   currentCurrency?: string;    // original currency (USD, GBP, GBp, …)

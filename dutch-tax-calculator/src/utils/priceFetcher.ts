@@ -32,6 +32,32 @@ export interface FetchResult {
   timestamp: string;                  // ISO timestamp
 }
 
+/** Resolve ISIN codes to Yahoo Finance ticker symbols via the search endpoint. */
+export async function resolveIsins(isins: string[]): Promise<Record<string, string>> {
+  const unique = [...new Set(isins.filter(Boolean))];
+  if (unique.length === 0) return {};
+
+  const result: Record<string, string> = {};
+  await Promise.all(unique.map(async (isin) => {
+    try {
+      const url = `/api/finance/v1/finance/search?q=${encodeURIComponent(isin)}&quotesCount=3&newsCount=0&enableFuzzyQuery=false`;
+      const res = await fetch(url, { headers: { Accept: 'application/json' } });
+      if (!res.ok) return;
+      const json = await res.json() as { finance?: { result?: { quotes?: { symbol: string; quoteType?: string }[] }[] } };
+      const quotes = json?.finance?.result?.[0]?.quotes ?? [];
+      // Prefer ETF or EQUITY quotes, take the first match
+      const match = quotes.find(q => q.quoteType === 'ETF' || q.quoteType === 'EQUITY') ?? quotes[0];
+      if (match?.symbol) result[isin] = match.symbol;
+    } catch { /* ignore per-ISIN failures */ }
+  }));
+  return result;
+}
+
+/** Returns true if the string looks like an ISIN (2 letters + 10 alphanumeric). */
+export function looksLikeIsin(s: string): boolean {
+  return /^[A-Z]{2}[A-Z0-9]{10}$/.test(s.trim().toUpperCase());
+}
+
 async function callYahoo(tickers: string[]): Promise<Record<string, unknown>[]> {
   const symbols = tickers.map(encodeURIComponent).join(',');
   const url = `/api/finance/v7/finance/quote?symbols=${symbols}&fields=regularMarketPrice,currency,shortName,quoteType`;

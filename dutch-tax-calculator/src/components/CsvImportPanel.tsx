@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { Upload, CheckCircle2, AlertCircle, ArrowUpCircle, ArrowDownCircle, Info } from 'lucide-react';
-import type { Transaction } from '../types';
+import type { Transaction, Holding } from '../types';
 import {
   type BrokerFormat, type ImportedTransaction, type ParseResult,
   detectBroker, parseBrokerCSV,
@@ -8,7 +8,8 @@ import {
 
 interface Props {
   existingTransactions: Transaction[];
-  onImport: (newTxs: Transaction[]) => void;
+  existingHoldings: Holding[];
+  onImport: (newTxs: Transaction[], newHoldings: Holding[]) => void;
 }
 
 function uid() { return Math.random().toString(36).slice(2); }
@@ -36,7 +37,7 @@ const COMING_SOON = [
 
 type Step = 'broker' | 'file' | 'preview' | 'done';
 
-export default function CsvImportPanel({ existingTransactions, onImport }: Props) {
+export default function CsvImportPanel({ existingTransactions, existingHoldings, onImport }: Props) {
   const [step, setStep]               = useState<Step>('broker');
   const [broker, setBroker]           = useState<BrokerFormat | null>(null);
   const [brokerName, setBrokerName]   = useState('');
@@ -96,7 +97,29 @@ export default function CsvImportPanel({ existingTransactions, onImport }: Props
       broker:       t.broker,
       orderId:      t.orderId,
     }));
-    onImport(toImport);
+
+    // Auto-create Holdings for positions not yet in existingHoldings
+    const existingNames = new Set(existingHoldings.map(h => h.name.toLowerCase()));
+    const seen = new Set<string>();
+    const newHoldings: Holding[] = [];
+    for (const t of newTxs) {
+      const key = t.holdingName.toLowerCase();
+      if (existingNames.has(key) || seen.has(key)) continue;
+      seen.add(key);
+      newHoldings.push({
+        id:           uid(),
+        name:         t.holdingName,
+        type:         'stocks',
+        quantity:     0,        // quantity managed via transactions
+        pricePerUnit: 0,
+        broker:       t.broker,
+        ticker:       '',       // will be resolved from ISIN on first fetch
+        isin:         t.isin || '',
+        currentPrice: 0,
+      });
+    }
+
+    onImport(toImport, newHoldings);
     setImportDone(toImport.length);
     setStep('done');
   };
