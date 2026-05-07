@@ -56,6 +56,29 @@ async function fetchChart(ticker: string): Promise<ChartMeta | null> {
   }
 }
 
+// Preferred exchange suffixes for European investors, in priority order.
+// ISIN resolution picks the earliest match so e.g. TDIV resolves to TDIV.AS
+// (Euronext Amsterdam) instead of a random US OTC listing.
+const EXCHANGE_PRIORITY = [
+  '.AS',  // Euronext Amsterdam
+  '.L',   // London Stock Exchange
+  '.PA',  // Euronext Paris
+  '.DE',  // Xetra Frankfurt
+  '.MI',  // Borsa Italiana
+  '.MC',  // Bolsa Madrid
+  '.BR',  // Euronext Brussels
+  '.LS',  // Euronext Lisbon
+  '.ST',  // Nasdaq Stockholm
+  '.CO',  // Nasdaq Copenhagen
+  '.OL',  // Oslo Børs
+  '.HE',  // Nasdaq Helsinki
+];
+
+function exchangeScore(symbol: string): number {
+  const idx = EXCHANGE_PRIORITY.findIndex(sfx => symbol.endsWith(sfx));
+  return idx === -1 ? EXCHANGE_PRIORITY.length : idx;
+}
+
 /** Resolve ISIN codes to Yahoo Finance ticker symbols via the search endpoint. */
 export async function resolveIsins(isins: string[]): Promise<Record<string, string>> {
   const unique = [...new Set(isins.filter(Boolean))];
@@ -64,15 +87,18 @@ export async function resolveIsins(isins: string[]): Promise<Record<string, stri
   const result: Record<string, string> = {};
   await Promise.all(unique.map(async (isin) => {
     try {
-      const url = `/api/finance/v1/finance/search?q=${encodeURIComponent(isin)}&quotesCount=5&newsCount=0&enableFuzzyQuery=false`;
+      const url = `/api/finance/v1/finance/search?q=${encodeURIComponent(isin)}&quotesCount=10&newsCount=0&enableFuzzyQuery=false`;
       const res = await fetch(url, { headers: { Accept: 'application/json' } });
       if (!res.ok) return;
       const json = await res.json() as {
         quotes?: { symbol: string; quoteType?: string }[];
       };
-      const quotes = json?.quotes ?? [];
-      const match = quotes.find(q => q.quoteType === 'ETF' || q.quoteType === 'EQUITY') ?? quotes[0];
-      if (match?.symbol) result[isin] = match.symbol;
+      const quotes = (json?.quotes ?? [])
+        .filter(q => q.quoteType === 'ETF' || q.quoteType === 'EQUITY');
+      if (quotes.length === 0) return;
+      // Prefer European exchange listings so e.g. TDIV → TDIV.AS not a US OTC ticker
+      quotes.sort((a, b) => exchangeScore(a.symbol) - exchangeScore(b.symbol));
+      result[isin] = quotes[0].symbol;
     } catch { /* ignore per-ISIN failures */ }
   }));
   return result;

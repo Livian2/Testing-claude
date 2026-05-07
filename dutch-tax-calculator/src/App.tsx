@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Flag, RefreshCw, Users } from 'lucide-react';
 import type { TaxFormData, FilingStatus } from './types';
 import { calculateTaxes } from './utils/taxCalculations';
@@ -43,6 +43,32 @@ const DEFAULT_DATA: TaxFormData = {
   portfolio: { holdings: [], transactions: [] },
 };
 
+const STORAGE_KEY = 'nl-belasting-data-v1';
+
+function loadSavedData(): TaxFormData {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return DEFAULT_DATA;
+    const saved = JSON.parse(raw) as Partial<TaxFormData>;
+    // Deep-merge with defaults so newly added top-level fields are always present
+    return {
+      ...DEFAULT_DATA,
+      ...saved,
+      personal:  { ...DEFAULT_DATA.personal,  ...saved.personal  },
+      woon:      { ...DEFAULT_DATA.woon,       ...saved.woon,
+                   hypotheken: saved.woon?.hypotheken ?? DEFAULT_DATA.woon.hypotheken },
+      waardes:   { ...DEFAULT_DATA.waardes,    ...saved.waardes   },
+      income:    { ...DEFAULT_DATA.income,     ...saved.income    },
+      expenses:  { ...DEFAULT_DATA.expenses,   ...saved.expenses  },
+      savings:   { ...DEFAULT_DATA.savings,    ...saved.savings   },
+      schulden:  { ...DEFAULT_DATA.schulden,   ...saved.schulden  },
+      portfolio: { ...DEFAULT_DATA.portfolio,  ...saved.portfolio },
+    };
+  } catch {
+    return DEFAULT_DATA;
+  }
+}
+
 type Tab = 'income' | 'woon' | 'waardes' | 'expenses' | 'schulden' | 'portfolio' | 'results';
 
 const TABS: { id: Tab; label: string; emoji: string }[] = [
@@ -56,8 +82,14 @@ const TABS: { id: Tab; label: string; emoji: string }[] = [
 ];
 
 export default function App() {
-  const [data, setData] = useState<TaxFormData>(DEFAULT_DATA);
+  const [data, setData] = useState<TaxFormData>(loadSavedData);
   const [tab, setTab]   = useState<Tab>('income');
+
+  // Persist to localStorage 500 ms after every change
+  useEffect(() => {
+    const t = setTimeout(() => localStorage.setItem(STORAGE_KEY, JSON.stringify(data)), 500);
+    return () => clearTimeout(t);
+  }, [data]);
 
   const result = useMemo(() => calculateTaxes(data), [data]);
 
