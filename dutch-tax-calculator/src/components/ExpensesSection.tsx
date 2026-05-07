@@ -9,9 +9,7 @@ interface Props {
 }
 
 const FIELDS: { key: keyof ExpensesData; label: string }[] = [
-  { key: 'housing',    label: 'Woonlasten (huur / hypotheek)' },
   { key: 'groceries',  label: 'Boodschappen & eten' },
-  { key: 'utilities',  label: 'Energie & water' },
   { key: 'transport',  label: 'Transport (auto, OV, brandstof)' },
   { key: 'insurance',  label: 'Verzekeringen' },
   { key: 'healthcare', label: 'Zorgkosten / eigen risico' },

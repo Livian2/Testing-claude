@@ -2,47 +2,55 @@ import type {
   TaxFormData, TaxResult, Box1Result, Box3Result, Toeslagen,
   Holding, Transaction, Position, AssetType,
 } from '../types';
+import { berekenHypotheek } from './hypotheek';
 
-// ─── 2025 Tax Parameters ───────────────────────────────────────────────────
+// ─── 2026 Tax Parameters ───────────────────────────────────────────────────
 
-const BOX1_BRACKETS_2025 = [
-  { limit: 38441,    rate: 0.3582 },
-  { limit: 76817,    rate: 0.3748 },
+const BOX1_BRACKETS_2026 = [
+  { limit: 40021,    rate: 0.3582 },
+  { limit: 77536,    rate: 0.3748 },
   { limit: Infinity, rate: 0.4950 },
 ];
 
 function calcAlgemeneHeffingskorting(taxableIncome: number): number {
-  if (taxableIncome <= 24813) return 3362;
-  if (taxableIncome <= 75518)
-    return Math.max(0, 3362 - (taxableIncome - 24813) * (3362 / (75518 - 24813)));
+  if (taxableIncome <= 25268) return 3428;
+  if (taxableIncome <= 76817)
+    return Math.max(0, 3428 - (taxableIncome - 25268) * (3428 / (76817 - 25268)));
   return 0;
 }
 
 function calcArbeidskorting(employmentIncome: number): number {
   if (employmentIncome <= 0)      return 0;
-  if (employmentIncome <= 11490)  return Math.round(employmentIncome * 0.08231);
-  if (employmentIncome <= 24820)  return 945  + Math.round((employmentIncome - 11490) * 0.29861);
-  if (employmentIncome <= 39957)  return 3927 + Math.round((employmentIncome - 24820) * 0.03085);
-  if (employmentIncome <= 124935) return 4394 - Math.round((employmentIncome - 39957) * 0.06510);
+  if (employmentIncome <= 11491)  return Math.round(employmentIncome * 0.08231);
+  if (employmentIncome <= 25000)  return 945  + Math.round((employmentIncome - 11491) * 0.29861);
+  if (employmentIncome <= 40821)  return 3986 + Math.round((employmentIncome - 25000) * 0.03085);
+  if (employmentIncome <= 126834) return 4474 - Math.round((employmentIncome - 40821) * 0.06510);
   return 0;
 }
 
 // ─── Box 1 ─────────────────────────────────────────────────────────────────
 
 export function calculateBox1(data: TaxFormData): Box1Result {
-  const { income } = data;
+  const { income, woon, personal } = data;
+
+  // Calculate mortgage interest deduction from WoonData
+  let mortgageInterestDeduction = 0;
+  if (woon.woningType === 'hypotheek' && woon.hypotheek.leningBedrag > 0) {
+    const hyp = berekenHypotheek(woon.hypotheek, personal.taxYear);
+    mortgageInterestDeduction = hyp.jaarRente;
+  }
 
   const totalGrossIncome =
     income.grossSalary + income.freelanceIncome + income.rentalIncome + income.otherBox1Income;
-  const deductions      = income.mortgageInterestDeduction + income.pensionContributions;
-  const taxableIncome   = Math.max(0, totalGrossIncome - deductions);
+  const deductions    = mortgageInterestDeduction + income.pensionContributions;
+  const taxableIncome = Math.max(0, totalGrossIncome - deductions);
 
   let grossTax = 0;
   let remaining = taxableIncome;
   const brackets: Box1Result['brackets'] = [];
   let prev = 0;
 
-  for (const b of BOX1_BRACKETS_2025) {
+  for (const b of BOX1_BRACKETS_2026) {
     const base = Math.min(remaining, b.limit - prev);
     const tax  = base * b.rate;
     if (base > 0) brackets.push({ rate: b.rate, base, tax });
@@ -62,11 +70,11 @@ export function calculateBox1(data: TaxFormData): Box1Result {
 
 // ─── Box 3 ─────────────────────────────────────────────────────────────────
 
-const BOX3_RATES_2025 = { savings: 0.0144, investments: 0.0588, debtRate: 0.0262 };
+const BOX3_RATES_2026 = { savings: 0.0103, investments: 0.0588, debtRate: 0.0262 };
 const BOX3_TAX_RATE          = 0.36;
-const BOX3_DEBT_THRESHOLD    = 3400;
-const BOX3_EXEMPTION_SINGLE  = 57000;
-const BOX3_EXEMPTION_PARTNER = 114000;
+const BOX3_DEBT_THRESHOLD    = 3700;
+const BOX3_EXEMPTION_SINGLE  = 57684;
+const BOX3_EXEMPTION_PARTNER = 115368;
 
 export function calculateBox3(data: TaxFormData): Box3Result {
   const { savings, portfolio, personal } = data;
@@ -110,9 +118,9 @@ export function calculateBox3(data: TaxFormData): Box3Result {
   const taxableSavings     = taxableWealth * savingsShare;
   const taxableInvestments = taxableWealth * investShare;
 
-  const savingsFictitious     = taxableSavings     * BOX3_RATES_2025.savings;
-  const investmentsFictitious = taxableInvestments * BOX3_RATES_2025.investments;
-  const debtsFictitious       = totalDebts         * BOX3_RATES_2025.debtRate;
+  const savingsFictitious     = taxableSavings     * BOX3_RATES_2026.savings;
+  const investmentsFictitious = taxableInvestments * BOX3_RATES_2026.investments;
+  const debtsFictitious       = totalDebts         * BOX3_RATES_2026.debtRate;
 
   const fictitiousReturn = savingsFictitious + investmentsFictitious - debtsFictitious;
   const grossTax         = Math.max(0, fictitiousReturn * BOX3_TAX_RATE);
@@ -127,24 +135,20 @@ export function calculateBox3(data: TaxFormData): Box3Result {
   };
 }
 
-// ─── Toeslagen 2025 (indicatief) ───────────────────────────────────────────
-// Zorgtoeslag 2025: max €1.851 (single) / €3.155 (partner)
-// Huurtoeslag 2025: alleen huurders, vereenvoudigd
+// ─── Toeslagen 2026 (indicatief) ───────────────────────────────────────────
 
 export function calculateToeslagen(data: TaxFormData, box1: Box1Result, box3: Box3Result): Toeslagen {
-  const { personal } = data;
+  const { personal, woon } = data;
   const isPartner = personal.filingStatus === 'partner';
 
-  // Toetsingsinkomen = Box1 verzamelinkomen + Box3 fictief rendement
   const toetsingsinkomen = box1.taxableIncome + Math.max(0, box3.fictitiousReturn);
 
   // ── Zorgtoeslag ──────────────────────────────────────────────────────────
-  // Drempelinkomen 2025 (enkelvoudig)
-  const ZORG_DREMPEL        = 23618;
-  const ZORG_MAX_SINGLE     = 1851;
-  const ZORG_MAX_PARTNER    = 3155;
-  const ZORG_LIMIT_SINGLE   = 37355;
-  const ZORG_LIMIT_PARTNER  = 47368;
+  const ZORG_DREMPEL       = 24213;
+  const ZORG_MAX_SINGLE    = 1912;
+  const ZORG_MAX_PARTNER   = 3261;
+  const ZORG_LIMIT_SINGLE  = 38441;
+  const ZORG_LIMIT_PARTNER = 49000;
 
   let zorgtoeslag = 0;
   const zorgMax   = isPartner ? ZORG_MAX_PARTNER : ZORG_MAX_SINGLE;
@@ -157,20 +161,17 @@ export function calculateToeslagen(data: TaxFormData, box1: Box1Result, box3: Bo
   }
 
   // ── Huurtoeslag ─────────────────────────────────────────────────────────
-  // Vereenvoudigd voor eenpersoonshuishouden 30+
-  // Aftoppingsgrens 2025: €648.52/maand, normhuur: €635.05/maand
-  // Maximale huurgrens: €900/maand (benaderd)
-  const NORM_HUUR       = 635.05 * 12;    // 7.620/jaar
-  const AFTOPPING_HUUR  = 648.52 * 12;    // 7.782/jaar
-  const MAX_HUUR        = 900 * 12;        // 10.800/jaar
-  const HUUR_LIMIT      = isPartner ? 47_000 : 31_340;
-  const HUUR_DREMPEL    = 17_000;
+  const NORM_HUUR      = 652 * 12;
+  const AFTOPPING_HUUR = 662 * 12;
+  const MAX_HUUR       = 900 * 12;
+  const HUUR_LIMIT     = isPartner ? 48_000 : 32_000;
+  const HUUR_DREMPEL   = 17_500;
 
   let huurtoeslag = 0;
-  const jaarHuur = personal.monthlyRent * 12;
+  const jaarHuur  = woon.woningType === 'huur' ? woon.maandhuur * 12 : 0;
 
   if (
-    personal.livingType === 'huur' &&
+    woon.woningType === 'huur' &&
     jaarHuur > 0 &&
     jaarHuur <= MAX_HUUR &&
     toetsingsinkomen <= HUUR_LIMIT
@@ -264,11 +265,22 @@ export function calculateTaxes(data: TaxFormData): TaxResult {
   const toeslagen = calculateToeslagen(data, box1, box3);
   const totalTax  = Math.max(0, box1.netTax + box3.netTax);
 
-  const { expenses, savings, income } = data;
+  const { expenses, savings, income, woon, personal } = data;
+
+  // Woonlasten: mortgage payment or rent + GWE + VVE + overig
+  let maandWoonlast = 0;
+  if (woon.woningType === 'hypotheek' && woon.hypotheek.leningBedrag > 0) {
+    const hyp = berekenHypotheek(woon.hypotheek, personal.taxYear);
+    maandWoonlast = hyp.maandlast;
+  } else if (woon.woningType === 'huur') {
+    maandWoonlast = woon.maandhuur;
+  }
+  const totalWoonlasten = (maandWoonlast + woon.gwe + woon.vve + woon.overig) * 12;
+
   const totalExpenses =
-    (expenses.housing + expenses.groceries + expenses.utilities + expenses.transport +
-     expenses.insurance + expenses.healthcare + expenses.education + expenses.leisure +
-     expenses.other) * 12;
+    (expenses.groceries + expenses.transport + expenses.insurance +
+     expenses.healthcare + expenses.education + expenses.leisure +
+     expenses.other) * 12 + totalWoonlasten;
 
   const annualSavings = savings.monthlySavingsContribution * 12;
 
@@ -278,7 +290,6 @@ export function calculateTaxes(data: TaxFormData): TaxResult {
 
   const positions = computePositions(data.portfolio.holdings, data.portfolio.transactions);
 
-  // Current value uses fetched price; Jan1 value is tax base
   const portfolioCurrentValue = positions.reduce((s, p) => s + p.currentValue, 0);
   const portfolioJan1Value    = data.portfolio.holdings
     .filter(h => h.type !== 'savings')

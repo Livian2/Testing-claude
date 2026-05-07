@@ -6,30 +6,46 @@ import IncomeSection from './components/IncomeSection';
 import ExpensesSection from './components/ExpensesSection';
 import SavingsSection from './components/SavingsSection';
 import PortfolioSection from './components/PortfolioSection';
+import WoonSection from './components/WoonSection';
 import TaxResults from './components/TaxResults';
 import './index.css';
 
 const DEFAULT_DATA: TaxFormData = {
   personal: {
-    filingStatus: 'single', taxYear: 2025, age: 35,
-    livingType: 'koop', monthlyRent: 0,
+    filingStatus: 'single', taxYear: 2026, age: 35,
+  },
+  woon: {
+    woningType: 'hypotheek',
+    maandhuur: 0,
+    hypotheek: {
+      type: 'annuiteit',
+      leningBedrag: 0,
+      rentePercentage: 0,
+      rentevastePeriode: 10,
+      looptijd: 30,
+      startJaar: 2026,
+    },
+    gwe: 0,
+    vve: 0,
+    overig: 0,
   },
   income: {
     grossSalary: 0, freelanceIncome: 0, rentalIncome: 0,
-    otherBox1Income: 0, mortgageInterestDeduction: 0, pensionContributions: 0,
+    otherBox1Income: 0, pensionContributions: 0,
   },
   expenses: {
-    housing: 0, groceries: 0, utilities: 0, transport: 0,
+    groceries: 0, transport: 0,
     insurance: 0, healthcare: 0, education: 0, leisure: 0, other: 0,
   },
   savings: { accounts: [], monthlySavingsContribution: 0 },
   portfolio: { holdings: [], transactions: [], investmentDebts: 0, duoDebt: 0 },
 };
 
-type Tab = 'income' | 'expenses' | 'savings' | 'portfolio' | 'results';
+type Tab = 'income' | 'woon' | 'expenses' | 'savings' | 'portfolio' | 'results';
 
 const TABS: { id: Tab; label: string; emoji: string }[] = [
   { id: 'income',    label: 'Inkomen',    emoji: '💼' },
+  { id: 'woon',      label: 'Wonen',      emoji: '🏠' },
   { id: 'expenses',  label: 'Kosten',     emoji: '🛒' },
   { id: 'savings',   label: 'Sparen',     emoji: '🐷' },
   { id: 'portfolio', label: 'Beleggen',   emoji: '📈' },
@@ -57,7 +73,7 @@ export default function App() {
             </div>
             <div className="hidden sm:block">
               <h1 className="text-base font-semibold text-slate-800 m-0">Belastingcalculator voor Beleggers</h1>
-              <p className="text-xs text-slate-500 m-0">Box 1 &amp; Box 3 — Belastingjaar 2025</p>
+              <p className="text-xs text-slate-500 m-0">Box 1 &amp; Box 3 — Belastingjaar 2026</p>
             </div>
           </div>
 
@@ -121,15 +137,20 @@ export default function App() {
           <div className="space-y-4">
             <IncomeSection
               data={data.income}
-              personal={data.personal}
               onChange={income => setData(d => ({ ...d, income }))}
-              onPersonalChange={personal => setData(d => ({ ...d, personal }))}
             />
             <InfoBox>
-              <strong>Box 1</strong> — progressief tarief: 35,82% (t/m €38.441) · 37,48% (€38.441–€76.817) · 49,50% (boven €76.817).
-              Bij laag inkomen kunt u recht hebben op <strong>zorgtoeslag</strong> en/of <strong>huurtoeslag</strong>.
+              <strong>Box 1</strong> — progressief tarief: 35,82% (t/m €40.021) · 37,48% (€40.021–€77.536) · 49,50% (boven €77.536).
+              Hypotheekrente wordt automatisch meegenomen als u een hypotheek heeft ingevuld op het <em>Wonen</em>-tabblad.
             </InfoBox>
           </div>
+        )}
+        {tab === 'woon' && (
+          <WoonSection
+            data={data.woon}
+            taxYear={data.personal.taxYear}
+            onChange={woon => setData(d => ({ ...d, woon }))}
+          />
         )}
         {tab === 'expenses' && (
           <ExpensesSection
@@ -161,7 +182,7 @@ export default function App() {
       </main>
 
       <footer className="max-w-5xl mx-auto px-4 sm:px-6 py-6 text-center text-xs text-slate-400 border-t border-slate-200 mt-4">
-        Indicatieve berekening o.b.v. belastingregels 2025. Raadpleeg altijd een belastingadviseur voor persoonlijk advies.
+        Indicatieve berekening o.b.v. belastingregels 2026. Raadpleeg altijd een belastingadviseur voor persoonlijk advies.
         Toeslagen zijn benaderd — controleer uw exacte recht op belastingdienst.nl.
       </footer>
     </div>

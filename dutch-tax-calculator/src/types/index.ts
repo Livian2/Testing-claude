@@ -1,7 +1,8 @@
 export type AssetType = 'savings' | 'stocks' | 'etf' | 'bonds' | 'realEstate' | 'crypto' | 'other';
 export type TransactionType = 'buy' | 'sell';
 export type FilingStatus = 'single' | 'partner';
-export type LivingType = 'huur' | 'koop' | 'anders';
+export type WoningType = 'huur' | 'hypotheek';
+export type HypotheekType = 'lineair' | 'aflossingsvrijij' | 'annuiteit';
 
 export interface SavingsAccount {
   id: string;
@@ -32,19 +33,34 @@ export interface Transaction {
   broker: string;
 }
 
+export interface HypotheekData {
+  type: HypotheekType;
+  leningBedrag: number;
+  rentePercentage: number;
+  rentevastePeriode: number;  // years
+  looptijd: number;           // years total
+  startJaar: number;
+}
+
+export interface WoonData {
+  woningType: WoningType;
+  maandhuur: number;
+  hypotheek: HypotheekData;
+  gwe: number;    // gas/water/elektra per month
+  vve: number;    // VVE bijdrage per month
+  overig: number; // overige woonkosten per month
+}
+
 export interface IncomeData {
   grossSalary: number;
   freelanceIncome: number;
   rentalIncome: number;
   otherBox1Income: number;
-  mortgageInterestDeduction: number;
   pensionContributions: number;
 }
 
 export interface ExpensesData {
-  housing: number;      // per month
   groceries: number;
-  utilities: number;
   transport: number;
   insurance: number;
   healthcare: number;
@@ -69,12 +85,11 @@ export interface PersonalData {
   filingStatus: FilingStatus;
   taxYear: number;
   age: number;
-  livingType: LivingType;
-  monthlyRent: number;    // used when livingType === 'huur'
 }
 
 export interface TaxFormData {
   personal: PersonalData;
+  woon: WoonData;
   income: IncomeData;
   expenses: ExpensesData;
   savings: SavingsData;

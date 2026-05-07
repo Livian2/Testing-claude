@@ -43,7 +43,7 @@ export default function TaxResults({ result }: Props) {
       <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-6 text-white shadow-xl">
         <div className="flex items-center gap-2 mb-4">
           <Calculator size={20} className="text-orange-400" />
-          <h2 className="text-base font-semibold text-slate-200">Belastingberekening 2025</h2>
+          <h2 className="text-base font-semibold text-slate-200">Belastingberekening 2026</h2>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <div>
@@ -184,9 +184,9 @@ export default function TaxResults({ result }: Props) {
           <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-800">
             <Info size={14} className="mt-0.5 shrink-0" />
             <span>
-              Overgangswetgeving 2025. Fictief rendement: spaargeld <strong>1,44%</strong>,
+              Overgangswetgeving 2026. Fictief rendement: spaargeld <strong>1,03%</strong>,
               overige bezittingen <strong>5,88%</strong>, schulden <strong>2,62%</strong>. Tarief <strong>36%</strong>.
-              Heffingvrij: <strong>€57.000</strong> / <strong>€114.000</strong> (partners).
+              Heffingvrij: <strong>€57.684</strong> / <strong>€115.368</strong> (partners).
             </span>
           </div>
 
@@ -226,7 +226,7 @@ export default function TaxResults({ result }: Props) {
             <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 space-y-1.5">
               <p className="text-xs font-semibold text-slate-600 mb-3">Fictief rendement uitsplitsing</p>
               {[
-                { label: 'Spaargeld (1,44%)',           value:  box3.breakdown.savingsFictitious },
+                { label: 'Spaargeld (1,03%)',           value:  box3.breakdown.savingsFictitious },
                 { label: 'Overige bezittingen (5,88%)', value:  box3.breakdown.investmentsFictitious },
                 { label: 'Schulden (2,62%)',            value: -box3.breakdown.debtsFictitious, credit: true },
                 { label: 'Totaal fictief rendement',    value:  box3.fictitiousReturn, bold: true },
