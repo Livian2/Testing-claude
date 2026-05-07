@@ -1,9 +1,10 @@
-export type BrokerFormat = 'degiro';
+export type BrokerFormat = 'degiro' | 'ibkr';
 
 export interface ImportedTransaction {
   date: string;       // YYYY-MM-DD
   holdingName: string;
   isin: string;
+  ticker: string;     // direct ticker symbol (provided by some brokers, e.g. IBKR)
   type: 'buy' | 'sell';
   quantity: number;
   priceEur: number;   // price per unit in EUR
@@ -76,6 +77,9 @@ export function parseCSV(content: string): string[][] {
 // ─── Broker auto-detection ───────────────────────────────────────────────────
 export function detectBroker(content: string): BrokerFormat | null {
   const firstLine = content.split('\n')[0] ?? '';
+  if (firstLine.startsWith('Transaction History,') && firstLine.includes('Transaction Type')) {
+    return 'ibkr';
+  }
   if (firstLine.includes('Datum') && firstLine.includes('Uitvoeringsplaats') && firstLine.includes('ISIN')) {
     return 'degiro';
   }
@@ -144,6 +148,7 @@ export function parseDeGiro(content: string, brokerName: string): ParseResult {
         date: parseDutchDate(dateStr),
         holdingName: product,
         isin,
+        ticker: '',
         type,
         quantity,
         priceEur,
@@ -161,6 +166,83 @@ export function parseDeGiro(content: string, brokerName: string): ParseResult {
   return { transactions, skipped, errors, detectedBroker: 'degiro' };
 }
 
+// ─── IBKR parser ─────────────────────────────────────────────────────────────
+// Every row starts with "Transaction History".
+// Column 1 is "Header" (column names row) or "Data" (actual data).
+// Column layout (0-based):
+//  0 "Transaction History"  1 Header/Data  2 Date (YYYY-MM-DD)  3 Account
+//  4 Description  5 Transaction Type  6 Symbol  7 Quantity  8 Price
+//  9 Price Currency  10 Gross Amount (EUR base)  11 Commission  12 Net Amount
+//
+// Only rows with Transaction Type "Buy" or "Sell" are trades.
+// Forex Trade Component and Adjustment rows are skipped.
+// Gross Amount is in the account base currency (EUR) so priceEur = |gross| / qty.
+export function parseIBKR(content: string, brokerName: string): ParseResult {
+  const rows = parseCSV(content);
+  if (rows.length < 2) return { transactions: [], skipped: 0, errors: ['Geen data gevonden in CSV.'] };
+
+  const transactions: ImportedTransaction[] = [];
+  const errors: string[] = [];
+  let skipped = 0;
+
+  for (const row of rows) {
+    // Only process data rows (skip header row and any section headers)
+    if (row[1]?.trim() !== 'Data') { skipped++; continue; }
+
+    const txType = row[5]?.trim() ?? '';
+    if (txType !== 'Buy' && txType !== 'Sell') { skipped++; continue; }
+
+    try {
+      const dateStr     = row[2]?.trim() ?? '';
+      const description = row[4]?.trim() ?? '';
+      const symbol      = row[6]?.trim() ?? '';
+      const quantityStr = row[7]?.trim() ?? '';
+      const priceStr    = row[8]?.trim() ?? '';
+      const currency    = row[9]?.trim() || 'USD';
+      const grossStr    = row[10]?.trim() ?? '';
+
+      const quantity = parseFloat(quantityStr);
+      const price    = parseFloat(priceStr);
+      const gross    = parseFloat(grossStr);
+
+      if (!description || !symbol || isNaN(quantity) || quantity === 0 || isNaN(price)) {
+        skipped++;
+        continue;
+      }
+
+      const type: 'buy' | 'sell' = txType === 'Buy' ? 'buy' : 'sell';
+      const qty = Math.abs(quantity);
+
+      // Gross Amount is in account base currency (EUR).
+      // priceEur = |gross| / qty gives cost per share in EUR.
+      const priceEur = (!isNaN(gross) && gross !== 0 && qty > 0)
+        ? Math.abs(gross) / qty
+        : price; // fallback: raw price (might be in foreign currency)
+
+      const orderId = `${dateStr}|${symbol}|${quantityStr}|${priceStr}`;
+
+      transactions.push({
+        date: dateStr,    // already YYYY-MM-DD
+        holdingName: description,
+        isin: '',
+        ticker: symbol,   // IBKR provides ticker directly
+        type,
+        quantity: qty,
+        priceEur,
+        currency,
+        broker: brokerName,
+        orderId,
+        warnings: currency !== 'EUR' ? [`Prijs omgezet via Gross Amount (origineel: ${price} ${currency})`] : [],
+      });
+    } catch {
+      errors.push(`Rij kon niet worden verwerkt.`);
+      skipped++;
+    }
+  }
+
+  return { transactions, skipped, errors, detectedBroker: 'ibkr' };
+}
+
 // ─── Dispatcher ─────────────────────────────────────────────────────────────
 export function parseBrokerCSV(
   content: string,
@@ -168,5 +250,6 @@ export function parseBrokerCSV(
   brokerName: string,
 ): ParseResult {
   if (broker === 'degiro') return parseDeGiro(content, brokerName);
+  if (broker === 'ibkr')   return parseIBKR(content, brokerName);
   return { transactions: [], skipped: 0, errors: [`Broker format '${broker}' niet ondersteund.`] };
 }

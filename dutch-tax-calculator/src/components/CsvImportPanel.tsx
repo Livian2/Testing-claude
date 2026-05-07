@@ -26,13 +26,13 @@ interface BrokerDef {
 }
 
 const BROKERS: BrokerDef[] = [
-  { id: 'degiro',  name: 'DEGIRO',              description: 'Transacties CSV via "Exporteer"',   available: true,  color: 'border-green-500 bg-green-50 text-green-800' },
+  { id: 'degiro', name: 'DEGIRO',                    description: 'Transacties CSV via "Exporteer"',          available: true, color: 'border-green-500 bg-green-50 text-green-800' },
+  { id: 'ibkr',   name: 'Interactive Brokers (IBKR)', description: 'Transaction History CSV via Flex Query',  available: true, color: 'border-blue-500 bg-blue-50 text-blue-800' },
 ];
 
 const COMING_SOON = [
-  { name: 'Interactive Brokers', description: 'Trade confirmations / Activity' },
-  { name: 'Saxo Bank',           description: 'Transaction report CSV' },
-  { name: 'eToro',               description: 'Account statement' },
+  { name: 'Saxo Bank',  description: 'Transaction report CSV' },
+  { name: 'eToro',      description: 'Account statement' },
 ];
 
 type Step = 'broker' | 'file' | 'preview' | 'done';
@@ -113,8 +113,8 @@ export default function CsvImportPanel({ existingTransactions, existingHoldings,
         quantity:     0,        // quantity managed via transactions
         pricePerUnit: 0,
         broker:       t.broker,
-        ticker:       '',       // will be resolved from ISIN on first fetch
-        isin:         t.isin || '',
+        ticker:       t.ticker || '',   // IBKR provides ticker directly; DEGIRO resolves via ISIN
+        isin:         t.isin   || '',
         currentPrice: 0,
       });
     }
@@ -167,9 +167,9 @@ export default function CsvImportPanel({ existingTransactions, existingHoldings,
 
         <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-xs text-blue-800 flex items-start gap-2">
           <Info size={13} className="mt-0.5 shrink-0" />
-          <span>
-            <strong>DEGIRO:</strong> ga naar <em>Account → Transacties</em> en klik op <em>Exporteer</em> (CSV).
-            Selecteer de gewenste periode en download het bestand.
+          <span className="space-y-1 block">
+            <span className="block"><strong>DEGIRO:</strong> ga naar <em>Account → Transacties</em> en klik op <em>Exporteer</em> (CSV). Selecteer de gewenste periode en download het bestand.</span>
+            <span className="block"><strong>IBKR:</strong> ga naar <em>Reports → Flex Queries</em> en maak een <em>Transaction History</em> rapport aan, of gebruik <em>Activity → Statements → Transaction History</em> en exporteer als CSV.</span>
           </span>
         </div>
       </div>
