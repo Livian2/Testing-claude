@@ -2,8 +2,11 @@
  * Fetches live market prices from Yahoo Finance via the Vite dev-server proxy
  * (configured in vite.config.ts). Works in development only.
  *
+ * Uses the v8/finance/chart endpoint (one request per symbol) which does not
+ * require a CSRF crumb, unlike the v7/finance/quote batch endpoint.
+ *
  * All returned prices are converted to EUR using live FX rates fetched
- * in the same call. GBp (British pence) is handled automatically.
+ * in the same batch. GBp (British pence) is handled automatically.
  */
 
 // Common FX pairs to fetch alongside stock quotes (→ EUR)
@@ -32,6 +35,27 @@ export interface FetchResult {
   timestamp: string;                  // ISO timestamp
 }
 
+interface ChartMeta {
+  symbol: string;
+  regularMarketPrice: number;
+  currency: string;
+}
+
+/** Fetch a single ticker via the v8/finance/chart endpoint (no crumb needed). */
+async function fetchChart(ticker: string): Promise<ChartMeta | null> {
+  try {
+    const url = `/api/finance/v8/finance/chart/${encodeURIComponent(ticker)}?interval=1d&range=1d&includePrePost=false`;
+    const res = await fetch(url, { headers: { Accept: 'application/json' } });
+    if (!res.ok) return null;
+    const json = await res.json() as { chart?: { result?: { meta?: ChartMeta }[] } };
+    const meta = json?.chart?.result?.[0]?.meta;
+    if (!meta?.regularMarketPrice) return null;
+    return meta;
+  } catch {
+    return null;
+  }
+}
+
 /** Resolve ISIN codes to Yahoo Finance ticker symbols via the search endpoint. */
 export async function resolveIsins(isins: string[]): Promise<Record<string, string>> {
   const unique = [...new Set(isins.filter(Boolean))];
@@ -46,7 +70,6 @@ export async function resolveIsins(isins: string[]): Promise<Record<string, stri
       const json = await res.json() as {
         quotes?: { symbol: string; quoteType?: string }[];
       };
-      // Yahoo Finance search returns quotes at the top level
       const quotes = json?.quotes ?? [];
       const match = quotes.find(q => q.quoteType === 'ETF' || q.quoteType === 'EQUITY') ?? quotes[0];
       if (match?.symbol) result[isin] = match.symbol;
@@ -60,46 +83,34 @@ export function looksLikeIsin(s: string): boolean {
   return /^[A-Z]{2}[A-Z0-9]{10}$/.test(s.trim().toUpperCase());
 }
 
-async function callYahoo(tickers: string[]): Promise<Record<string, unknown>[]> {
-  const symbols = tickers.map(encodeURIComponent).join(',');
-  const url = `/api/finance/v7/finance/quote?symbols=${symbols}&fields=regularMarketPrice,currency,shortName,quoteType`;
-  const res = await fetch(url, { headers: { Accept: 'application/json' } });
-  if (!res.ok) throw new Error(`Yahoo Finance: HTTP ${res.status}`);
-  const json = await res.json();
-  return (json as { quoteResponse?: { result?: Record<string, unknown>[] } })?.quoteResponse?.result ?? [];
-}
-
 export async function fetchPricesWithFX(tickers: string[]): Promise<FetchResult> {
   const unique = [...new Set(tickers.filter(Boolean))];
   if (unique.length === 0) return { quotes: {}, rates: { EUR: 1 }, timestamp: new Date().toISOString() };
 
-  // Fetch stock quotes + FX rates in parallel
-  const [stockRows, fxRows] = await Promise.all([
-    callYahoo(unique),
-    callYahoo(FX_TICKERS),
-  ]);
+  // Fetch all tickers (stocks + FX pairs) in parallel via v8/chart
+  const allTickers = [...unique, ...FX_TICKERS];
+  const results = await Promise.all(allTickers.map(t => fetchChart(t)));
 
-  // Build FX rate map: currency → EUR (e.g. USD → 0.923)
+  // Build FX rate map: currency → EUR
   const rates: Record<string, number> = { EUR: 1 };
-  for (const q of fxRows) {
-    const sym   = q.symbol as string ?? '';
-    const price = q.regularMarketPrice as number;
-    if (!sym || typeof price !== 'number') continue;
-    // "USDEUR=X" → currency key "USD"
-    const key = sym.replace('EUR=X', '');
-    if (key && key !== sym) rates[key] = price;
-  }
+  FX_TICKERS.forEach((fx, i) => {
+    const meta = results[unique.length + i];
+    if (!meta?.regularMarketPrice) return;
+    // "USDEUR=X" → key "USD"
+    const key = fx.replace('EUR=X', '');
+    if (key && key !== fx) rates[key] = meta.regularMarketPrice;
+  });
 
-  // Process stock rows → convert to EUR
+  // Process stock results → convert to EUR
   const quotes: Record<string, QuoteData> = {};
-  for (const q of stockRows) {
-    const sym   = q.symbol as string ?? '';
-    const price = q.regularMarketPrice as number;
-    if (!sym || typeof price !== 'number') continue;
+  unique.forEach((ticker, i) => {
+    const meta = results[i];
+    if (!meta?.regularMarketPrice) return;
 
-    const currency = (q.currency as string) ?? 'EUR';
-    let priceEur = price;
-    let rate     = 1;
+    const price    = meta.regularMarketPrice;
+    const currency = meta.currency ?? 'EUR';
+    let priceEur   = price;
+    let rate       = 1;
 
     if (currency === 'EUR') {
       rate = 1;
@@ -114,11 +125,10 @@ export async function fetchPricesWithFX(tickers: string[]): Promise<FetchResult>
         rate     = r;
         priceEur = price * r;
       }
-      // if no FX rate found, keep priceEur === price (fallback, will show currency warning)
     }
 
-    quotes[sym] = { priceEur, priceLocal: price, currency, rate };
-  }
+    quotes[ticker] = { priceEur, priceLocal: price, currency, rate };
+  });
 
   return { quotes, rates, timestamp: new Date().toISOString() };
 }
