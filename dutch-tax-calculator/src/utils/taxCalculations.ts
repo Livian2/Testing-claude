@@ -5,26 +5,37 @@ import type {
 import { berekenHypotheek } from './hypotheek';
 
 // ─── 2026 Tax Parameters ───────────────────────────────────────────────────
+// Source: Belastingplan 2026 / Belastingdienst (indicatief)
 
 const BOX1_BRACKETS_2026 = [
   { limit: 40021,    rate: 0.3582 },
-  { limit: 77536,    rate: 0.3748 },
+  { limit: 76817,    rate: 0.3748 },
   { limit: Infinity, rate: 0.4950 },
 ];
 
+// Algemene heffingskorting 2026: max €3.428, afbouw tot €0 bij €76.817
 function calcAlgemeneHeffingskorting(taxableIncome: number): number {
   if (taxableIncome <= 25268) return 3428;
   if (taxableIncome <= 76817)
-    return Math.max(0, 3428 - (taxableIncome - 25268) * (3428 / (76817 - 25268)));
+    return Math.max(0, Math.round(3428 - (taxableIncome - 25268) * (3428 / (76817 - 25268))));
   return 0;
 }
 
+// Arbeidskorting 2026: max €5.599 bij ~€43.071, afbouw tot €0 bij ~€129.077
 function calcArbeidskorting(employmentIncome: number): number {
   if (employmentIncome <= 0)      return 0;
-  if (employmentIncome <= 11491)  return Math.round(employmentIncome * 0.08231);
-  if (employmentIncome <= 25000)  return 945  + Math.round((employmentIncome - 11491) * 0.29861);
-  if (employmentIncome <= 40821)  return 3986 + Math.round((employmentIncome - 25000) * 0.03085);
-  if (employmentIncome <= 126834) return 4474 - Math.round((employmentIncome - 40821) * 0.06510);
+  // Opbouwfase 1: 8,231% t/m €11.491
+  if (employmentIncome <= 11491)
+    return Math.round(employmentIncome * 0.08231);
+  // Opbouwfase 2: +29,861% t/m €24.820  →  max €4.927
+  if (employmentIncome <= 24820)
+    return Math.round(946 + (employmentIncome - 11491) * 0.29861);
+  // Opbouwfase 3: +3,682% t/m €43.071  →  max €5.599
+  if (employmentIncome <= 43071)
+    return Math.round(4927 + (employmentIncome - 24820) * 0.03682);
+  // Afbouwfase: −6,510% boven €43.071  →  €0 bij ~€129.077
+  if (employmentIncome <= 129077)
+    return Math.max(0, Math.round(5599 - (employmentIncome - 43071) * 0.06510));
   return 0;
 }
 
@@ -143,11 +154,15 @@ export function calculateToeslagen(data: TaxFormData, box1: Box1Result, box3: Bo
   const { personal, woon } = data;
   const isPartner = personal.filingStatus === 'partner';
 
+  // Verzamelinkomen = Box 1 belastbaar inkomen + Box 3 voordeel (fictitiousReturn ≥ 0)
   const toetsingsinkomen = box1.taxableIncome + Math.max(0, box3.fictitiousReturn);
 
+  // ── Zorgtoeslag 2026 ──────────────────────────────────────────────────────
+  // Max per persoon €1.912/jr; partners ontvangen elk hun eigen toeslag (≈2×).
+  // Lineaire afbouw vanaf drempelinkomen tot inkomensgrens.
   const ZORG_DREMPEL       = 24213;
   const ZORG_MAX_SINGLE    = 1912;
-  const ZORG_MAX_PARTNER   = 3261;
+  const ZORG_MAX_PARTNER   = 3824;   // 2 × €1.912 (elk partner afzonderlijk)
   const ZORG_LIMIT_SINGLE  = 38441;
   const ZORG_LIMIT_PARTNER = 49000;
 
@@ -161,18 +176,22 @@ export function calculateToeslagen(data: TaxFormData, box1: Box1Result, box3: Bo
     zorgtoeslag  = Math.max(0, zorgMax - afbouw * rate);
   }
 
-  const NORM_HUUR      = 652 * 12;
-  const AFTOPPING_HUUR = 662 * 12;
-  const MAX_HUUR       = 900 * 12;
-  const HUUR_LIMIT     = isPartner ? 48_000 : 32_000;
-  const HUUR_DREMPEL   = 17_500;
+  // ── Huurtoeslag 2026 ──────────────────────────────────────────────────────
+  // Aftoppingsgrens 1-2 pers €660/mnd; liberalisatiegrens €900/mnd.
+  // Vereenvoudigde formule: toeslag = max(0, effectiefJaarHuur − basishuur) × inkomensafbouw
+  // De basishuur (normhuur) is het deel dat de huurder zelf draagt (~€290/mnd indicatief).
+  const HUUR_AFTOP   = 660 * 12;   // aftoppingsgrens 1-2 pers
+  const HUUR_MAX     = 900 * 12;   // liberalisatiegrens (max toelaatbare huur)
+  const HUUR_NORM    = 290 * 12;   // basishuur (indicatief gemiddeld)
+  const HUUR_DREMPEL = 17_500;
+  const HUUR_LIMIT   = isPartner ? 43_000 : 32_005;
 
   let huurtoeslag = 0;
   const jaarHuur  = woon.woningType === 'huur' ? woon.maandhuur * 12 : 0;
 
-  if (woon.woningType === 'huur' && jaarHuur > 0 && jaarHuur <= MAX_HUUR && toetsingsinkomen <= HUUR_LIMIT) {
-    const effectiefHuur = Math.min(jaarHuur, AFTOPPING_HUUR);
-    const baseToeslag   = Math.max(0, effectiefHuur - NORM_HUUR);
+  if (woon.woningType === 'huur' && jaarHuur > 0 && jaarHuur <= HUUR_MAX && toetsingsinkomen <= HUUR_LIMIT) {
+    const effectiefHuur = Math.min(jaarHuur, HUUR_AFTOP);
+    const baseToeslag   = Math.max(0, effectiefHuur - HUUR_NORM);
     const incomeFactor  = Math.max(0, 1 - Math.max(0, toetsingsinkomen - HUUR_DREMPEL) / (HUUR_LIMIT - HUUR_DREMPEL));
     huurtoeslag = baseToeslag * incomeFactor;
   }
