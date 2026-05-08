@@ -75,11 +75,12 @@ export function simuleerDuo(
       break;
     }
 
-    // After write-off deadline: remaining debt is cancelled
+    // After write-off deadline: accrue final year interest then cancel remaining debt
     if (jaar >= aflossEind) {
-      const kwijtBedrag = balans;
-      punten.push({ jaar, balans, betaling: 0, rente: 0, inkomen, kwijtgescholden: true });
-      balans = 0;
+      const finalRente  = balans * rente;
+      const kwijtBedrag = balans + finalRente;
+      renteTotaal += finalRente;
+      punten.push({ jaar, balans, betaling: 0, rente: finalRente, inkomen, kwijtgescholden: true });
       punten.push({ jaar: jaar + 1, balans: 0, betaling: 0, rente: 0, inkomen, kwijtgescholden: false });
       return {
         punten, eindBalans: 0,
@@ -95,17 +96,17 @@ export function simuleerDuo(
     }
 
     // Repayment period
-    const jaarRente   = balans * rente;
+    const startBalans  = balans;  // record start-of-year balance before any updates
+    const jaarRente    = balans * rente;
     const jaarbetaling = berekenDuoJaarbetaling(inkomen, isPartner);
     // Payment covers interest first, then principal
-    const effectief   = Math.min(jaarbetaling, balans + jaarRente);
-    const principal   = Math.max(0, effectief - jaarRente);
+    const effectief    = Math.min(jaarbetaling, balans + jaarRente);
 
-    renteTotaal  += jaarRente;
+    renteTotaal   += jaarRente;
     betaaldTotaal += effectief;
-    balans        = Math.max(0, balans + jaarRente - effectief);
+    balans         = Math.max(0, balans + jaarRente - effectief);
 
-    punten.push({ jaar, balans: balans + principal, betaling: effectief, rente: jaarRente, inkomen, kwijtgescholden: false });
+    punten.push({ jaar, balans: startBalans, betaling: effectief, rente: jaarRente, inkomen, kwijtgescholden: false });
 
     if (balans <= 0) {
       afgelosdJaar = jaar;

@@ -10,6 +10,7 @@ import WoonSection from './components/WoonSection';
 import WaardesSection from './components/WaardesSection';
 import TaxResults from './components/TaxResults';
 import NetWorthProjection from './components/NetWorthProjection';
+import AfschrijvingenSection from './components/AfschrijvingenSection';
 import './index.css';
 
 const DEFAULT_DATA: TaxFormData = {
@@ -42,6 +43,16 @@ const DEFAULT_DATA: TaxFormData = {
   savings: { monthlySavingsContribution: 0, maandelijksBeleggen: 0 },
   schulden: { duo: [], beleggingen: [] },
   portfolio: { holdings: [], transactions: [] },
+  afschrijvingen: {
+    rentePercentage: 4.0,
+    categorieen: [
+      { id: 'cat-mobile',      naam: 'Mobile',       items: [] },
+      { id: 'cat-pc',          naam: 'PC',            items: [] },
+      { id: 'cat-peripherals', naam: 'Peripherals',   items: [] },
+      { id: 'cat-camera',      naam: 'Camera',        items: [] },
+      { id: 'cat-overig',      naam: 'Overig',        items: [] },
+    ],
+  },
 };
 
 const STORAGE_KEY         = 'nl-belasting-data-v1';
@@ -70,25 +81,27 @@ function loadSavedData(): TaxFormData {
       income:    { ...DEFAULT_DATA.income,     ...saved.income    },
       expenses:  { ...DEFAULT_DATA.expenses,   ...saved.expenses  },
       savings:   { ...DEFAULT_DATA.savings,    ...saved.savings   },
-      schulden:  { ...DEFAULT_DATA.schulden,   ...saved.schulden  },
-      portfolio: { ...DEFAULT_DATA.portfolio,  ...saved.portfolio },
+      schulden:       { ...DEFAULT_DATA.schulden,       ...saved.schulden       },
+      portfolio:      { ...DEFAULT_DATA.portfolio,      ...saved.portfolio      },
+      afschrijvingen: { ...DEFAULT_DATA.afschrijvingen, ...saved.afschrijvingen },
     };
   } catch {
     return DEFAULT_DATA;
   }
 }
 
-type Tab = 'income' | 'woon' | 'waardes' | 'expenses' | 'schulden' | 'portfolio' | 'prognose' | 'results';
+type Tab = 'income' | 'woon' | 'waardes' | 'expenses' | 'schulden' | 'portfolio' | 'afschrijvingen' | 'prognose' | 'results';
 
 const TABS: { id: Tab; label: string; emoji: string }[] = [
-  { id: 'income',    label: 'Inkomen',       emoji: '💼' },
-  { id: 'woon',      label: 'Wonen',         emoji: '🏠' },
-  { id: 'waardes',   label: 'Waardes 1 jan', emoji: '📋' },
-  { id: 'expenses',  label: 'Kosten',        emoji: '🛒' },
-  { id: 'schulden',  label: 'Schulden',      emoji: '💳' },
-  { id: 'portfolio', label: 'Beleggen',      emoji: '📈' },
-  { id: 'prognose',  label: 'Prognose',      emoji: '🔮' },
-  { id: 'results',   label: 'Berekening',    emoji: '🧮' },
+  { id: 'income',         label: 'Inkomen',         emoji: '💼' },
+  { id: 'woon',           label: 'Wonen',           emoji: '🏠' },
+  { id: 'waardes',        label: 'Waardes 1 jan',   emoji: '📋' },
+  { id: 'expenses',       label: 'Kosten',          emoji: '🛒' },
+  { id: 'schulden',       label: 'Schulden',        emoji: '💳' },
+  { id: 'portfolio',      label: 'Beleggen',        emoji: '📈' },
+  { id: 'afschrijvingen', label: 'Afschrijvingen',  emoji: '🔄' },
+  { id: 'prognose',       label: 'Prognose',        emoji: '🔮' },
+  { id: 'results',        label: 'Berekening',      emoji: '🧮' },
 ];
 
 function loadSavedPrognose(): PrognoseConfig {
@@ -136,8 +149,9 @@ export default function App() {
             income:    { ...DEFAULT_DATA.income,     ...parsed.data.income    },
             expenses:  { ...DEFAULT_DATA.expenses,   ...parsed.data.expenses  },
             savings:   { ...DEFAULT_DATA.savings,    ...parsed.data.savings   },
-            schulden:  { ...DEFAULT_DATA.schulden,   ...parsed.data.schulden  },
-            portfolio: { ...DEFAULT_DATA.portfolio,  ...parsed.data.portfolio },
+            schulden:       { ...DEFAULT_DATA.schulden,       ...parsed.data.schulden       },
+            portfolio:      { ...DEFAULT_DATA.portfolio,      ...parsed.data.portfolio      },
+            afschrijvingen: { ...DEFAULT_DATA.afschrijvingen, ...parsed.data.afschrijvingen },
           });
         }
         if (parsed.prognose) setPrognose({ ...DEFAULT_PROGNOSE, ...parsed.prognose });
@@ -313,6 +327,13 @@ export default function App() {
               Box 3 belastingwaardes (1 jan) invullen op het tabblad <strong>Waardes 1 jan</strong>.
             </InfoBox>
           </div>
+        )}
+        {tab === 'afschrijvingen' && (
+          <AfschrijvingenSection
+            data={data.afschrijvingen}
+            taxYear={data.personal.taxYear}
+            onChange={afschrijvingen => setData(d => ({ ...d, afschrijvingen }))}
+          />
         )}
         {tab === 'prognose' && (
           <NetWorthProjection

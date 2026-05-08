@@ -147,6 +147,27 @@ export interface PersonalData {
   age: number;
 }
 
+// ---- Afschrijvingen ----
+
+export interface AfschrijvingItem {
+  id: string;
+  naam: string;
+  aankoopprijs: number;
+  aankoopdatum: string;   // YYYY-MM-DD
+  looptijdJaren: number;
+}
+
+export interface AfschrijvingCategorie {
+  id: string;
+  naam: string;
+  items: AfschrijvingItem[];
+}
+
+export interface AfschrijvingenData {
+  rentePercentage: number;  // savings rate used for sinking fund, e.g. 4.0
+  categorieen: AfschrijvingCategorie[];
+}
+
 export interface TaxFormData {
   personal: PersonalData;
   woon: WoonData;
@@ -156,6 +177,7 @@ export interface TaxFormData {
   savings: SavingsData;
   schulden: SchuldenData;
   portfolio: PortfolioData;
+  afschrijvingen: AfschrijvingenData;
 }
 
 // ---- Results ----

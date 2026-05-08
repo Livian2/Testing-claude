@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { CreditCard, Plus, Trash2, ChevronDown, ChevronRight, GraduationCap, TrendingDown, BookOpen } from 'lucide-react';
 import type { SchuldenData, SchuldItem, DuoType } from '../types';
-import { simuleerDuo, berekenDuoJaarbetaling, DUO_DRAAGKRACHT_VRIJ } from '../utils/duo';
+import { simuleerDuo, berekenDuoJaarbetaling, DUO_DRAAGKRACHT_VRIJ, DUO_DRAAGKRACHT_PARTNER_VRIJ } from '../utils/duo';
 import CurrencyInput from './CurrencyInput';
 import SectionCard from './SectionCard';
 
@@ -295,18 +295,31 @@ function DuoSimulatieCard({
 }: { duo: SchuldItem[]; taxYear: number; grossSalary: number; isPartner: boolean }) {
   const [inkomensstijging, setInkomensstijging] = useState(2);
 
+  const drempel = isPartner ? DUO_DRAAGKRACHT_PARTNER_VRIJ : DUO_DRAAGKRACHT_VRIJ;
   const maandBetaling = berekenDuoJaarbetaling(grossSalary, isPartner) / 12;
-  const drempel = isPartner ? 22_000 : DUO_DRAAGKRACHT_VRIJ;
 
   // Simulate each DUO item and combine into yearly totals
   const simulations = duo.filter(d => d.bedrag > 0).map(d =>
     simuleerDuo(d, grossSalary, inkomensstijging / 100, taxYear, isPartner)
   );
 
-  const maxJaren = 40;
+  // Chart starts at the earliest repayment start year (skip pre-repayment flat period)
+  const minAflossStart = duo.reduce((min, d) => {
+    const s = d.aflossingsStartJaar ?? d.startJaar;
+    return s < min ? s : min;
+  }, Infinity as number);
+  const chartStart = isFinite(minAflossStart) ? Math.max(taxYear, minAflossStart) : taxYear;
+
+  // maxJaren must cover up to the latest write-off year
+  const maxAflossEind = duo.reduce((max, d) => {
+    const s = d.aflossingsStartJaar ?? d.startJaar;
+    return Math.max(max, s + d.looptijd);
+  }, 0);
+  const maxJaren = Math.max(maxAflossEind - chartStart + 3, 40);
+
   const combined: { jaar: number; balans: number }[] = [];
   for (let i = 0; i <= maxJaren; i++) {
-    const jaar = taxYear + i;
+    const jaar = chartStart + i;
     const totaalBalans = simulations.reduce((sum, sim) => {
       const pt = sim.punten.find(p => p.jaar === jaar);
       return sum + (pt ? pt.balans : 0);
