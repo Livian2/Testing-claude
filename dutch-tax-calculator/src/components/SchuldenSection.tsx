@@ -26,9 +26,10 @@ interface SchuldCardProps {
   onRemove: () => void;
   canRemove: boolean;
   accent: string;
+  isDuo?: boolean;
 }
 
-function SchuldCard({ item, taxYear, onUpdate, onRemove, canRemove, accent }: SchuldCardProps) {
+function SchuldCard({ item, taxYear, onUpdate, onRemove, canRemove, accent, isDuo }: SchuldCardProps) {
   const [open, setOpen] = useState(true);
 
   const jaarRente      = item.bedrag * (item.rentePercentage / 100);
@@ -80,6 +81,23 @@ function SchuldCard({ item, taxYear, onUpdate, onRemove, canRemove, accent }: Sc
             />
           </div>
 
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {isDuo && (
+              <div className="flex flex-col gap-1 sm:col-span-2">
+                <label className="text-xs text-slate-500">Aflossing start (jr) <span className="text-slate-400 font-normal">— optioneel (DUO grace period)</span></label>
+                <input
+                  type="number" min={1990} max={2100}
+                  className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm bg-white outline-none focus:ring-2 focus:ring-blue-400"
+                  placeholder={String(item.startJaar)}
+                  value={item.aflossingsStartJaar || ''}
+                  onChange={e => {
+                    const v = parseInt(e.target.value);
+                    onUpdate({ aflossingsStartJaar: isNaN(v) ? undefined : v });
+                  }}
+                />
+              </div>
+            )}
+          </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="flex flex-col gap-1">
               <label className="text-xs text-slate-500">Rente (%)</label>
@@ -159,12 +177,13 @@ interface DebtGroupProps {
   taxYear: number;
   accent: string;
   buttonColor: string;
+  isDuo?: boolean;
   onAdd: () => void;
   onUpdate: (id: string, p: Partial<SchuldItem>) => void;
   onRemove: (id: string) => void;
 }
 
-function DebtGroup({ title, icon, items, taxYear, accent, buttonColor, onAdd, onUpdate, onRemove }: DebtGroupProps) {
+function DebtGroup({ title, icon, items, taxYear, accent, buttonColor, isDuo, onAdd, onUpdate, onRemove }: DebtGroupProps) {
   const totaal = items.reduce((s, d) => s + d.bedrag, 0);
   const totaalRente = items.reduce((s, d) => s + d.bedrag * (d.rentePercentage / 100), 0);
 
@@ -182,6 +201,7 @@ function DebtGroup({ title, icon, items, taxYear, accent, buttonColor, onAdd, on
               item={item}
               taxYear={taxYear}
               accent="border-red-100"
+              isDuo={isDuo}
               onUpdate={p => onUpdate(item.id, p)}
               onRemove={() => onRemove(item.id)}
               canRemove={true}
@@ -227,6 +247,7 @@ export default function SchuldenSection({ data, taxYear, onChange }: Props) {
         taxYear={taxYear}
         accent="border-blue-400"
         buttonColor="bg-blue-600 hover:bg-blue-700"
+        isDuo={true}
         onAdd={() => onChange({
           ...data,
           duo: [...data.duo, { ...DEFAULT_SCHULD, id: uid(), label: `DUO schuld ${data.duo.length + 1}`, rentePercentage: 2.56, looptijd: 35 }],

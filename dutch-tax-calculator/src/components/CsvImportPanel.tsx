@@ -87,9 +87,35 @@ export default function CsvImportPanel({ existingTransactions, existingHoldings,
   };
 
   const handleImport = () => {
+    // Build lookup maps from existing holdings to match by ISIN or ticker
+    const isinToName = new Map(
+      existingHoldings.filter(h => h.isin).map(h => [h.isin!.toUpperCase(), h.name])
+    );
+    const tickerToName = new Map(
+      existingHoldings.filter(h => h.ticker).map(h => [h.ticker.toUpperCase(), h.name])
+    );
+
+    // Resolve holdingName: reuse existing holding name when ISIN or ticker matches
+    const resolveHoldingName = (t: ImportedTransaction): string => {
+      if (t.isin) {
+        const existing = isinToName.get(t.isin.toUpperCase());
+        if (existing) return existing;
+      }
+      if (t.ticker) {
+        const existing = tickerToName.get(t.ticker.toUpperCase());
+        if (existing) return existing;
+        // Match bare ticker against exchange-specific tickers (e.g. "TDIV" matches "TDIV.AS")
+        const bare = t.ticker.toUpperCase().split('.')[0];
+        for (const [k, v] of tickerToName) {
+          if (k.split('.')[0] === bare) return v;
+        }
+      }
+      return t.holdingName;
+    };
+
     const toImport: Transaction[] = newTxs.map(t => ({
       id:           uid(),
-      holdingName:  t.holdingName,
+      holdingName:  resolveHoldingName(t),
       type:         t.type,
       date:         t.date,
       quantity:     t.quantity,
@@ -99,21 +125,37 @@ export default function CsvImportPanel({ existingTransactions, existingHoldings,
     }));
 
     // Auto-create Holdings for positions not yet in existingHoldings
-    const existingNames = new Set(existingHoldings.map(h => h.name.toLowerCase()));
+    // Skip if ISIN or ticker already belongs to an existing holding
+    const existingNames   = new Set(existingHoldings.map(h => h.name.toLowerCase()));
+    const existingIsins   = new Set(existingHoldings.filter(h => h.isin).map(h => h.isin!.toUpperCase()));
+    const existingTickers = new Set(existingHoldings.filter(h => h.ticker).map(h => h.ticker.toUpperCase()));
+
     const seen = new Set<string>();
     const newHoldings: Holding[] = [];
     for (const t of newTxs) {
-      const key = t.holdingName.toLowerCase();
+      const resolvedName = resolveHoldingName(t);
+      const key = resolvedName.toLowerCase();
       if (existingNames.has(key) || seen.has(key)) continue;
+      if (t.isin && existingIsins.has(t.isin.toUpperCase())) continue;
+      if (t.ticker) {
+        const tickerUpper = t.ticker.toUpperCase();
+        if (existingTickers.has(tickerUpper)) continue;
+        const bare = tickerUpper.split('.')[0];
+        let matchesBare = false;
+        for (const k of existingTickers) {
+          if (k.split('.')[0] === bare) { matchesBare = true; break; }
+        }
+        if (matchesBare) continue;
+      }
       seen.add(key);
       newHoldings.push({
         id:           uid(),
-        name:         t.holdingName,
+        name:         resolvedName,
         type:         'stocks',
-        quantity:     0,        // quantity managed via transactions
+        quantity:     0,
         pricePerUnit: 0,
         broker:       t.broker,
-        ticker:       t.ticker || '',   // IBKR provides ticker directly; DEGIRO resolves via ISIN
+        ticker:       t.ticker || '',
         isin:         t.isin   || '',
         currentPrice: 0,
       });

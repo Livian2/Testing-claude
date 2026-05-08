@@ -121,6 +121,15 @@ export interface SchuldItem {
   looptijd: number;           // total loan duration in years
   rentevastePeriode: number;  // fixed-rate period in years
   startJaar: number;          // year loan started
+  aflossingsStartJaar?: number; // year repayment starts (DUO grace period support)
+}
+
+export interface PrognoseConfig {
+  jaarlijksSparen: number;      // annual deposit to savings
+  jaarlijksBeleggen: number;    // annual investment
+  rendementBeleggingen: number; // % e.g. 7.0
+  spaarrente: number;           // % e.g. 2.0
+  jaren: number;                // 10, 20, or 30
 }
 
 export interface SchuldenData {

@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Flag, RefreshCw, Users } from 'lucide-react';
-import type { TaxFormData, FilingStatus } from './types';
+import type { TaxFormData, FilingStatus, PrognoseConfig } from './types';
 import { calculateTaxes } from './utils/taxCalculations';
 import IncomeSection from './components/IncomeSection';
 import ExpensesSection from './components/ExpensesSection';
@@ -9,6 +9,7 @@ import PortfolioSection from './components/PortfolioSection';
 import WoonSection from './components/WoonSection';
 import WaardesSection from './components/WaardesSection';
 import TaxResults from './components/TaxResults';
+import NetWorthProjection from './components/NetWorthProjection';
 import './index.css';
 
 const DEFAULT_DATA: TaxFormData = {
@@ -43,7 +44,16 @@ const DEFAULT_DATA: TaxFormData = {
   portfolio: { holdings: [], transactions: [] },
 };
 
-const STORAGE_KEY = 'nl-belasting-data-v1';
+const STORAGE_KEY         = 'nl-belasting-data-v1';
+const PROGNOSE_STORAGE_KEY = 'nl-belasting-prognose-v1';
+
+const DEFAULT_PROGNOSE: PrognoseConfig = {
+  jaarlijksSparen:      6000,
+  jaarlijksBeleggen:    6000,
+  rendementBeleggingen: 7.0,
+  spaarrente:           2.0,
+  jaren:                20,
+};
 
 function loadSavedData(): TaxFormData {
   try {
@@ -69,7 +79,7 @@ function loadSavedData(): TaxFormData {
   }
 }
 
-type Tab = 'income' | 'woon' | 'waardes' | 'expenses' | 'schulden' | 'portfolio' | 'results';
+type Tab = 'income' | 'woon' | 'waardes' | 'expenses' | 'schulden' | 'portfolio' | 'prognose' | 'results';
 
 const TABS: { id: Tab; label: string; emoji: string }[] = [
   { id: 'income',    label: 'Inkomen',       emoji: '💼' },
@@ -78,18 +88,35 @@ const TABS: { id: Tab; label: string; emoji: string }[] = [
   { id: 'expenses',  label: 'Kosten',        emoji: '🛒' },
   { id: 'schulden',  label: 'Schulden',      emoji: '💳' },
   { id: 'portfolio', label: 'Beleggen',      emoji: '📈' },
+  { id: 'prognose',  label: 'Prognose',      emoji: '🔮' },
   { id: 'results',   label: 'Berekening',    emoji: '🧮' },
 ];
 
+function loadSavedPrognose(): PrognoseConfig {
+  try {
+    const raw = localStorage.getItem(PROGNOSE_STORAGE_KEY);
+    if (!raw) return DEFAULT_PROGNOSE;
+    return { ...DEFAULT_PROGNOSE, ...(JSON.parse(raw) as Partial<PrognoseConfig>) };
+  } catch {
+    return DEFAULT_PROGNOSE;
+  }
+}
+
 export default function App() {
-  const [data, setData] = useState<TaxFormData>(loadSavedData);
-  const [tab, setTab]   = useState<Tab>('income');
+  const [data, setData]         = useState<TaxFormData>(loadSavedData);
+  const [prognose, setPrognose] = useState<PrognoseConfig>(loadSavedPrognose);
+  const [tab, setTab]           = useState<Tab>('income');
 
   // Persist to localStorage 500 ms after every change
   useEffect(() => {
     const t = setTimeout(() => localStorage.setItem(STORAGE_KEY, JSON.stringify(data)), 500);
     return () => clearTimeout(t);
   }, [data]);
+
+  useEffect(() => {
+    const t = setTimeout(() => localStorage.setItem(PROGNOSE_STORAGE_KEY, JSON.stringify(prognose)), 500);
+    return () => clearTimeout(t);
+  }, [prognose]);
 
   const result = useMemo(() => calculateTaxes(data), [data]);
 
@@ -224,6 +251,13 @@ export default function App() {
               Box 3 belastingwaardes (1 jan) invullen op het tabblad <strong>Waardes 1 jan</strong>.
             </InfoBox>
           </div>
+        )}
+        {tab === 'prognose' && (
+          <NetWorthProjection
+            data={data}
+            config={prognose}
+            onConfigChange={setPrognose}
+          />
         )}
         {tab === 'results' && (
           <TaxResults result={result} />
