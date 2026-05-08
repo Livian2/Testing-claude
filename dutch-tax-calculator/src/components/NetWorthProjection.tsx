@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import type { TaxFormData, PrognoseConfig } from '../types';
 import { berekenHypotheek } from '../utils/hypotheek';
 import { computePositions } from '../utils/taxCalculations';
+import { simuleerDuo } from '../utils/duo';
 import SectionCard from './SectionCard';
 import CurrencyInput from './CurrencyInput';
 import { TrendingUp } from 'lucide-react';
@@ -87,6 +88,19 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
     const jan1Investments = data.waardes.beleggingen.reduce((s, r) => s + r.waardeJan1, 0);
     const initInvestments = portfolioValue > 0 ? portfolioValue : jan1Investments;
 
+    const startInkomen = data.income.grossSalary + data.income.freelanceIncome;
+    const inkomensstijging = (config.inkomensstijging ?? 2) / 100;
+    const isPartner = data.personal.filingStatus === 'partner';
+
+    // Pre-compute DUO balances per year using income-based simulation
+    const duoBalanceByYear = new Map<number, number>();
+    for (const duo of data.schulden.duo) {
+      const sim = simuleerDuo(duo, startInkomen, inkomensstijging, currentYear, isPartner);
+      for (const punt of sim.punten) {
+        duoBalanceByYear.set(punt.jaar, (duoBalanceByYear.get(punt.jaar) ?? 0) + punt.balans);
+      }
+    }
+
     const result: ProjectionPoint[] = [];
 
     for (let i = 0; i <= config.jaren; i++) {
@@ -106,13 +120,8 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
         return sum + berekenHypotheek(hyp, year).restschuldBegin;
       }, 0);
 
-      const duoDebt = data.schulden.duo.reduce((sum, duo) => {
-        const aflossStart = duo.aflossingsStartJaar ?? duo.startJaar;
-        if (year < aflossStart) return sum + duo.bedrag;
-        const elapsed = year - aflossStart;
-        if (elapsed >= duo.looptijd) return sum;
-        return sum + duo.bedrag * (1 - elapsed / duo.looptijd);
-      }, 0);
+      // Use simulated DUO balance; fall back to 0 if beyond simulation range
+      const duoDebt = duoBalanceByYear.get(year) ?? 0;
 
       const overigeDebt = data.schulden.beleggingen.reduce((sum, schuld) => {
         const elapsed = year - schuld.startJaar;
@@ -192,7 +201,7 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
           Spaar- en beleggingsbijdragen instellen op het tabblad <strong>Kosten</strong>.
           Huidige bijdragen: sparen <strong>{nl0.format(jaarlijksSparen)}/jr</strong> · beleggen <strong>{nl0.format(jaarlijksBeleggen)}/jr</strong>.
         </p>
-        <div className="grid grid-cols-2 gap-4 mb-4">
+        <div className="grid grid-cols-3 gap-4 mb-4">
           <div className="flex flex-col gap-1">
             <label className="text-sm font-medium text-slate-700">Verwacht rendement beleggingen</label>
             <div className="flex items-center border border-slate-300 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-orange-400 focus-within:border-orange-400 bg-white">
@@ -218,6 +227,21 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
                 max="20"
                 value={config.spaarrente}
                 onChange={e => onConfigChange({ ...config, spaarrente: parseFloat(e.target.value) || 0 })}
+                className="flex-1 px-3 py-2 text-sm outline-none bg-white min-w-0"
+              />
+              <span className="px-3 py-2 bg-slate-100 text-slate-500 text-sm border-l border-slate-300 select-none">%</span>
+            </div>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium text-slate-700">Jaarlijkse inkomensstijging (DUO)</label>
+            <div className="flex items-center border border-slate-300 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-orange-400 focus-within:border-orange-400 bg-white">
+              <input
+                type="number"
+                step="0.1"
+                min="0"
+                max="20"
+                value={config.inkomensstijging ?? 2}
+                onChange={e => onConfigChange({ ...config, inkomensstijging: parseFloat(e.target.value) || 0 })}
                 className="flex-1 px-3 py-2 text-sm outline-none bg-white min-w-0"
               />
               <span className="px-3 py-2 bg-slate-100 text-slate-500 text-sm border-l border-slate-300 select-none">%</span>

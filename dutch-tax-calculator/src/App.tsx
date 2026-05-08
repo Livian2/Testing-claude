@@ -51,6 +51,7 @@ const DEFAULT_PROGNOSE: PrognoseConfig = {
   rendementBeleggingen: 7.0,
   spaarrente:           2.0,
   jaren:                20,
+  inkomensstijging:     2.0,
 };
 
 function loadSavedData(): TaxFormData {
@@ -296,6 +297,8 @@ export default function App() {
           <SchuldenSection
             data={data.schulden}
             taxYear={data.personal.taxYear}
+            grossSalary={data.income.grossSalary + data.income.freelanceIncome}
+            isPartner={data.personal.filingStatus === 'partner'}
             onChange={schulden => setData(d => ({ ...d, schulden }))}
           />
         )}

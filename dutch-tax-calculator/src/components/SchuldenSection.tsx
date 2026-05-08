@@ -1,12 +1,15 @@
 import { useState } from 'react';
-import { CreditCard, Plus, Trash2, ChevronDown, ChevronRight, GraduationCap, TrendingDown } from 'lucide-react';
+import { CreditCard, Plus, Trash2, ChevronDown, ChevronRight, GraduationCap, TrendingDown, BookOpen } from 'lucide-react';
 import type { SchuldenData, SchuldItem } from '../types';
+import { simuleerDuo, berekenDuoJaarbetaling, DUO_DRAAGKRACHT_VRIJ } from '../utils/duo';
 import CurrencyInput from './CurrencyInput';
 import SectionCard from './SectionCard';
 
 interface Props {
   data: SchuldenData;
   taxYear: number;
+  grossSalary: number;
+  isPartner?: boolean;
   onChange: (d: SchuldenData) => void;
 }
 
@@ -233,7 +236,161 @@ function DebtGroup({ title, icon, items, taxYear, accent, buttonColor, isDuo, on
   );
 }
 
-export default function SchuldenSection({ data, taxYear, onChange }: Props) {
+// ── DUO Simulation Card ──────────────────────────────────────────────────────
+
+const W = 520, H = 120, PAD = { t: 8, r: 12, b: 28, l: 52 };
+
+function DuoSimulatieCard({
+  duo, taxYear, grossSalary, isPartner,
+}: { duo: SchuldItem[]; taxYear: number; grossSalary: number; isPartner: boolean }) {
+  const [inkomensstijging, setInkomensstijging] = useState(2);
+
+  const maandBetaling = berekenDuoJaarbetaling(grossSalary, isPartner) / 12;
+  const drempel = isPartner ? 22_000 : DUO_DRAAGKRACHT_VRIJ;
+
+  // Simulate each DUO item and combine into yearly totals
+  const simulations = duo.filter(d => d.bedrag > 0).map(d =>
+    simuleerDuo(d, grossSalary, inkomensstijging / 100, taxYear, isPartner)
+  );
+
+  const maxJaren = 40;
+  const combined: { jaar: number; balans: number }[] = [];
+  for (let i = 0; i <= maxJaren; i++) {
+    const jaar = taxYear + i;
+    const totaalBalans = simulations.reduce((sum, sim) => {
+      const pt = sim.punten.find(p => p.jaar === jaar);
+      return sum + (pt ? pt.balans : 0);
+    }, 0);
+    combined.push({ jaar, balans: totaalBalans });
+    if (totaalBalans === 0 && i > 0) break;
+  }
+
+  const totalStartDebt    = duo.reduce((s, d) => s + d.bedrag, 0);
+  const totalKwijtschelding = simulations.reduce((s, sim) => s + sim.kwijtscheldingsBedrag, 0);
+  const totalBetaald      = simulations.reduce((s, sim) => s + sim.betaaldTotaal, 0);
+  const earliestAfgelost  = simulations.reduce<number | null>((best, sim) => {
+    if (!sim.afgelosdJaar) return best;
+    return best === null ? sim.afgelosdJaar : Math.max(best, sim.afgelosdJaar);
+  }, null);
+  const allAfgelost = simulations.every(s => s.afgelosdJaar !== null);
+
+  // SVG chart
+  const iW = W - PAD.l - PAD.r;
+  const iH = H - PAD.t - PAD.b;
+  const nPts = combined.length;
+  const maxBal = totalStartDebt || 1;
+  const xS = (i: number) => PAD.l + (i / Math.max(nPts - 1, 1)) * iW;
+  const yS = (v: number) => PAD.t + iH - Math.min(1, v / maxBal) * iH;
+  const path = combined.map((p, i) => `${i === 0 ? 'M' : 'L'}${xS(i).toFixed(1)},${yS(p.balans).toFixed(1)}`).join(' ');
+  const area = `${path} L${xS(nPts - 1).toFixed(1)},${PAD.t + iH} L${xS(0).toFixed(1)},${PAD.t + iH} Z`;
+  const xTicks = combined.filter((_, i) => i % 5 === 0 || i === nPts - 1);
+
+  const noIncome = grossSalary <= drempel;
+
+  return (
+    <SectionCard title="DUO aflossing — simulatie op basis van inkomen" icon={<BookOpen size={20} />} accent="border-blue-400">
+      <div className="space-y-4">
+        {/* Parameters */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3">
+            <p className="text-xs text-slate-500">Bruto-inkomen (huidig)</p>
+            <p className="text-base font-bold text-blue-800">{nl.format(grossSalary)}<span className="text-xs font-normal text-slate-400">/jr</span></p>
+          </div>
+          <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3">
+            <p className="text-xs text-slate-500">DUO-betaling nu</p>
+            <p className="text-base font-bold text-blue-700">
+              {noIncome ? <span className="text-slate-400 text-sm">€0 — inkomen onder drempel</span> : <>{nl.format(maandBetaling)}<span className="text-xs font-normal text-slate-400">/mnd</span></>}
+            </p>
+          </div>
+          <div className="flex flex-col gap-1 sm:col-span-1 col-span-2">
+            <label className="text-xs text-slate-500">Verwachte inkomensstijging/jr</label>
+            <div className="flex items-center border border-slate-300 rounded-lg overflow-hidden bg-white focus-within:ring-2 focus-within:ring-blue-400">
+              <input
+                type="number" step="0.5" min="0" max="15"
+                value={inkomensstijging}
+                onChange={e => setInkomensstijging(parseFloat(e.target.value) || 0)}
+                className="flex-1 px-3 py-2 text-sm outline-none bg-white min-w-0"
+              />
+              <span className="px-3 py-2 bg-slate-100 text-slate-500 text-sm border-l border-slate-300 select-none">%</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Rule explanation */}
+        <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-600 space-y-0.5">
+          <span className="font-semibold text-slate-700">DUO-betalingsregel 2026: </span>
+          4% van inkomen boven de draagkrachtvrije voet van <strong>{nl.format(drempel)}</strong>/jr.
+          Restschuld wordt na de looptijd kwijtgescholden.
+        </div>
+
+        {/* Chart */}
+        {nPts > 1 && (
+          <div>
+            <p className="text-xs font-semibold text-slate-600 mb-1">Verloop DUO-restschuld</p>
+            <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ maxHeight: 140 }}>
+              <defs>
+                <linearGradient id="duo-grad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.30" />
+                  <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.03" />
+                </linearGradient>
+              </defs>
+              <path d={area} fill="url(#duo-grad)" />
+              <path d={path} fill="none" stroke="#3b82f6" strokeWidth={2} strokeLinejoin="round" />
+              {/* current year marker */}
+              <line x1={xS(0)} y1={PAD.t} x2={xS(0)} y2={PAD.t + iH} stroke="#94a3b8" strokeWidth={1} strokeDasharray="3 2" />
+              {xTicks.map((p, i) => (
+                <text key={i} x={xS(combined.indexOf(p))} y={H - PAD.b + 14} textAnchor="middle" fontSize={9} fill="#94a3b8">{p.jaar}</text>
+              ))}
+              {[0, 0.5, 1].map(f => (
+                <g key={f}>
+                  <line x1={PAD.l} y1={yS(maxBal * f)} x2={PAD.l + iW} y2={yS(maxBal * f)} stroke="#f1f5f9" strokeWidth={1} />
+                  <text x={PAD.l - 4} y={yS(maxBal * f) + 3} textAnchor="end" fontSize={9} fill="#94a3b8">
+                    {f === 0 ? '0' : f === 1 ? nl.format(maxBal) : nl.format(maxBal * f)}
+                  </text>
+                </g>
+              ))}
+            </svg>
+          </div>
+        )}
+
+        {/* Summary */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+          <div className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5">
+            <p className="text-xs text-slate-500">Startschuld</p>
+            <p className="font-bold text-slate-800">{nl.format(totalStartDebt)}</p>
+          </div>
+          <div className="bg-blue-50 border border-blue-100 rounded-xl px-3 py-2.5">
+            <p className="text-xs text-slate-500">Totaal betaald</p>
+            <p className="font-bold text-blue-700">{nl.format(Math.round(totalBetaald))}</p>
+          </div>
+          <div className={`border rounded-xl px-3 py-2.5 ${totalKwijtschelding > 0 ? 'bg-amber-50 border-amber-100' : 'bg-green-50 border-green-100'}`}>
+            <p className="text-xs text-slate-500">{totalKwijtschelding > 0 ? 'Kwijtschelding' : 'Afgelost'}</p>
+            <p className={`font-bold ${totalKwijtschelding > 0 ? 'text-amber-700' : 'text-green-700'}`}>
+              {totalKwijtschelding > 0 ? nl.format(Math.round(totalKwijtschelding)) : (allAfgelost && earliestAfgelost ? String(earliestAfgelost) : '—')}
+            </p>
+          </div>
+          <div className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5">
+            <p className="text-xs text-slate-500">{allAfgelost ? 'Afgelost in' : 'Kwijtschelding in'}</p>
+            <p className="font-bold text-slate-700">
+              {allAfgelost && earliestAfgelost
+                ? `${earliestAfgelost} (${earliestAfgelost - taxYear} jr)`
+                : duo.map(d => `${(d.aflossingsStartJaar ?? d.startJaar) + d.looptijd}`).join(', ')}
+            </p>
+          </div>
+        </div>
+
+        {noIncome && (
+          <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+            Uw inkomen ({nl.format(grossSalary)}) ligt onder de draagkrachtvrije voet ({nl.format(drempel)}).
+            U betaalt momenteel niets aan DUO. Pas uw inkomen aan op het Inkomen-tabblad om de simulatie te zien.
+          </p>
+        )}
+      </div>
+    </SectionCard>
+  );
+}
+
+export default function SchuldenSection({ data, taxYear, grossSalary, isPartner, onChange }: Props) {
   const totalDebts = [...data.duo, ...data.beleggingen].reduce((s, d) => s + d.bedrag, 0);
   const totalRente = [...data.duo, ...data.beleggingen].reduce((s, d) => s + d.bedrag * (d.rentePercentage / 100), 0);
   const box3Debts  = Math.max(0, totalDebts - 3700);
@@ -270,6 +427,16 @@ export default function SchuldenSection({ data, taxYear, onChange }: Props) {
         onUpdate={(id, p) => onChange({ ...data, beleggingen: data.beleggingen.map(d => d.id === id ? { ...d, ...p } : d) })}
         onRemove={id => onChange({ ...data, beleggingen: data.beleggingen.filter(d => d.id !== id) })}
       />
+
+      {/* DUO aflossing simulatie */}
+      {data.duo.length > 0 && data.duo.some(d => d.bedrag > 0) && (
+        <DuoSimulatieCard
+          duo={data.duo}
+          taxYear={taxYear}
+          grossSalary={grossSalary}
+          isPartner={isPartner ?? false}
+        />
+      )}
 
       {/* Box 3 summary */}
       {totalDebts > 0 && (
