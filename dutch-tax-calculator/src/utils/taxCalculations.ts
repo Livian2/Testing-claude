@@ -337,10 +337,15 @@ export function calculateTaxes(data: TaxFormData): TaxResult {
     waardes.spaarrekeningen.reduce((s, a) => s + a.saldoJan1, 0) +
     waardes.betaalrekeningen.reduce((s, a) => s + a.saldoJan1, 0);
 
+  const hypotheekRestschuld = woon.hypotheken.reduce(
+    (s, hyp) => s + berekenHypotheek(hyp, personal.taxYear).restschuldBegin, 0,
+  );
+
   const currentNetWorth =
     totalSavingsBalance +
     (portfolioCurrentValue > 0 ? portfolioCurrentValue : portfolioJan1Value) -
-    [...schulden.duo, ...schulden.beleggingen].reduce((s, d) => s - d.bedrag, 0);
+    [...schulden.duo, ...schulden.beleggingen].reduce((s, d) => s + d.bedrag, 0) -
+    hypotheekRestschuld;
 
   return {
     box1, box3, toeslagen, totalTax, netDisposableIncome, totalExpenses,

@@ -77,8 +77,8 @@ function SchuldCard({ item, taxYear, onUpdate, onRemove, canRemove, accent, isDu
               />
             </div>
             <CurrencyInput
-              label="Restschuld (Box 3 waarde)"
-              hint="Uitstaand saldo op 1 januari"
+              label="Restschuld"
+              hint={isDuo ? 'Saldo bij start aflossing (aflossingsStartJaar)' : 'Uitstaand saldo op 1 januari'}
               value={item.bedrag}
               onChange={v => onUpdate({ bedrag: v })}
             />

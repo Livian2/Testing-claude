@@ -88,12 +88,9 @@ export function simuleerDuo(
       };
     }
 
-    // Grace period: interest accrues, no payment
+    // Before repayment start: balance is unchanged (bedrag IS the balance at aflossStart)
     if (jaar < aflossStart) {
-      const jaarRente = balans * rente;
-      punten.push({ jaar, balans, betaling: 0, rente: jaarRente, inkomen, kwijtgescholden: false });
-      balans      += jaarRente;
-      renteTotaal += jaarRente;
+      punten.push({ jaar, balans: schuld.bedrag, betaling: 0, rente: 0, inkomen, kwijtgescholden: false });
       continue;
     }
 
