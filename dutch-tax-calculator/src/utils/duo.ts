@@ -1,11 +1,13 @@
 import type { SchuldItem } from '../types';
 
 // ── DUO 2026 parameters ────────────────────────────────────────────────────
-// Draagkrachtvrije voet: 84% of the social minimum ("bijstandsnorm")
-// Bijstandsnorm single 2026 ≈ €19,100/jr → 84% ≈ €16,044  (indicatief)
-export const DUO_DRAAGKRACHT_VRIJ  = 16_044;  // threshold below which you pay nothing
-export const DUO_DRAAGKRACHT_PCT   = 0.04;    // 4% of income above threshold
-export const DUO_DRAAGKRACHT_PARTNER_VRIJ = 22_000; // higher threshold for partners
+// Draagkrachtvrije voet: 84% of the statutory minimum wage (wettelijk minimumloon)
+// WML 2026 single (incl. 8% vakantiegeld): ≈ €28,866/jr → 84% ≈ €24,248
+// Partner norm (≈ 143% WML incl. vakantiegeld): ≈ €40,246/jr → 84% ≈ €33,807
+// Both SF15 and SF35 use the same threshold; only the looptijd differs (15 vs 35 yr).
+export const DUO_DRAAGKRACHT_VRIJ         = 24_248;  // threshold below which you pay nothing (single)
+export const DUO_DRAAGKRACHT_PCT          = 0.04;    // 4% of income above threshold
+export const DUO_DRAAGKRACHT_PARTNER_VRIJ = 33_807;  // higher threshold for partners
 
 /**
  * Annual DUO repayment based on (fiscal) income.

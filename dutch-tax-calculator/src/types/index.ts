@@ -3,6 +3,7 @@ export type TransactionType = 'buy' | 'sell';
 export type FilingStatus = 'single' | 'partner';
 export type WoningType = 'huur' | 'hypotheek';
 export type HypotheekType = 'lineair' | 'aflossingsvrijij' | 'annuiteit';
+export type DuoType = 'sf15' | 'sf35';
 
 export interface Holding {
   id: string;
@@ -125,6 +126,7 @@ export interface SchuldItem {
   rentevastePeriode: number;  // fixed-rate period in years
   startJaar: number;          // year loan started
   aflossingsStartJaar?: number; // year repayment starts (DUO grace period support)
+  duoType?: DuoType;          // SF15 (≤2015 stelsel, 15 jr) or SF35 (nieuw stelsel, 35 jr)
 }
 
 export interface PrognoseConfig {

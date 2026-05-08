@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { CreditCard, Plus, Trash2, ChevronDown, ChevronRight, GraduationCap, TrendingDown, BookOpen } from 'lucide-react';
-import type { SchuldenData, SchuldItem } from '../types';
+import type { SchuldenData, SchuldItem, DuoType } from '../types';
 import { simuleerDuo, berekenDuoJaarbetaling, DUO_DRAAGKRACHT_VRIJ } from '../utils/duo';
 import CurrencyInput from './CurrencyInput';
 import SectionCard from './SectionCard';
@@ -84,10 +84,43 @@ function SchuldCard({ item, taxYear, onUpdate, onRemove, canRemove, accent, isDu
             />
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {isDuo && (
-              <div className="flex flex-col gap-1 sm:col-span-2">
-                <label className="text-xs text-slate-500">Aflossing start (jr) <span className="text-slate-400 font-normal">— optioneel (DUO grace period)</span></label>
+          {isDuo && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {/* SF15 / SF35 selector */}
+              <div className="flex flex-col gap-1 col-span-2">
+                <label className="text-xs text-slate-500">Stelsel</label>
+                <div className="flex rounded-lg border border-slate-300 overflow-hidden">
+                  {([
+                    { value: 'sf15' as DuoType, label: 'SF15', desc: 'Oud stelsel (vóór sept. 2015) · 15 jaar' },
+                    { value: 'sf35' as DuoType, label: 'SF35', desc: 'Nieuw stelsel (vanaf sept. 2015) · 35 jaar' },
+                  ]).map(opt => (
+                    <button
+                      key={opt.value}
+                      title={opt.desc}
+                      onClick={() => {
+                        const looptijd = opt.value === 'sf15' ? 15 : 35;
+                        onUpdate({ duoType: opt.value, looptijd });
+                      }}
+                      className={`flex-1 px-3 py-1.5 text-xs font-semibold transition-colors border-0 cursor-pointer ${
+                        (item.duoType ?? 'sf35') === opt.value
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-white text-slate-600 hover:bg-slate-50'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-slate-400">
+                  {(item.duoType ?? 'sf35') === 'sf15'
+                    ? 'Oud stelsel: looptijd 15 jaar (studenten vóór september 2015)'
+                    : 'Nieuw stelsel: looptijd 35 jaar (studenten vanaf september 2015)'}
+                </p>
+              </div>
+
+              {/* Grace period */}
+              <div className="flex flex-col gap-1 col-span-2">
+                <label className="text-xs text-slate-500">Aflossing start (jr) <span className="text-slate-400 font-normal">— optioneel (grace period)</span></label>
                 <input
                   type="number" min={1990} max={2100}
                   className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm bg-white outline-none focus:ring-2 focus:ring-blue-400"
@@ -99,8 +132,8 @@ function SchuldCard({ item, taxYear, onUpdate, onRemove, canRemove, accent, isDu
                   }}
                 />
               </div>
-            )}
-          </div>
+            </div>
+          )}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="flex flex-col gap-1">
               <label className="text-xs text-slate-500">Rente (%)</label>
@@ -181,7 +214,7 @@ interface DebtGroupProps {
   accent: string;
   buttonColor: string;
   isDuo?: boolean;
-  onAdd: () => void;
+  onAdd: (duoType?: DuoType) => void;
   onUpdate: (id: string, p: Partial<SchuldItem>) => void;
   onRemove: (id: string) => void;
 }
@@ -212,12 +245,29 @@ function DebtGroup({ title, icon, items, taxYear, accent, buttonColor, isDuo, on
           ))
         )}
 
-        <button
-          onClick={onAdd}
-          className={`flex items-center gap-1.5 text-xs text-white px-3 py-1.5 rounded-lg transition-colors cursor-pointer border-0 ${buttonColor}`}
-        >
-          <Plus size={13} /> Schuld toevoegen
-        </button>
+        {isDuo ? (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => onAdd('sf15')}
+              className={`flex items-center gap-1.5 text-xs text-white px-3 py-1.5 rounded-lg transition-colors cursor-pointer border-0 ${buttonColor}`}
+            >
+              <Plus size={13} /> SF15 toevoegen
+            </button>
+            <button
+              onClick={() => onAdd('sf35')}
+              className={`flex items-center gap-1.5 text-xs text-white px-3 py-1.5 rounded-lg transition-colors cursor-pointer border-0 ${buttonColor}`}
+            >
+              <Plus size={13} /> SF35 toevoegen
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => onAdd()}
+            className={`flex items-center gap-1.5 text-xs text-white px-3 py-1.5 rounded-lg transition-colors cursor-pointer border-0 ${buttonColor}`}
+          >
+            <Plus size={13} /> Schuld toevoegen
+          </button>
+        )}
 
         {items.length > 0 && totaal > 0 && (
           <div className="grid grid-cols-2 gap-3 pt-1">
@@ -317,10 +367,19 @@ function DuoSimulatieCard({
         </div>
 
         {/* Rule explanation */}
-        <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-600 space-y-0.5">
-          <span className="font-semibold text-slate-700">DUO-betalingsregel 2026: </span>
-          4% van inkomen boven de draagkrachtvrije voet van <strong>{nl.format(drempel)}</strong>/jr.
-          Restschuld wordt na de looptijd kwijtgescholden.
+        <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-600 space-y-1">
+          <p>
+            <span className="font-semibold text-slate-700">DUO-betalingsregel 2026: </span>
+            4% van inkomen boven de draagkrachtvrije voet van <strong>{nl.format(drempel)}</strong>/jr
+            {isPartner ? ' (fiscaal partner)' : ' (alleenstaand)'}.
+            Restschuld wordt na de looptijd kwijtgescholden.
+          </p>
+          {duo.some(d => d.duoType === 'sf15') && (
+            <p><span className="inline-block bg-blue-100 text-blue-700 font-semibold rounded px-1 mr-1">SF15</span>Oud stelsel · looptijd 15 jaar (studenten vóór september 2015)</p>
+          )}
+          {duo.some(d => !d.duoType || d.duoType === 'sf35') && (
+            <p><span className="inline-block bg-indigo-100 text-indigo-700 font-semibold rounded px-1 mr-1">SF35</span>Nieuw stelsel · looptijd 35 jaar (studenten vanaf september 2015)</p>
+          )}
         </div>
 
         {/* Chart */}
@@ -405,9 +464,16 @@ export default function SchuldenSection({ data, taxYear, grossSalary, isPartner,
         accent="border-blue-400"
         buttonColor="bg-blue-600 hover:bg-blue-700"
         isDuo={true}
-        onAdd={() => onChange({
+        onAdd={(duoType = 'sf35') => onChange({
           ...data,
-          duo: [...data.duo, { ...DEFAULT_SCHULD, id: uid(), label: `DUO schuld ${data.duo.length + 1}`, rentePercentage: 2.56, looptijd: 35 }],
+          duo: [...data.duo, {
+            ...DEFAULT_SCHULD,
+            id: uid(),
+            label: `DUO schuld ${data.duo.length + 1} (${duoType.toUpperCase()})`,
+            rentePercentage: 2.56,
+            looptijd: duoType === 'sf15' ? 15 : 35,
+            duoType,
+          }],
         })}
         onUpdate={(id, p) => onChange({ ...data, duo: data.duo.map(d => d.id === id ? { ...d, ...p } : d) })}
         onRemove={id => onChange({ ...data, duo: data.duo.filter(d => d.id !== id) })}
@@ -422,7 +488,11 @@ export default function SchuldenSection({ data, taxYear, grossSalary, isPartner,
         buttonColor="bg-orange-600 hover:bg-orange-700"
         onAdd={() => onChange({
           ...data,
-          beleggingen: [...data.beleggingen, { ...DEFAULT_SCHULD, id: uid(), label: `Beleggingsschuld ${data.beleggingen.length + 1}` }],
+          beleggingen: [...data.beleggingen, {
+            ...DEFAULT_SCHULD,
+            id: uid(),
+            label: `Beleggingsschuld ${data.beleggingen.length + 1}`,
+          }],
         })}
         onUpdate={(id, p) => onChange({ ...data, beleggingen: data.beleggingen.map(d => d.id === id ? { ...d, ...p } : d) })}
         onRemove={id => onChange({ ...data, beleggingen: data.beleggingen.filter(d => d.id !== id) })}
