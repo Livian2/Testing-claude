@@ -76,17 +76,17 @@ interface FondsSearchProps {
 }
 
 function FondsSearch({ value, holdings, onChange }: FondsSearchProps) {
-  const [query, setQuery]           = useState(value);
-  const [results, setResults]       = useState<SearchResultItem[]>([]);
-  const [open, setOpen]             = useState(false);
-  const [loading, setLoading]       = useState(false);
-  const timerRef                    = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const wrapperRef                  = useRef<HTMLDivElement>(null);
+  const [query, setQuery]     = useState(value);
+  const [results, setResults] = useState<SearchResultItem[]>([]);
+  const [open, setOpen]       = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [dropPos, setDropPos] = useState<{ top: number; left: number; width: number } | null>(null);
+  const timerRef              = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const inputRef              = useRef<HTMLInputElement>(null);
+  const wrapperRef            = useRef<HTMLDivElement>(null);
 
-  // Sync external value changes (e.g. when tx is reset)
   useEffect(() => { setQuery(value); }, [value]);
 
-  // Close on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
@@ -97,16 +97,32 @@ function FondsSearch({ value, holdings, onChange }: FondsSearchProps) {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
+  // Recalculate fixed position when dropdown opens or window scrolls/resizes
+  useEffect(() => {
+    if (!open || !inputRef.current) return;
+    const update = () => {
+      const r = inputRef.current!.getBoundingClientRect();
+      setDropPos({ top: r.bottom + 4, left: r.left, width: r.width });
+    };
+    update();
+    window.addEventListener('scroll', update, true);
+    window.addEventListener('resize', update);
+    return () => {
+      window.removeEventListener('scroll', update, true);
+      window.removeEventListener('resize', update);
+    };
+  }, [open]);
+
   const handleInput = (raw: string) => {
     setQuery(raw);
-    onChange(raw);  // update holdingName immediately as user types
+    onChange(raw);
     if (timerRef.current) clearTimeout(timerRef.current);
     if (raw.length < 2) { setResults([]); setOpen(false); return; }
     timerRef.current = setTimeout(async () => {
       setLoading(true);
       try {
         const res = await fetch(
-          `/api/finance/v1/finance/search?q=${encodeURIComponent(raw)}&quotesCount=10&newsCount=0&enableFuzzyQuery=false`,
+          `/api/finance/v1/finance/search?q=${encodeURIComponent(raw)}&quotesCount=15&newsCount=0&enableFuzzyQuery=false`,
           { headers: { Accept: 'application/json' } }
         );
         if (res.ok) {
@@ -133,6 +149,7 @@ function FondsSearch({ value, holdings, onChange }: FondsSearchProps) {
   return (
     <div ref={wrapperRef} className="relative">
       <input
+        ref={inputRef}
         className="w-full border border-slate-300 rounded-lg px-2 py-1.5 text-sm bg-white outline-none focus:ring-2 focus:ring-blue-400"
         placeholder="Zoek fonds…"
         value={query}
@@ -144,11 +161,14 @@ function FondsSearch({ value, holdings, onChange }: FondsSearchProps) {
       {loading && (
         <span className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 text-xs">…</span>
       )}
-      {hasDropdown && (
-        <div className="absolute z-50 left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-56 overflow-y-auto text-xs">
+      {hasDropdown && dropPos && (
+        <div
+          className="fixed z-[9999] bg-white border border-slate-200 rounded-xl shadow-xl text-xs overflow-y-auto"
+          style={{ top: dropPos.top, left: dropPos.left, width: dropPos.width, maxHeight: 260 }}
+        >
           {existingMatches.length > 0 && (
             <>
-              <div className="px-3 py-1.5 text-slate-400 font-semibold uppercase tracking-wide border-b border-slate-100">Eigen posities</div>
+              <div className="px-3 py-1.5 text-slate-400 font-semibold uppercase tracking-wide border-b border-slate-100 sticky top-0 bg-white">Eigen posities</div>
               {existingMatches.map(h => (
                 <button
                   key={h.id}
@@ -163,7 +183,7 @@ function FondsSearch({ value, holdings, onChange }: FondsSearchProps) {
           )}
           {results.length > 0 && (
             <>
-              <div className="px-3 py-1.5 text-slate-400 font-semibold uppercase tracking-wide border-b border-slate-100 border-t border-slate-100">Yahoo Finance</div>
+              <div className="px-3 py-1.5 text-slate-400 font-semibold uppercase tracking-wide border-b border-slate-100 border-t border-slate-100 sticky top-0 bg-white">Yahoo Finance</div>
               {results.map(r => (
                 <button
                   key={r.symbol}
@@ -176,11 +196,14 @@ function FondsSearch({ value, holdings, onChange }: FondsSearchProps) {
                   }}
                   className="w-full text-left px-3 py-2 hover:bg-blue-50 cursor-pointer border-0 bg-transparent flex items-center justify-between gap-2"
                 >
-                  <span className="text-slate-700">{r.shortname || r.longname || r.symbol}</span>
-                  <span className="text-slate-400 font-mono shrink-0">{r.symbol}{r.exchDisp ? ` · ${r.exchDisp}` : ''}</span>
+                  <span className="text-slate-700 truncate">{r.shortname || r.longname || r.symbol}</span>
+                  <span className="text-slate-400 font-mono shrink-0 ml-2">{r.symbol}{r.exchDisp ? ` · ${r.exchDisp}` : ''}</span>
                 </button>
               ))}
             </>
+          )}
+          {loading && (
+            <div className="px-3 py-3 text-slate-400 text-center">Zoeken…</div>
           )}
         </div>
       )}

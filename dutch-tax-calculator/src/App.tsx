@@ -1,5 +1,5 @@
-import { useState, useMemo, useEffect } from 'react';
-import { Flag, RefreshCw, Users } from 'lucide-react';
+import { useState, useMemo, useEffect, useRef } from 'react';
+import { Flag, RefreshCw, Users, Download, Upload } from 'lucide-react';
 import type { TaxFormData, FilingStatus, PrognoseConfig } from './types';
 import { calculateTaxes } from './utils/taxCalculations';
 import IncomeSection from './components/IncomeSection';
@@ -104,6 +104,47 @@ export default function App() {
   const [data, setData]         = useState<TaxFormData>(loadSavedData);
   const [prognose, setPrognose] = useState<PrognoseConfig>(loadSavedPrognose);
   const [tab, setTab]           = useState<Tab>('income');
+  const importRef               = useRef<HTMLInputElement>(null);
+
+  const handleExport = () => {
+    const payload = JSON.stringify({ data, prognose }, null, 2);
+    const blob = new Blob([payload], { type: 'application/json' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = `belasting-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const parsed = JSON.parse(ev.target?.result as string) as { data?: Partial<TaxFormData>; prognose?: Partial<PrognoseConfig> };
+        if (parsed.data) {
+          setData({
+            ...DEFAULT_DATA,
+            ...parsed.data,
+            personal:  { ...DEFAULT_DATA.personal,  ...parsed.data.personal  },
+            woon:      { ...DEFAULT_DATA.woon,       ...parsed.data.woon,
+                         hypotheken: parsed.data.woon?.hypotheken ?? DEFAULT_DATA.woon.hypotheken },
+            waardes:   { ...DEFAULT_DATA.waardes,    ...parsed.data.waardes   },
+            income:    { ...DEFAULT_DATA.income,     ...parsed.data.income    },
+            expenses:  { ...DEFAULT_DATA.expenses,   ...parsed.data.expenses  },
+            savings:   { ...DEFAULT_DATA.savings,    ...parsed.data.savings   },
+            schulden:  { ...DEFAULT_DATA.schulden,   ...parsed.data.schulden  },
+            portfolio: { ...DEFAULT_DATA.portfolio,  ...parsed.data.portfolio },
+          });
+        }
+        if (parsed.prognose) setPrognose({ ...DEFAULT_PROGNOSE, ...parsed.prognose });
+      } catch { /* invalid file — ignore */ }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
 
   // Persist to localStorage 500 ms after every change
   useEffect(() => {
@@ -154,6 +195,24 @@ export default function App() {
                 </button>
               ))}
             </div>
+
+            <button
+              onClick={handleExport}
+              className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-700 transition-colors px-2 py-1.5 bg-transparent border-0 cursor-pointer"
+              title="Exporteer gegevens als JSON"
+            >
+              <Download size={14} />
+              <span className="hidden sm:inline">Opslaan</span>
+            </button>
+
+            <label
+              className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-700 transition-colors px-2 py-1.5 cursor-pointer"
+              title="Importeer gegevens uit JSON"
+            >
+              <Upload size={14} />
+              <span className="hidden sm:inline">Laden</span>
+              <input ref={importRef} type="file" accept=".json" className="hidden" onChange={handleImport} />
+            </label>
 
             <button
               onClick={() => setData(DEFAULT_DATA)}
