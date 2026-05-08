@@ -54,6 +54,7 @@ export interface WoonData {
   gwe: number;
   vve: number;
   overig: number;
+  huurtoeslagEnabled?: boolean;
 }
 
 // ---- Waardes 1 januari (Box 3 grondslag) ----
@@ -107,6 +108,7 @@ export interface ExpensesData {
 
 export interface SavingsData {
   monthlySavingsContribution: number;
+  maandelijksBeleggen: number;
 }
 
 export interface PortfolioData {
@@ -126,8 +128,6 @@ export interface SchuldItem {
 }
 
 export interface PrognoseConfig {
-  jaarlijksSparen: number;      // annual deposit to savings
-  jaarlijksBeleggen: number;    // annual investment
   rendementBeleggingen: number; // % e.g. 7.0
   spaarrente: number;           // % e.g. 2.0
   jaren: number;                // 10, 20, or 30

@@ -160,9 +160,11 @@ export function calculateToeslagen(data: TaxFormData, box1: Box1Result, box3: Bo
   // ── Zorgtoeslag 2026 ──────────────────────────────────────────────────────
   // Max per persoon €1.912/jr; partners ontvangen elk hun eigen toeslag (≈2×).
   // Lineaire afbouw vanaf drempelinkomen tot inkomensgrens.
-  const ZORG_DREMPEL       = 24213;
-  const ZORG_MAX_SINGLE    = 1912;
-  const ZORG_MAX_PARTNER   = 3824;   // 2 × €1.912 (elk partner afzonderlijk)
+  // 2026 zorgtoeslag: max €129/mnd (€1.548/jr) single, €258/mnd (€3.096/jr) partners
+  // Lineair afgebouwd vanaf het eerste euro inkomen
+  const ZORG_DREMPEL       = 0;
+  const ZORG_MAX_SINGLE    = 1548;   // 129 × 12
+  const ZORG_MAX_PARTNER   = 3096;   // 2 × 1548
   const ZORG_LIMIT_SINGLE  = 38441;
   const ZORG_LIMIT_PARTNER = 49000;
 
@@ -189,7 +191,7 @@ export function calculateToeslagen(data: TaxFormData, box1: Box1Result, box3: Bo
   let huurtoeslag = 0;
   const jaarHuur  = woon.woningType === 'huur' ? woon.maandhuur * 12 : 0;
 
-  if (woon.woningType === 'huur' && jaarHuur > 0 && jaarHuur <= HUUR_MAX && toetsingsinkomen <= HUUR_LIMIT) {
+  if (woon.woningType === 'huur' && woon.huurtoeslagEnabled !== false && jaarHuur > 0 && jaarHuur <= HUUR_MAX && toetsingsinkomen <= HUUR_LIMIT) {
     const effectiefHuur = Math.min(jaarHuur, HUUR_AFTOP);
     const baseToeslag   = Math.max(0, effectiefHuur - HUUR_NORM);
     const incomeFactor  = Math.max(0, 1 - Math.max(0, toetsingsinkomen - HUUR_DREMPEL) / (HUUR_LIMIT - HUUR_DREMPEL));

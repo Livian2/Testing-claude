@@ -61,6 +61,133 @@ const fmtLocal = (price: number, currency: string) => {
   }
 };
 
+interface SearchResultItem {
+  symbol: string;
+  shortname?: string;
+  longname?: string;
+  quoteType?: string;
+  exchDisp?: string;
+}
+
+interface FondsSearchProps {
+  value: string;
+  holdings: Holding[];
+  onChange: (name: string, ticker?: string) => void;
+}
+
+function FondsSearch({ value, holdings, onChange }: FondsSearchProps) {
+  const [query, setQuery]           = useState(value);
+  const [results, setResults]       = useState<SearchResultItem[]>([]);
+  const [open, setOpen]             = useState(false);
+  const [loading, setLoading]       = useState(false);
+  const timerRef                    = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const wrapperRef                  = useRef<HTMLDivElement>(null);
+
+  // Sync external value changes (e.g. when tx is reset)
+  useEffect(() => { setQuery(value); }, [value]);
+
+  // Close on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const handleInput = (raw: string) => {
+    setQuery(raw);
+    onChange(raw);  // update holdingName immediately as user types
+    if (timerRef.current) clearTimeout(timerRef.current);
+    if (raw.length < 2) { setResults([]); setOpen(false); return; }
+    timerRef.current = setTimeout(async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(
+          `/api/finance/v1/finance/search?q=${encodeURIComponent(raw)}&quotesCount=10&newsCount=0&enableFuzzyQuery=false`,
+          { headers: { Accept: 'application/json' } }
+        );
+        if (res.ok) {
+          const json = await res.json() as { quotes?: SearchResultItem[] };
+          setResults((json.quotes ?? []).filter(q =>
+            q.quoteType === 'ETF' || q.quoteType === 'EQUITY' || q.quoteType === 'MUTUALFUND'
+          ));
+        }
+      } catch { /* ignore */ } finally {
+        setLoading(false);
+      }
+      setOpen(true);
+    }, 400);
+  };
+
+  const existingMatches = holdings.filter(h =>
+    query.length >= 2 &&
+    (h.name.toLowerCase().includes(query.toLowerCase()) ||
+     h.ticker.toLowerCase().includes(query.toLowerCase()))
+  );
+
+  const hasDropdown = open && (existingMatches.length > 0 || results.length > 0 || loading);
+
+  return (
+    <div ref={wrapperRef} className="relative">
+      <input
+        className="w-full border border-slate-300 rounded-lg px-2 py-1.5 text-sm bg-white outline-none focus:ring-2 focus:ring-blue-400"
+        placeholder="Zoek fonds…"
+        value={query}
+        onChange={e => handleInput(e.target.value)}
+        onFocus={() => query.length >= 2 && setOpen(true)}
+        onKeyDown={e => e.key === 'Escape' && setOpen(false)}
+        autoComplete="off"
+      />
+      {loading && (
+        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 text-xs">…</span>
+      )}
+      {hasDropdown && (
+        <div className="absolute z-50 left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-56 overflow-y-auto text-xs">
+          {existingMatches.length > 0 && (
+            <>
+              <div className="px-3 py-1.5 text-slate-400 font-semibold uppercase tracking-wide border-b border-slate-100">Eigen posities</div>
+              {existingMatches.map(h => (
+                <button
+                  key={h.id}
+                  onMouseDown={e => { e.preventDefault(); onChange(h.name, h.ticker); setQuery(h.name); setOpen(false); }}
+                  className="w-full text-left px-3 py-2 hover:bg-blue-50 cursor-pointer border-0 bg-transparent flex items-center justify-between gap-2"
+                >
+                  <span className="font-medium text-slate-800">{h.name}</span>
+                  {h.ticker && <span className="font-mono text-slate-400">{h.ticker}</span>}
+                </button>
+              ))}
+            </>
+          )}
+          {results.length > 0 && (
+            <>
+              <div className="px-3 py-1.5 text-slate-400 font-semibold uppercase tracking-wide border-b border-slate-100 border-t border-slate-100">Yahoo Finance</div>
+              {results.map(r => (
+                <button
+                  key={r.symbol}
+                  onMouseDown={e => {
+                    e.preventDefault();
+                    const name = r.shortname || r.longname || r.symbol;
+                    onChange(name, r.symbol);
+                    setQuery(name);
+                    setOpen(false);
+                  }}
+                  className="w-full text-left px-3 py-2 hover:bg-blue-50 cursor-pointer border-0 bg-transparent flex items-center justify-between gap-2"
+                >
+                  <span className="text-slate-700">{r.shortname || r.longname || r.symbol}</span>
+                  <span className="text-slate-400 font-mono shrink-0">{r.symbol}{r.exchDisp ? ` · ${r.exchDisp}` : ''}</span>
+                </button>
+              ))}
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function PortfolioSection({ data, onChange }: Props) {
   const [tab, setTab]               = useState<InnerTab>('holdings');
   const [txType, setTxType]         = useState<TransactionType>('buy');
@@ -456,9 +583,21 @@ export default function PortfolioSection({ data, onChange }: Props) {
                 <div key={tx.id} className="grid grid-cols-12 gap-2 items-end p-3 bg-slate-50 rounded-xl border border-slate-200">
                   <div className="col-span-12 sm:col-span-3 flex flex-col gap-1">
                     <label className="text-xs text-slate-500">Fonds</label>
-                    <input className="border border-slate-300 rounded-lg px-2 py-1.5 text-sm bg-white outline-none focus:ring-2 focus:ring-blue-400"
-                      placeholder="VWCE" value={tx.holdingName}
-                      onChange={e => updateTx(tx.id, { holdingName: e.target.value })} />
+                    <FondsSearch
+                      value={tx.holdingName}
+                      holdings={data.holdings}
+                      onChange={(name, ticker) => {
+                        updateTx(tx.id, { holdingName: name });
+                        // If Yahoo result selected and no matching holding exists yet, auto-create one
+                        if (ticker && !data.holdings.some(h => h.ticker === ticker || h.name === name)) {
+                          setHoldings([...data.holdings, {
+                            id: uid(), name, type: 'stocks',
+                            quantity: 0, pricePerUnit: 0, broker: tx.broker || '',
+                            ticker, currentPrice: 0,
+                          }]);
+                        }
+                      }}
+                    />
                   </div>
                   <div className="col-span-6 sm:col-span-2 flex flex-col gap-1">
                     <label className="text-xs text-slate-500">Broker</label>
@@ -592,6 +731,7 @@ export default function PortfolioSection({ data, onChange }: Props) {
                       <th className="text-right py-2 pr-3 font-medium hidden md:table-cell">Dividend/jr</th>
                       <th className="text-right py-2 pr-3 font-medium">Rendement</th>
                       <th className="text-right py-2 font-medium">Waarde</th>
+                      <th className="py-2 font-medium w-6"></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -688,6 +828,30 @@ export default function PortfolioSection({ data, onChange }: Props) {
                           <td className="py-2.5 text-right font-semibold text-slate-800">
                             {nl0.format(p.currentValue)}
                           </td>
+
+                          {/* Verwijderen */}
+                          <td className="py-2.5 pl-1">
+                            <button
+                              onClick={() => {
+                                // find all holdings that make up this merged position
+                                const matchIds = data.holdings
+                                  .filter(h => (p.ticker && h.ticker === p.ticker) || h.name === p.name)
+                                  .map(h => h.id);
+                                const matchNames = data.holdings
+                                  .filter(h => matchIds.includes(h.id))
+                                  .map(h => h.name);
+                                onChange({
+                                  ...data,
+                                  holdings:     data.holdings.filter(h => !matchIds.includes(h.id)),
+                                  transactions: data.transactions.filter(t => !matchNames.includes(t.holdingName)),
+                                });
+                              }}
+                              className="text-red-300 hover:text-red-500 transition-colors p-1 bg-transparent border-0 cursor-pointer"
+                              title="Positie en alle transacties verwijderen"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </td>
                         </tr>
                       );
                     })}
@@ -696,7 +860,7 @@ export default function PortfolioSection({ data, onChange }: Props) {
                     <tr className="border-t-2 border-slate-200">
                       <td colSpan={4} className="py-2.5 font-semibold text-slate-700 hidden sm:table-cell">Totaal</td>
                       <td colSpan={3} className="py-2.5 font-semibold text-slate-700 sm:hidden">Totaal</td>
-                      <td colSpan={3} className="py-2.5 text-right">
+                      <td colSpan={4} className="py-2.5 text-right">
                         <span className="font-bold text-slate-900">{nl0.format(totalCurrentValue)}</span>
                         {lastFetchTime && (
                           <span className="block text-xs text-slate-400 font-normal flex items-center justify-end gap-1">

@@ -39,7 +39,7 @@ const DEFAULT_DATA: TaxFormData = {
     groceries: 0, transport: 0, insurance: 0,
     healthcare: 0, education: 0, leisure: 0, other: 0,
   },
-  savings: { monthlySavingsContribution: 0 },
+  savings: { monthlySavingsContribution: 0, maandelijksBeleggen: 0 },
   schulden: { duo: [], beleggingen: [] },
   portfolio: { holdings: [], transactions: [] },
 };
@@ -48,8 +48,6 @@ const STORAGE_KEY         = 'nl-belasting-data-v1';
 const PROGNOSE_STORAGE_KEY = 'nl-belasting-prognose-v1';
 
 const DEFAULT_PROGNOSE: PrognoseConfig = {
-  jaarlijksSparen:      6000,
-  jaarlijksBeleggen:    6000,
   rendementBeleggingen: 7.0,
   spaarrente:           2.0,
   jaren:                20,
@@ -231,6 +229,8 @@ export default function App() {
           <ExpensesSection
             data={data.expenses}
             onChange={expenses => setData(d => ({ ...d, expenses }))}
+            savings={data.savings}
+            onSavingsChange={savings => setData(d => ({ ...d, savings }))}
           />
         )}
         {tab === 'schulden' && (

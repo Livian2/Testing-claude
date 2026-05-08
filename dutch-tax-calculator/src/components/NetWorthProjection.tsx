@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import type { TaxFormData, PrognoseConfig } from '../types';
 import { berekenHypotheek } from '../utils/hypotheek';
+import { computePositions } from '../utils/taxCalculations';
 import SectionCard from './SectionCard';
 import CurrencyInput from './CurrencyInput';
 import { TrendingUp } from 'lucide-react';
@@ -72,18 +73,17 @@ function niceTickRange(min: number, max: number, tickCount = 6): number[] {
 export default function NetWorthProjection({ data, config, onConfigChange }: Props) {
   const currentYear = data.personal.taxYear;
 
+  const jaarlijksSparen   = data.savings.monthlySavingsContribution * 12;
+  const jaarlijksBeleggen = data.savings.maandelijksBeleggen * 12;
+
   const points = useMemo<ProjectionPoint[]>(() => {
-    // Starting values
     const initSavings =
       data.waardes.spaarrekeningen.reduce((s, r) => s + r.saldoJan1, 0) +
       data.waardes.betaalrekeningen.reduce((s, r) => s + r.saldoJan1, 0);
 
-    // Investments: prefer actual portfolio current value (using live prices, falling
-    // back to purchase price), and only fall back to Box 3 jan-1 values if no portfolio.
-    const portfolioValue = data.portfolio.holdings.reduce((s, h) => {
-      const price = h.currentPrice > 0 ? h.currentPrice : h.pricePerUnit;
-      return s + h.quantity * price;
-    }, 0);
+    // Use actual portfolio positions (quantity × currentPrice), fall back to jan-1 Box 3 values
+    const positions = computePositions(data.portfolio.holdings, data.portfolio.transactions);
+    const portfolioValue = positions.reduce((s, p) => s + p.currentValue, 0);
     const jan1Investments = data.waardes.beleggingen.reduce((s, r) => s + r.waardeJan1, 0);
     const initInvestments = portfolioValue > 0 ? portfolioValue : jan1Investments;
 
@@ -92,24 +92,20 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
     for (let i = 0; i <= config.jaren; i++) {
       const year = currentYear + i;
 
-      // Savings: grows by spaarrente% each year + annual deposit
       const savings =
         i === 0
           ? initSavings
-          : result[i - 1].savings * (1 + config.spaarrente / 100) + config.jaarlijksSparen;
+          : result[i - 1].savings * (1 + config.spaarrente / 100) + jaarlijksSparen;
 
-      // Investments: grows by rendementBeleggingen% each year + annual investment
       const investments =
         i === 0
           ? initInvestments
-          : result[i - 1].investments * (1 + config.rendementBeleggingen / 100) + config.jaarlijksBeleggen;
+          : result[i - 1].investments * (1 + config.rendementBeleggingen / 100) + jaarlijksBeleggen;
 
-      // Hypotheek debt: sum restschuldBegin from berekenHypotheek
       const hypotheekDebt = data.woon.hypotheken.reduce((sum, hyp) => {
         return sum + berekenHypotheek(hyp, year).restschuldBegin;
       }, 0);
 
-      // DUO debt: linear decline with grace period
       const duoDebt = data.schulden.duo.reduce((sum, duo) => {
         const aflossStart = duo.aflossingsStartJaar ?? duo.startJaar;
         if (year < aflossStart) return sum + duo.bedrag;
@@ -118,7 +114,6 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
         return sum + duo.bedrag * (1 - elapsed / duo.looptijd);
       }, 0);
 
-      // Overige beleggingsschulden: linear decline from startJaar over looptijd
       const overigeDebt = data.schulden.beleggingen.reduce((sum, schuld) => {
         const elapsed = year - schuld.startJaar;
         if (elapsed < 0) return sum + schuld.bedrag;
@@ -133,7 +128,7 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
     }
 
     return result;
-  }, [data, config, currentYear]);
+  }, [data, config, currentYear, jaarlijksSparen, jaarlijksBeleggen]);
 
   // SVG dimensions
   const W = 800;
@@ -145,7 +140,8 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
   const chartW = W - padL - padR;
   const chartH = H - padT - padB;
 
-  const allValues = points.flatMap(p => [p.savings, p.investments, -p.totalDebt, p.netWorth]);
+  const box3Debt = (p: ProjectionPoint) => p.duoDebt + p.overigeDebt;
+  const allValues = points.flatMap(p => [p.savings, p.investments, -p.hypotheekDebt, -box3Debt(p), p.netWorth]);
   const dataMin = Math.min(...allValues);
   const dataMax = Math.max(...allValues);
   const valuePad = (dataMax - dataMin) * 0.05 || 1;
@@ -192,19 +188,11 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
     <SectionCard title="Vermogensprognose" icon={<TrendingUp size={20} />} accent="border-emerald-400">
       {/* Config inputs */}
       <div className="bg-slate-50 rounded-xl p-4 mb-4 border border-slate-200">
+        <p className="text-xs text-slate-500 mb-3">
+          Spaar- en beleggingsbijdragen instellen op het tabblad <strong>Kosten</strong>.
+          Huidige bijdragen: sparen <strong>{nl0.format(jaarlijksSparen)}/jr</strong> · beleggen <strong>{nl0.format(jaarlijksBeleggen)}/jr</strong>.
+        </p>
         <div className="grid grid-cols-2 gap-4 mb-4">
-          <CurrencyInput
-            label="Jaarlijkse spaarbijdrage"
-            value={config.jaarlijksSparen}
-            onChange={v => onConfigChange({ ...config, jaarlijksSparen: v })}
-            suffix="/jaar"
-          />
-          <CurrencyInput
-            label="Jaarlijkse beleggingsbijdrage"
-            value={config.jaarlijksBeleggen}
-            onChange={v => onConfigChange({ ...config, jaarlijksBeleggen: v })}
-            suffix="/jaar"
-          />
           <div className="flex flex-col gap-1">
             <label className="text-sm font-medium text-slate-700">Verwacht rendement beleggingen</label>
             <div className="flex items-center border border-slate-300 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-orange-400 focus-within:border-orange-400 bg-white">
@@ -328,42 +316,32 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
           {/* Savings line */}
           <polyline
             points={polyline(points.map(p => p.savings))}
-            fill="none"
-            stroke="#10b981"
-            strokeWidth={1.5}
-            strokeLinejoin="round"
-            strokeLinecap="round"
+            fill="none" stroke="#10b981" strokeWidth={1.5}
+            strokeLinejoin="round" strokeLinecap="round"
           />
-
           {/* Investments line */}
           <polyline
             points={polyline(points.map(p => p.investments))}
-            fill="none"
-            stroke="#8b5cf6"
-            strokeWidth={1.5}
-            strokeLinejoin="round"
-            strokeLinecap="round"
+            fill="none" stroke="#8b5cf6" strokeWidth={1.5}
+            strokeLinejoin="round" strokeLinecap="round"
           />
-
-          {/* Total debt (shown as negative) */}
+          {/* Hypotheek debt (negative) */}
           <polyline
-            points={polyline(points.map(p => -p.totalDebt))}
-            fill="none"
-            stroke="#ef4444"
-            strokeWidth={1.5}
-            strokeDasharray="5 3"
-            strokeLinejoin="round"
-            strokeLinecap="round"
+            points={polyline(points.map(p => -p.hypotheekDebt))}
+            fill="none" stroke="#f97316" strokeWidth={1.5}
+            strokeDasharray="6 3" strokeLinejoin="round" strokeLinecap="round"
           />
-
+          {/* Box 3 schulden (DUO + beleggingen, negative) */}
+          <polyline
+            points={polyline(points.map(p => -box3Debt(p)))}
+            fill="none" stroke="#ef4444" strokeWidth={1.5}
+            strokeDasharray="3 3" strokeLinejoin="round" strokeLinecap="round"
+          />
           {/* Net worth (bold) */}
           <polyline
             points={polyline(points.map(p => p.netWorth))}
-            fill="none"
-            stroke="#3b82f6"
-            strokeWidth={2.5}
-            strokeLinejoin="round"
-            strokeLinecap="round"
+            fill="none" stroke="#3b82f6" strokeWidth={2.5}
+            strokeLinejoin="round" strokeLinecap="round"
           />
         </svg>
 
@@ -372,7 +350,8 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
           {[
             { color: '#10b981', label: 'Spaarbalans', dashed: false },
             { color: '#8b5cf6', label: 'Beleggingen', dashed: false },
-            { color: '#ef4444', label: 'Totale schuld (neg.)', dashed: true },
+            { color: '#f97316', label: 'Hypotheekschuld (neg.)', dashed: true },
+            { color: '#ef4444', label: 'Box 3 schulden (neg.)', dashed: true },
             { color: '#3b82f6', label: 'Netto vermogen', dashed: false },
           ].map(({ color, label, dashed }) => (
             <div key={label} className="flex items-center gap-1.5">

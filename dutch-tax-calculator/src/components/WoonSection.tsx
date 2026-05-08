@@ -338,9 +338,16 @@ export default function WoonSection({ data, taxYear, onChange }: Props) {
             <div className="space-y-3">
               <CurrencyInput label="Maandhuur" hint="Uw maandelijkse kale huur"
                 value={data.maandhuur} onChange={v => onChange({ ...data, maandhuur: v })} />
-              <div className="bg-teal-50 border border-teal-200 rounded-xl px-3 py-2 text-xs text-teal-800">
-                Huurtoeslag wordt automatisch berekend bij lage inkomens.
-              </div>
+              <label className="flex items-center gap-2.5 cursor-pointer select-none py-2 px-3 bg-teal-50 border border-teal-200 rounded-xl">
+                <input
+                  type="checkbox"
+                  className="w-4 h-4 accent-teal-600"
+                  checked={data.huurtoeslagEnabled !== false}
+                  onChange={e => onChange({ ...data, huurtoeslagEnabled: e.target.checked })}
+                />
+                <span className="text-sm text-teal-800 font-medium">Huurtoeslag aanvragen</span>
+                <span className="text-xs text-teal-600 ml-1">— wordt automatisch berekend bij lage inkomens</span>
+              </label>
             </div>
           )}
 
