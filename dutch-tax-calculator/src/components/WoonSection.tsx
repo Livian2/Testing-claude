@@ -250,6 +250,13 @@ function HypotheekCard({
                 className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
               />
             </div>
+            <CurrencyInput
+              label="Extra aflossing per maand"
+              hint="Wordt op de 15de van elke maand betaald (optioneel)"
+              value={hyp.extraAflossingMaandelijks ?? 0}
+              onChange={v => onUpdate({ extraAflossingMaandelijks: v > 0 ? v : undefined })}
+              suffix="/mnd"
+            />
           </div>
 
           {/* Computed results */}

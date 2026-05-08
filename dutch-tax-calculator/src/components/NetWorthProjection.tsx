@@ -77,7 +77,15 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
     const initSavings =
       data.waardes.spaarrekeningen.reduce((s, r) => s + r.saldoJan1, 0) +
       data.waardes.betaalrekeningen.reduce((s, r) => s + r.saldoJan1, 0);
-    const initInvestments = data.waardes.beleggingen.reduce((s, r) => s + r.waardeJan1, 0);
+
+    // Investments: prefer actual portfolio current value (using live prices, falling
+    // back to purchase price), and only fall back to Box 3 jan-1 values if no portfolio.
+    const portfolioValue = data.portfolio.holdings.reduce((s, h) => {
+      const price = h.currentPrice > 0 ? h.currentPrice : h.pricePerUnit;
+      return s + h.quantity * price;
+    }, 0);
+    const jan1Investments = data.waardes.beleggingen.reduce((s, r) => s + r.waardeJan1, 0);
+    const initInvestments = portfolioValue > 0 ? portfolioValue : jan1Investments;
 
     const result: ProjectionPoint[] = [];
 

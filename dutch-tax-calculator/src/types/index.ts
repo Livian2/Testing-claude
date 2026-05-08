@@ -44,6 +44,7 @@ export interface HypotheekData {
   rentevastePeriode: number;  // years
   looptijd: number;           // years total
   startJaar: number;
+  extraAflossingMaandelijks?: number;  // extra monthly repayment paid on the 15th
 }
 
 export interface WoonData {
