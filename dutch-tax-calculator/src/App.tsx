@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
-import { Flag, RefreshCw, Users, Download, Upload } from 'lucide-react';
+import { Flag, RefreshCw, Users, Download, Upload, Home } from 'lucide-react';
 import type { TaxFormData, FilingStatus, PrognoseConfig } from './types';
 import { calculateTaxes } from './utils/taxCalculations';
 import IncomeSection from './components/IncomeSection';
@@ -57,6 +57,7 @@ const DEFAULT_DATA: TaxFormData = {
 
 const STORAGE_KEY         = 'nl-belasting-data-v1';
 const PROGNOSE_STORAGE_KEY = 'nl-belasting-prognose-v1';
+const TABS_STORAGE_KEY    = 'nl-belasting-tabs-v1';
 
 const DEFAULT_PROGNOSE: PrognoseConfig = {
   rendementBeleggingen: 7.0,
@@ -91,18 +92,34 @@ function loadSavedData(): TaxFormData {
 }
 
 type Tab = 'income' | 'woon' | 'waardes' | 'expenses' | 'schulden' | 'portfolio' | 'afschrijvingen' | 'prognose' | 'results';
+type AnyTab = Tab | 'home';
 
-const TABS: { id: Tab; label: string; emoji: string }[] = [
-  { id: 'income',         label: 'Inkomen',         emoji: '💼' },
-  { id: 'woon',           label: 'Wonen',           emoji: '🏠' },
-  { id: 'waardes',        label: 'Waardes 1 jan',   emoji: '📋' },
-  { id: 'expenses',       label: 'Kosten',          emoji: '🛒' },
-  { id: 'schulden',       label: 'Schulden',        emoji: '💳' },
-  { id: 'portfolio',      label: 'Beleggen',        emoji: '📈' },
-  { id: 'afschrijvingen', label: 'Afschrijvingen',  emoji: '🔄' },
-  { id: 'prognose',       label: 'Prognose',        emoji: '🔮' },
-  { id: 'results',        label: 'Berekening',      emoji: '🧮' },
+interface TabMeta { id: Tab; label: string; emoji: string; description: string }
+
+const ALL_TABS: TabMeta[] = [
+  { id: 'income',         label: 'Inkomen',         emoji: '💼', description: 'Salaris, freelance, huurinkomsten en andere Box 1 inkomsten.' },
+  { id: 'woon',           label: 'Wonen',           emoji: '🏠', description: 'Hypotheek(en), huur, VvE, GWE en extra aflossingen.' },
+  { id: 'waardes',        label: 'Waardes 1 jan',   emoji: '📋', description: 'Box 3 vermogen op 1 januari: beleggingen, spaar- en betaalrekeningen.' },
+  { id: 'expenses',       label: 'Kosten',          emoji: '🛒', description: 'Maandelijkse uitgaven, spaar- en beleggingsbijdragen.' },
+  { id: 'schulden',       label: 'Schulden',        emoji: '💳', description: 'DUO studieschuld (SF15/SF35) met aflossing simulatie, en beleggingsschulden.' },
+  { id: 'portfolio',      label: 'Beleggen',        emoji: '📈', description: 'Portefeuille beheer: aankopen, verkopen, live koersen en dividenden.' },
+  { id: 'afschrijvingen', label: 'Afschrijvingen',  emoji: '🔄', description: 'Sinking fund calculator: hoeveel spaar je per jaar voor vervangingen?' },
+  { id: 'prognose',       label: 'Prognose',        emoji: '🔮', description: 'Vermogensprognose over 10/20/30 jaar: sparen, beleggen, schulden, netto vermogen.' },
+  { id: 'results',        label: 'Berekening',      emoji: '🧮', description: 'Live belastingberekening: Box 1, Box 3, toeslagen en beschikbaar inkomen.' },
 ];
+
+const DEFAULT_ENABLED_TABS = new Set<Tab>(ALL_TABS.map(t => t.id));
+
+function loadEnabledTabs(): Set<Tab> {
+  try {
+    const raw = localStorage.getItem(TABS_STORAGE_KEY);
+    if (!raw) return DEFAULT_ENABLED_TABS;
+    const arr = JSON.parse(raw) as Tab[];
+    return new Set(arr.filter(id => ALL_TABS.some(t => t.id === id)));
+  } catch {
+    return DEFAULT_ENABLED_TABS;
+  }
+}
 
 function loadSavedPrognose(): PrognoseConfig {
   try {
@@ -115,10 +132,31 @@ function loadSavedPrognose(): PrognoseConfig {
 }
 
 export default function App() {
-  const [data, setData]         = useState<TaxFormData>(loadSavedData);
-  const [prognose, setPrognose] = useState<PrognoseConfig>(loadSavedPrognose);
-  const [tab, setTab]           = useState<Tab>('income');
-  const importRef               = useRef<HTMLInputElement>(null);
+  const [data, setData]           = useState<TaxFormData>(loadSavedData);
+  const [prognose, setPrognose]   = useState<PrognoseConfig>(loadSavedPrognose);
+  const [enabledTabs, setEnabledTabs] = useState<Set<Tab>>(loadEnabledTabs);
+  const [tab, setTab]             = useState<AnyTab>('home');
+  const importRef                 = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    localStorage.setItem(TABS_STORAGE_KEY, JSON.stringify([...enabledTabs]));
+  }, [enabledTabs]);
+
+  const toggleTab = (id: Tab) => {
+    setEnabledTabs(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+        // If currently viewing this tab, go home
+        if (tab === id) setTab('home');
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const visibleTabs = ALL_TABS.filter(t => enabledTabs.has(t.id));
 
   const handleExport = () => {
     const payload = JSON.stringify({ data, prognose }, null, 2);
@@ -242,7 +280,21 @@ export default function App() {
 
         {/* Tabs */}
         <div className="max-w-5xl mx-auto px-4 sm:px-6 flex overflow-x-auto">
-          {TABS.map(t => (
+          {/* Home tab — always visible */}
+          <button
+            onClick={() => setTab('home')}
+            className={`flex items-center gap-1.5 px-3 py-2.5 text-sm whitespace-nowrap border-b-2 transition-colors cursor-pointer bg-transparent border-x-0 border-t-0 ${
+              tab === 'home'
+                ? 'border-orange-500 text-orange-600 font-medium'
+                : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+            }`}
+          >
+            <Home size={14} />
+            Start
+          </button>
+
+          {/* User-selected tabs */}
+          {visibleTabs.map(t => (
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
@@ -266,6 +318,64 @@ export default function App() {
 
       {/* Main content */}
       <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
+        {tab === 'home' && (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-xl font-bold text-slate-800 mb-1">Welkom bij NL Belastingcalculator</h2>
+              <p className="text-sm text-slate-500">Kies hieronder welke tabbladen je wilt gebruiken. Klik op een tabblad om er naartoe te gaan.</p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {ALL_TABS.map(t => {
+                const enabled = enabledTabs.has(t.id);
+                return (
+                  <div
+                    key={t.id}
+                    className={`bg-white border-2 rounded-2xl p-4 flex flex-col gap-3 transition-all ${
+                      enabled ? 'border-orange-200 shadow-sm' : 'border-slate-200 opacity-60'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-2xl">{t.emoji}</span>
+                        <span className="font-semibold text-slate-800 text-sm">{t.label}</span>
+                      </div>
+                      {/* Toggle */}
+                      <button
+                        onClick={() => toggleTab(t.id)}
+                        className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none ${
+                          enabled ? 'bg-orange-500' : 'bg-slate-200'
+                        }`}
+                        role="switch"
+                        aria-checked={enabled}
+                      >
+                        <span
+                          className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
+                            enabled ? 'translate-x-5' : 'translate-x-0'
+                          }`}
+                        />
+                      </button>
+                    </div>
+                    <p className="text-xs text-slate-500 leading-relaxed">{t.description}</p>
+                    {enabled && (
+                      <button
+                        onClick={() => setTab(t.id)}
+                        className="mt-auto text-xs text-orange-600 hover:text-orange-700 font-medium text-left bg-transparent border-0 cursor-pointer p-0"
+                      >
+                        Ga naar {t.label} →
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-xs text-blue-800">
+              <strong>Tip:</strong> Zet tabbladen die je niet gebruikt uit om de navigatie overzichtelijk te houden. Je gegevens blijven bewaard.
+            </div>
+          </div>
+        )}
+
         {tab === 'income' && (
           <div className="space-y-4">
             <IncomeSection
