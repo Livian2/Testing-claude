@@ -384,10 +384,9 @@ export function calculateTaxes(data: TaxFormData): TaxResult {
 
   const currentNetWorth =
     totalSavingsBalance +
-    (portfolioCurrentValue > 0 ? portfolioCurrentValue : portfolioJan1Value) -
+    portfolioCurrentValue -
     [...schulden.duo, ...schulden.beleggingen].reduce((s, d) => s + d.bedrag, 0) -
-    hypotheekRestschuld -
-    afschrijvingenActueel;
+    hypotheekRestschuld;
 
   return {
     box1, box3, toeslagen, totalTax, netDisposableIncome, totalExpenses,
