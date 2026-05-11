@@ -240,6 +240,7 @@ export interface Box3Result {
 export interface Toeslagen {
   zorgtoeslag: number;
   huurtoeslag: number;
+  hypotheekrenteaftrek: number;  // tax saving from HRA, not included in total
   total: number;
 }
 

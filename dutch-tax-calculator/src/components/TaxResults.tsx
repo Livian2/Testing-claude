@@ -26,7 +26,7 @@ export default function TaxResults({ result }: Props) {
     actualSavingsInterest, currentNetWorth, afschrijvingenActueel,
   } = result;
 
-  const hasToeslagen = toeslagen.total > 0;
+  const hasToeslagen = toeslagen.total > 0 || toeslagen.hypotheekrenteaftrek > 0;
   const hasPriceDiff = portfolioCurrentValue > 0 && Math.abs(portfolioCurrentValue - portfolioJan1Value) > 1;
   const grossIncome  = box1.taxableIncome;
 
@@ -63,10 +63,8 @@ export default function TaxResults({ result }: Props) {
           <div className="mt-4 pt-4 border-t border-slate-700 flex items-center gap-2">
             <Gift size={15} className="text-teal-400 shrink-0" />
             <span className="text-sm text-slate-300">
-              U ontvangt ca. <span className="text-teal-400 font-bold">{fmt(toeslagen.total)}</span> aan toeslagen per jaar
-              {toeslagen.zorgtoeslag > 0 && ` (zorgtoeslag ${fmt(toeslagen.zorgtoeslag)}`}
-              {toeslagen.huurtoeslag > 0 && ` · huurtoeslag ${fmt(toeslagen.huurtoeslag)}`}
-              {hasToeslagen && ')'}
+              {toeslagen.total > 0 && <>U ontvangt ca. <span className="text-teal-400 font-bold">{fmt(toeslagen.total)}</span> aan toeslagen</>}
+              {toeslagen.hypotheekrenteaftrek > 0 && <> · HRA belastingvoordeel <span className="text-blue-400 font-bold">{fmt(toeslagen.hypotheekrenteaftrek)}</span></>}
             </span>
           </div>
         )}
@@ -77,7 +75,7 @@ export default function TaxResults({ result }: Props) {
         <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
           <div className="flex items-center gap-3 px-6 py-4 border-b-2 border-teal-400 bg-gradient-to-r from-teal-50 to-white dark:from-slate-800 dark:to-slate-800">
             <Gift size={18} className="text-teal-500" />
-            <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">Toeslagen (indicatief)</h3>
+            <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">Toeslagen & voordelen (indicatief)</h3>
           </div>
           <div className="p-6 space-y-3">
             <div className="flex items-start gap-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-3 text-xs text-amber-800 dark:text-amber-300">
@@ -100,11 +98,20 @@ export default function TaxResults({ result }: Props) {
                   <p className="text-xs text-teal-600 dark:text-teal-400 opacity-60 mt-1">{fmt(Math.round(toeslagen.huurtoeslag / 12))} per maand</p>
                 </div>
               )}
-              <div className="rounded-xl border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 p-4">
-                <p className="text-xs font-medium text-green-700 dark:text-green-400 opacity-75 mb-1">Totaal toeslagen</p>
-                <p className="text-xl font-bold text-green-700 dark:text-green-400">{fmt(toeslagen.total)}</p>
-                <p className="text-xs text-green-600 dark:text-green-500 opacity-60 mt-1">{fmt(Math.round(toeslagen.total / 12))} per maand</p>
-              </div>
+              {toeslagen.hypotheekrenteaftrek > 0 && (
+                <div className="rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 p-4">
+                  <p className="text-xs font-medium text-blue-700 dark:text-blue-300 opacity-75 mb-1">Hypotheekrenteaftrek</p>
+                  <p className="text-xl font-bold text-blue-700 dark:text-blue-300">{fmt(toeslagen.hypotheekrenteaftrek)}</p>
+                  <p className="text-xs text-blue-600 dark:text-blue-400 opacity-60 mt-1">belastingvoordeel / jaar</p>
+                </div>
+              )}
+              {toeslagen.total > 0 && (
+                <div className="rounded-xl border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 p-4">
+                  <p className="text-xs font-medium text-green-700 dark:text-green-400 opacity-75 mb-1">Totaal toeslagen</p>
+                  <p className="text-xl font-bold text-green-700 dark:text-green-400">{fmt(toeslagen.total)}</p>
+                  <p className="text-xs text-green-600 dark:text-green-500 opacity-60 mt-1">{fmt(Math.round(toeslagen.total / 12))} per maand</p>
+                </div>
+              )}
             </div>
           </div>
         </div>

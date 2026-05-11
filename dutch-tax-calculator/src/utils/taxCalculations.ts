@@ -216,10 +216,34 @@ export function calculateToeslagen(data: TaxFormData, box1: Box1Result, box3: Bo
     huurtoeslag = baseToeslag * incomeFactor;
   }
 
+  // ── Hypotheekrenteaftrek (HRA) ────────────────────────────────────────────
+  // Exact tax saving = bracket tax on income-without-HRA minus income-with-HRA
+  const mortgageInterest = woon.woningType === 'hypotheek'
+    ? woon.hypotheken.reduce((s, hyp) => {
+        if (hyp.leningBedrag > 0 && hyp.rentePercentage > 0 && hyp.looptijd > 0)
+          return s + berekenHypotheek(hyp, personal.taxYear).jaarRente;
+        return s;
+      }, 0)
+    : 0;
+
+  function bracketTax(income: number): number {
+    let tax = 0;
+    let rem = Math.max(0, income);
+    if (rem > 78426)  { tax += (rem - 78426) * 0.4950; rem = 78426; }
+    if (rem > 38441)  { tax += (rem - 38441) * 0.3748; rem = 38441; }
+    tax += rem * 0.3582;
+    return tax;
+  }
+
+  const incomeWithHRA    = box1.taxableIncome;
+  const incomeWithoutHRA = box1.taxableIncome + mortgageInterest;
+  const hypotheekrenteaftrek = Math.max(0, Math.round(bracketTax(incomeWithoutHRA) - bracketTax(incomeWithHRA)));
+
   return {
-    zorgtoeslag: Math.round(zorgtoeslag),
-    huurtoeslag: Math.round(huurtoeslag),
-    total:        Math.round(zorgtoeslag + huurtoeslag),
+    zorgtoeslag:          Math.round(zorgtoeslag),
+    huurtoeslag:          Math.round(huurtoeslag),
+    hypotheekrenteaftrek,
+    total:                Math.round(zorgtoeslag + huurtoeslag),
   };
 }
 
