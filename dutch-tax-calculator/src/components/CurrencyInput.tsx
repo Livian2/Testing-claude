@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, type ReactNode } from 'react';
 
 interface Props {
   label: string;
@@ -10,6 +10,7 @@ interface Props {
   min?: number;
   max?: number;
   decimals?: boolean;
+  tooltip?: ReactNode;
 }
 
 function formatNL(n: number, decimals = false): string {
@@ -27,7 +28,7 @@ function parseNL(s: string): number {
 }
 
 export default function CurrencyInput({
-  label, value, onChange, hint, prefix = '€', suffix, min = 0, decimals = false,
+  label, value, onChange, hint, prefix = '€', suffix, min = 0, decimals = false, tooltip,
 }: Props) {
   const [display, setDisplay] = useState(formatNL(value, decimals));
   const focused = useRef(false);
@@ -41,7 +42,7 @@ export default function CurrencyInput({
 
   return (
     <div className="flex flex-col gap-1">
-      <label className="text-sm font-medium text-slate-700">{label}</label>
+      <label className="text-sm font-medium text-slate-700 flex items-center gap-1">{label}{tooltip}</label>
       {hint && <p className="text-xs text-slate-500">{hint}</p>}
       <div className="flex items-center border border-slate-300 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-orange-400 focus-within:border-orange-400 bg-white">
         {prefix && (

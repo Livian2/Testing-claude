@@ -4,6 +4,7 @@ import type { WoonData, HypotheekData, HypotheekType, WoningType } from '../type
 import { berekenHypotheek } from '../utils/hypotheek';
 import CurrencyInput from './CurrencyInput';
 import SectionCard from './SectionCard';
+import InfoTooltip from './InfoTooltip';
 
 interface Props {
   data: WoonData;
@@ -16,10 +17,10 @@ function uid() { return Math.random().toString(36).slice(2); }
 const nl  = new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
 const nl2 = new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-const HYPOTHEEK_TYPES: { value: HypotheekType; label: string; desc: string }[] = [
-  { value: 'annuiteit',        label: 'Annuïteit',     desc: 'Vaste maandlast' },
-  { value: 'lineair',          label: 'Lineair',        desc: 'Dalende maandlast' },
-  { value: 'aflossingsvrijij', label: 'Aflossingsvrij', desc: 'Alleen rente' },
+const HYPOTHEEK_TYPES: { value: HypotheekType; label: string; desc: string; tip: string }[] = [
+  { value: 'annuiteit',        label: 'Annuïteit',     desc: 'Vaste maandlast',   tip: 'Vaste maandlast gedurende de hele looptijd. Aan het begin betaalt u vooral rente, aan het einde vooral aflossing.' },
+  { value: 'lineair',          label: 'Lineair',        desc: 'Dalende maandlast', tip: 'Elke maand lost u een vast bedrag af. De rente daalt elk jaar, dus uw maandlast wordt steeds lager.' },
+  { value: 'aflossingsvrijij', label: 'Aflossingsvrij', desc: 'Alleen rente',      tip: 'U betaalt alleen rente, u lost niets af. De schuld blijft gelijk. Let op: u heeft geen recht op hypotheekrenteaftrek bij nieuw afgesloten aflossingsvrije hypotheken.' },
 ];
 
 const DEFAULT_HYP: Omit<HypotheekData, 'id' | 'label'> = {
@@ -194,7 +195,7 @@ function HypotheekCard({
                       : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
                   }`}
                 >
-                  <span className="text-xs font-semibold">{ht.label}</span>
+                  <span className="text-xs font-semibold flex items-center gap-1">{ht.label} <InfoTooltip tip={ht.tip} /></span>
                   <span className="text-xs opacity-70">{ht.desc}</span>
                 </button>
               ))}
@@ -208,9 +209,10 @@ function HypotheekCard({
               hint="Oorspronkelijke hoofdsom"
               value={hyp.leningBedrag}
               onChange={v => onUpdate({ leningBedrag: v })}
+              tooltip={<InfoTooltip tip="Het oorspronkelijk geleende bedrag van de hypotheek." />}
             />
             <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-slate-700">Rentepercentage</label>
+              <label className="text-sm font-medium text-slate-700 flex items-center gap-1">Rentepercentage <InfoTooltip tip="Het jaarlijkse rentepercentage dat u betaalt over de hypotheekschuld." /></label>
               <div className="relative">
                 <input type="number" min="0" max="20" step="0.01" value={hyp.rentePercentage || ''}
                   onChange={e => onUpdate({ rentePercentage: parseFloat(e.target.value) || 0 })}
@@ -221,7 +223,7 @@ function HypotheekCard({
               </div>
             </div>
             <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-slate-700">Rentevaste periode</label>
+              <label className="text-sm font-medium text-slate-700 flex items-center gap-1">Rentevaste periode <InfoTooltip tip="Het aantal jaren dat uw rente vaststaat. Na deze periode wordt de rente opnieuw vastgesteld op basis van de marktrente." /></label>
               <div className="relative">
                 <input type="number" min="1" max="30" step="1" value={hyp.rentevastePeriode || ''}
                   onChange={e => onUpdate({ rentevastePeriode: parseInt(e.target.value) || 0 })}
@@ -232,7 +234,7 @@ function HypotheekCard({
               </div>
             </div>
             <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-slate-700">Looptijd lening</label>
+              <label className="text-sm font-medium text-slate-700 flex items-center gap-1">Looptijd lening <InfoTooltip tip="De totale duur van de hypotheek in jaren. Standaard is 30 jaar." /></label>
               <div className="relative">
                 <input type="number" min="1" max="40" step="1" value={hyp.looptijd || ''}
                   onChange={e => onUpdate({ looptijd: parseInt(e.target.value) || 0 })}
@@ -256,6 +258,7 @@ function HypotheekCard({
               value={hyp.extraAflossingMaandelijks ?? 0}
               onChange={v => onUpdate({ extraAflossingMaandelijks: v > 0 ? v : undefined })}
               suffix="/mnd"
+              tooltip={<InfoTooltip tip="Een extra bedrag dat u bovenop uw normale maandlast aflost. Dit versnelt de aflossing en bespaart rentekosten." />}
             />
           </div>
 
