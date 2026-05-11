@@ -47,7 +47,8 @@ function jaarDeposit(item: AfschrijvingItem, rate: number, year: number): number
   const effectiveEnd   = replace  < yearEnd   ? replace  : yearEnd;
   if (effectiveEnd <= effectiveStart) return 0;
 
-  const pmt      = sinkingFundPMT(item.aankoopprijs, rate, item.looptijdJaren);
+  const replacementCost = item.aankoopprijs * Math.pow(1 + rate, item.looptijdJaren);
+  const pmt      = sinkingFundPMT(replacementCost, rate, item.looptijdJaren);
   const MS_YEAR  = 365.25 * 24 * 3600 * 1000;
   const fraction = (effectiveEnd.getTime() - effectiveStart.getTime()) / MS_YEAR;
   return pmt * fraction;
@@ -152,9 +153,12 @@ function CatRow({ cat, rate, taxYear, years, onUpdate, onRemove }: CatRowProps) 
 
       {/* Item rows */}
       {open && cat.items.map(item => {
-        const replDate  = getReplacementDate(item);
-        const replYear  = replDate ? replDate.getFullYear() : null;
-        const reserved  = item.aankoopprijs > 0 ? gereserveerdTotNu(item, rate, taxYear) : 0;
+        const replDate       = getReplacementDate(item);
+        const replYear       = replDate ? replDate.getFullYear() : null;
+        const replacementCost = item.aankoopprijs > 0
+          ? item.aankoopprijs * Math.pow(1 + rate, item.looptijdJaren)
+          : 0;
+        const reserved       = item.aankoopprijs > 0 ? gereserveerdTotNu(item, rate, taxYear) : 0;
 
         return (
           <tr key={item.id} className="border-b border-slate-100 hover:bg-slate-50">
@@ -210,10 +214,10 @@ function CatRow({ cat, rate, taxYear, years, onUpdate, onRemove }: CatRowProps) 
                 <span className="ml-1 text-red-500 font-semibold">!</span>
               )}
             </td>
-            {/* Reserved so far */}
+            {/* Reserved so far / inflation-adjusted target */}
             <td className="px-2 py-1.5 text-xs text-right">
               {item.aankoopprijs > 0 ? (
-                <span className="text-slate-500">{nl0.format(reserved)} / {nl0.format(item.aankoopprijs)}</span>
+                <span className="text-slate-500">{nl0.format(reserved)} / {nl0.format(replacementCost)}</span>
               ) : '—'}
             </td>
             {/* Year cells */}
@@ -398,7 +402,7 @@ export default function AfschrijvingenSection({ data, taxYear, onChange }: Props
         <span className="flex items-center gap-1.5"><span className="inline-block w-3 h-3 rounded bg-red-100" />Verleden (gespaard)</span>
         <span className="flex items-center gap-1.5"><span className="inline-block w-3 h-3 rounded bg-amber-100" />Huidig jaar</span>
         <span className="flex items-center gap-1.5"><span className="inline-block w-3 h-3 rounded bg-green-100" />Toekomstige jaren</span>
-        <span className="ml-2">Sinking fund: gelijke jaarlijkse inleg om aankoopprijs terug te sparen o.b.v. spaarrente.</span>
+        <span className="ml-2">Sinking fund: gelijke jaarlijkse inleg om de inflatie-gecorrigeerde vervangingskosten te sparen o.b.v. spaarrente.</span>
       </div>
     </div>
   );

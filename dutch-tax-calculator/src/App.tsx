@@ -45,13 +45,7 @@ const DEFAULT_DATA: TaxFormData = {
   portfolio: { holdings: [], transactions: [] },
   afschrijvingen: {
     rentePercentage: 4.0,
-    categorieen: [
-      { id: 'cat-mobile',      naam: 'Mobile',       items: [] },
-      { id: 'cat-pc',          naam: 'PC',            items: [] },
-      { id: 'cat-peripherals', naam: 'Peripherals',   items: [] },
-      { id: 'cat-camera',      naam: 'Camera',        items: [] },
-      { id: 'cat-overig',      naam: 'Overig',        items: [] },
-    ],
+    categorieen: [],
   },
 };
 
