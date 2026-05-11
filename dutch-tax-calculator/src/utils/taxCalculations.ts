@@ -6,37 +6,40 @@ import { berekenHypotheek } from './hypotheek';
 import { totalAfschrijvingenGereserveerd, gereserveerdTotNu } from './afschrijvingen';
 
 // ─── 2026 Tax Parameters ───────────────────────────────────────────────────
-// Source: Belastingplan 2026 / Belastingdienst (indicatief)
+// Source: Belastingdienst.nl tabellen 2026 (vastgesteld)
 
 const BOX1_BRACKETS_2026 = [
-  { limit: 40021,    rate: 0.3582 },
-  { limit: 76817,    rate: 0.3748 },
+  { limit: 38441,    rate: 0.3582 },
+  { limit: 78426,    rate: 0.3748 },
   { limit: Infinity, rate: 0.4950 },
 ];
 
-// Algemene heffingskorting 2026: max €3.428, afbouw tot €0 bij €76.817
+// Algemene heffingskorting 2026: max €3.115, afbouw 6,398% vanaf €29.736 tot €0 bij €78.426
+// Bron: tabel-algemene-heffingskorting-2026 (belastingdienst.nl)
 function calcAlgemeneHeffingskorting(taxableIncome: number): number {
-  if (taxableIncome <= 25268) return 3428;
-  if (taxableIncome <= 76817)
-    return Math.max(0, Math.round(3428 - (taxableIncome - 25268) * (3428 / (76817 - 25268))));
+  if (taxableIncome <= 29736) return 3115;
+  if (taxableIncome <= 78426)
+    return Math.max(0, Math.round(3115 - (taxableIncome - 29736) * 0.06398));
   return 0;
 }
 
-// Arbeidskorting 2026: max €5.599 bij ~€43.071, afbouw tot €0 bij ~€129.077
+// Arbeidskorting 2026: max €5.685 bij €45.593, afbouw 6,510% tot €0 bij ~€132.920
+// Bron: tabel-arbeidskorting-2026 (belastingdienst.nl)
+// Verificatie: AK(€50.000) = €5.685 - (50.000-45.593)×6,51% = €5.398 ≈ €5.399 ✓
 function calcArbeidskorting(employmentIncome: number): number {
-  if (employmentIncome <= 0)      return 0;
-  // Opbouwfase 1: 8,231% t/m €11.491
-  if (employmentIncome <= 11491)
-    return Math.round(employmentIncome * 0.08231);
-  // Opbouwfase 2: +29,861% t/m €24.820  →  max €4.927
-  if (employmentIncome <= 24820)
-    return Math.round(946 + (employmentIncome - 11491) * 0.29861);
-  // Opbouwfase 3: +3,682% t/m €43.071  →  max €5.599
-  if (employmentIncome <= 43071)
-    return Math.round(4927 + (employmentIncome - 24820) * 0.03682);
-  // Afbouwfase: −6,510% boven €43.071  →  €0 bij ~€129.077
-  if (employmentIncome <= 129077)
-    return Math.max(0, Math.round(5599 - (employmentIncome - 43071) * 0.06510));
+  if (employmentIncome <= 0) return 0;
+  // Opbouwfase 1: 8,324% t/m €11.965  →  max €996
+  if (employmentIncome <= 11965)
+    return Math.round(employmentIncome * 0.08324);
+  // Opbouwfase 2: +31,009% t/m €25.845  →  max €5.300
+  if (employmentIncome <= 25845)
+    return Math.round(996 + (employmentIncome - 11965) * 0.31009);
+  // Opbouwfase 3: +1,950% t/m €45.593  →  max €5.685
+  if (employmentIncome <= 45593)
+    return Math.round(5300 + (employmentIncome - 25845) * 0.01950);
+  // Afbouwfase: −6,510% boven €45.593  →  €0 bij ~€132.920
+  if (employmentIncome <= 132920)
+    return Math.max(0, Math.round(5685 - (employmentIncome - 45593) * 0.06510));
   return 0;
 }
 
