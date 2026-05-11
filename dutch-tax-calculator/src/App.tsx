@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import { Flag, RefreshCw, Users, Download, Upload, Home, Moon, Sun } from 'lucide-react';
 import type { TaxFormData, FilingStatus, PrognoseConfig } from './types';
 import { calculateTaxes } from './utils/taxCalculations';
+import { useLanguage } from './i18n/LanguageContext';
 import IncomeSection from './components/IncomeSection';
 import ExpensesSection from './components/ExpensesSection';
 import SchuldenSection from './components/SchuldenSection';
@@ -136,6 +137,7 @@ function loadSavedPrognose(): PrognoseConfig {
 }
 
 export default function App() {
+  const { lang, setLang, t } = useLanguage();
   const [data, setData]           = useState<TaxFormData>(loadSavedData);
   const [prognose, setPrognose]   = useState<PrognoseConfig>(loadSavedPrognose);
   const [enabledTabs, setEnabledTabs] = useState<Set<Tab>>(loadEnabledTabs);
@@ -172,7 +174,19 @@ export default function App() {
     });
   };
 
-  const visibleTabs = ALL_TABS.filter(t => enabledTabs.has(t.id));
+  const visibleTabs = ALL_TABS.filter(tab => enabledTabs.has(tab.id));
+
+  const TAB_LABELS: Record<Tab, string> = {
+    income:         t.tabs.income,
+    woon:           t.tabs.housing,
+    waardes:        t.tabs.values,
+    expenses:       t.tabs.expenses,
+    schulden:       t.tabs.debts,
+    portfolio:      t.tabs.portfolio,
+    afschrijvingen: t.tabs.depreciation,
+    prognose:       t.tabs.forecast,
+    results:        t.tabs.results,
+  };
 
   const handleExport = () => {
     const payload = JSON.stringify({ data, prognose }, null, 2);
@@ -242,8 +256,8 @@ export default function App() {
               <span className="text-sm font-bold">NL Belasting</span>
             </div>
             <div className="hidden sm:block">
-              <h1 className="text-base font-semibold text-slate-800 dark:text-slate-100 m-0">Belastingcalculator voor Beleggers</h1>
-              <p className="text-xs text-slate-500 dark:text-slate-400 m-0">Box 1 &amp; Box 3 — Belastingjaar 2026</p>
+              <h1 className="text-base font-semibold text-slate-800 dark:text-slate-100 m-0">{t.appTitle}</h1>
+              <p className="text-xs text-slate-500 dark:text-slate-400 m-0">{t.appSubtitle}</p>
             </div>
           </div>
 
@@ -260,7 +274,7 @@ export default function App() {
                   }`}
                 >
                   <Users size={12} />
-                  {s === 'single' ? 'Alleenstaand' : 'Fiscaal partner'}
+                  {s === 'single' ? t.personal.single : t.personal.partner}
                 </button>
               ))}
             </div>
@@ -268,28 +282,35 @@ export default function App() {
             <button
               onClick={handleExport}
               className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors px-2 py-1.5 bg-transparent border-0 cursor-pointer"
-              title="Exporteer gegevens als JSON"
+              title={t.export}
             >
               <Download size={14} />
-              <span className="hidden sm:inline">Opslaan</span>
+              <span className="hidden sm:inline">{t.export}</span>
             </button>
 
             <label
               className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors px-2 py-1.5 cursor-pointer"
-              title="Importeer gegevens uit JSON"
+              title={t.import}
             >
               <Upload size={14} />
-              <span className="hidden sm:inline">Laden</span>
+              <span className="hidden sm:inline">{t.import}</span>
               <input ref={importRef} type="file" accept=".json" className="hidden" onChange={handleImport} />
             </label>
 
             <button
               onClick={() => setData(DEFAULT_DATA)}
               className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors px-2 py-1.5 bg-transparent border-0 cursor-pointer"
-              title="Reset alle gegevens"
+              title={t.reset}
             >
               <RefreshCw size={14} />
-              <span className="hidden sm:inline">Reset</span>
+              <span className="hidden sm:inline">{t.reset}</span>
+            </button>
+
+            <button
+              onClick={() => setLang(lang === 'nl' ? 'en' : 'nl')}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors cursor-pointer"
+            >
+              {lang === 'nl' ? '🇬🇧 EN' : '🇳🇱 NL'}
             </button>
 
             <button
@@ -319,19 +340,19 @@ export default function App() {
           </button>
 
           {/* User-selected tabs */}
-          {visibleTabs.map(t => (
+          {visibleTabs.map(tabMeta => (
             <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
+              key={tabMeta.id}
+              onClick={() => setTab(tabMeta.id)}
               className={`flex items-center gap-1.5 px-3 py-2.5 text-sm whitespace-nowrap border-b-2 transition-colors cursor-pointer bg-transparent border-x-0 border-t-0 ${
-                tab === t.id
+                tab === tabMeta.id
                   ? 'border-orange-500 text-orange-600 font-medium'
                   : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600'
               }`}
             >
-              <span>{t.emoji}</span>
-              {t.label}
-              {t.id === 'results' && (
+              <span>{tabMeta.emoji}</span>
+              {TAB_LABELS[tabMeta.id]}
+              {tabMeta.id === 'results' && (
                 <span className="ml-1 bg-orange-100 text-orange-700 text-xs font-bold px-1.5 py-0.5 rounded-full">
                   Live
                 </span>
@@ -351,23 +372,23 @@ export default function App() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {ALL_TABS.map(t => {
-                const enabled = enabledTabs.has(t.id);
+              {ALL_TABS.map(tabMeta => {
+                const enabled = enabledTabs.has(tabMeta.id);
                 return (
                   <div
-                    key={t.id}
+                    key={tabMeta.id}
                     className={`bg-white dark:bg-slate-800 border-2 rounded-2xl p-4 flex flex-col gap-3 transition-all ${
                       enabled ? 'border-orange-200 dark:border-orange-800 shadow-sm' : 'border-slate-200 dark:border-slate-700 opacity-60'
                     }`}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-center gap-2">
-                        <span className="text-2xl">{t.emoji}</span>
-                        <span className="font-semibold text-slate-800 dark:text-slate-100 text-sm">{t.label}</span>
+                        <span className="text-2xl">{tabMeta.emoji}</span>
+                        <span className="font-semibold text-slate-800 dark:text-slate-100 text-sm">{TAB_LABELS[tabMeta.id]}</span>
                       </div>
                       {/* Toggle */}
                       <button
-                        onClick={() => toggleTab(t.id)}
+                        onClick={() => toggleTab(tabMeta.id)}
                         className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none ${
                           enabled ? 'bg-orange-500' : 'bg-slate-200 dark:bg-slate-700'
                         }`}
@@ -381,13 +402,13 @@ export default function App() {
                         />
                       </button>
                     </div>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{t.description}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{tabMeta.description}</p>
                     {enabled && (
                       <button
-                        onClick={() => setTab(t.id)}
+                        onClick={() => setTab(tabMeta.id)}
                         className="mt-auto text-xs text-orange-600 hover:text-orange-700 font-medium text-left bg-transparent border-0 cursor-pointer p-0"
                       >
-                        Ga naar {t.label} →
+                        Ga naar {TAB_LABELS[tabMeta.id]} →
                       </button>
                     )}
                   </div>

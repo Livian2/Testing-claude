@@ -26,8 +26,8 @@ interface BrokerDef {
 }
 
 const BROKERS: BrokerDef[] = [
-  { id: 'degiro', name: 'DEGIRO',                    description: 'Transacties CSV via "Exporteer"',          available: true, color: 'border-green-500 bg-green-50 text-green-800' },
-  { id: 'ibkr',   name: 'Interactive Brokers (IBKR)', description: 'Transaction History CSV via Flex Query',  available: true, color: 'border-blue-500 bg-blue-50 text-blue-800' },
+  { id: 'degiro', name: 'DEGIRO',                    description: 'Transacties CSV via "Exporteer"',          available: true, color: 'border-green-500 bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-300' },
+  { id: 'ibkr',   name: 'Interactive Brokers (IBKR)', description: 'Transaction History CSV via Flex Query',  available: true, color: 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300' },
 ];
 
 const COMING_SOON = [
@@ -180,8 +180,8 @@ export default function CsvImportPanel({ existingTransactions, existingHoldings,
     return (
       <div className="space-y-5">
         <div>
-          <p className="text-sm font-semibold text-slate-700 mb-1">Selecteer uw broker</p>
-          <p className="text-xs text-slate-500">Elke broker heeft een eigen CSV-formaat. Selecteer uw broker voor de juiste verwerking.</p>
+          <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-1">Selecteer uw broker</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">Elke broker heeft een eigen CSV-formaat. Selecteer uw broker voor de juiste verwerking.</p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -199,7 +199,7 @@ export default function CsvImportPanel({ existingTransactions, existingHoldings,
           {COMING_SOON.map(b => (
             <div
               key={b.name}
-              className="flex flex-col gap-1 p-4 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-400 opacity-60"
+              className="flex flex-col gap-1 p-4 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-500 opacity-60"
             >
               <span className="text-sm font-medium">{b.name}</span>
               <span className="text-xs">{b.description} — binnenkort</span>
@@ -207,7 +207,7 @@ export default function CsvImportPanel({ existingTransactions, existingHoldings,
           ))}
         </div>
 
-        <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-xs text-blue-800 flex items-start gap-2">
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl px-4 py-3 text-xs text-blue-800 dark:text-blue-300 flex items-start gap-2">
           <Info size={13} className="mt-0.5 shrink-0" />
           <span className="space-y-1 block">
             <span className="block"><strong>DEGIRO:</strong> ga naar <em>Account → Transacties</em> en klik op <em>Exporteer</em> (CSV). Selecteer de gewenste periode en download het bestand.</span>
@@ -224,24 +224,24 @@ export default function CsvImportPanel({ existingTransactions, existingHoldings,
       <div className="space-y-4">
         <div className="flex items-center gap-3">
           <button onClick={() => setStep('broker')}
-            className="text-xs text-slate-500 hover:text-slate-700 bg-transparent border-0 cursor-pointer px-0">
+            className="text-xs text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 bg-transparent border-0 cursor-pointer px-0">
             ← Terug
           </button>
-          <span className="text-sm font-semibold text-slate-700">
+          <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
             {BROKERS.find(b => b.id === broker)?.name ?? broker} — CSV importeren
           </span>
         </div>
 
         {/* Optional: custom broker name */}
         <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium text-slate-600">Brokernaam (optioneel)</label>
+          <label className="text-xs font-medium text-slate-600 dark:text-slate-300">Brokernaam (optioneel)</label>
           <input
-            className="border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 max-w-xs"
+            className="border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-700 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-400 max-w-xs"
             placeholder={BROKERS.find(b => b.id === broker)?.name ?? ''}
             value={brokerName}
             onChange={e => setBrokerName(e.target.value)}
           />
-          <p className="text-xs text-slate-400">Wordt als brokernaam opgeslagen bij elke transactie.</p>
+          <p className="text-xs text-slate-400 dark:text-slate-500">Wordt als brokernaam opgeslagen bij elke transactie.</p>
         </div>
 
         {/* Drop zone */}
@@ -251,14 +251,14 @@ export default function CsvImportPanel({ existingTransactions, existingHoldings,
           onDragLeave={() => setDragOver(false)}
           className={`flex flex-col items-center justify-center gap-3 p-8 border-2 border-dashed rounded-xl cursor-pointer transition-colors ${
             dragOver
-              ? 'border-indigo-400 bg-indigo-50'
-              : 'border-slate-300 bg-slate-50 hover:border-slate-400 hover:bg-white'
+              ? 'border-indigo-400 bg-indigo-50 dark:bg-indigo-900/20'
+              : 'border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-800 hover:border-slate-400 hover:bg-white dark:hover:bg-slate-700'
           }`}
         >
           <Upload size={28} className={dragOver ? 'text-indigo-500' : 'text-slate-400'} />
           <div className="text-center">
-            <p className="text-sm font-medium text-slate-700">Sleep CSV-bestand hierheen</p>
-            <p className="text-xs text-slate-400">of klik om een bestand te kiezen</p>
+            <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Sleep CSV-bestand hierheen</p>
+            <p className="text-xs text-slate-400 dark:text-slate-500">of klik om een bestand te kiezen</p>
           </div>
           <input type="file" accept=".csv,.txt" className="hidden" onChange={handleInputChange} />
         </label>
@@ -274,71 +274,71 @@ export default function CsvImportPanel({ existingTransactions, existingHoldings,
       <div className="space-y-4">
         <div className="flex items-center gap-3">
           <button onClick={() => setStep('file')}
-            className="text-xs text-slate-500 hover:text-slate-700 bg-transparent border-0 cursor-pointer px-0">
+            className="text-xs text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 bg-transparent border-0 cursor-pointer px-0">
             ← Terug
           </button>
-          <span className="text-sm font-semibold text-slate-700">
+          <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
             Voorbeeld — {fileName}
           </span>
         </div>
 
         {/* Summary */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div className="bg-green-50 border border-green-200 rounded-xl px-3 py-2.5 text-center">
-            <p className="text-xs text-slate-500">Gevonden</p>
-            <p className="text-lg font-bold text-green-700">{transactions.length}</p>
+          <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl px-3 py-2.5 text-center">
+            <p className="text-xs text-slate-500 dark:text-slate-400">Gevonden</p>
+            <p className="text-lg font-bold text-green-700 dark:text-green-400">{transactions.length}</p>
           </div>
-          <div className="bg-blue-50 border border-blue-200 rounded-xl px-3 py-2.5 text-center">
-            <p className="text-xs text-slate-500">Nieuw</p>
-            <p className="text-lg font-bold text-blue-700">{newTxs.length}</p>
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl px-3 py-2.5 text-center">
+            <p className="text-xs text-slate-500 dark:text-slate-400">Nieuw</p>
+            <p className="text-lg font-bold text-blue-700 dark:text-blue-400">{newTxs.length}</p>
           </div>
-          <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 text-center">
-            <p className="text-xs text-slate-500">Duplicaten</p>
-            <p className="text-lg font-bold text-amber-700">{dupeCount}</p>
+          <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl px-3 py-2.5 text-center">
+            <p className="text-xs text-slate-500 dark:text-slate-400">Duplicaten</p>
+            <p className="text-lg font-bold text-amber-700 dark:text-amber-400">{dupeCount}</p>
           </div>
-          <div className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-center">
-            <p className="text-xs text-slate-500">Overgeslagen</p>
-            <p className="text-lg font-bold text-slate-600">{skipped}</p>
+          <div className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-center">
+            <p className="text-xs text-slate-500 dark:text-slate-400">Overgeslagen</p>
+            <p className="text-lg font-bold text-slate-600 dark:text-slate-300">{skipped}</p>
           </div>
         </div>
 
         {/* Errors */}
         {errors.length > 0 && (
-          <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-xs text-red-700 space-y-1">
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl px-4 py-3 text-xs text-red-700 dark:text-red-400 space-y-1">
             <p className="font-semibold flex items-center gap-1.5"><AlertCircle size={13} />Verwerkingswaarschuwingen</p>
             {errors.map((e, i) => <p key={i}>{e}</p>)}
           </div>
         )}
 
         {transactions.length === 0 ? (
-          <div className="text-center py-6 text-slate-400 text-sm border-2 border-dashed border-slate-200 rounded-xl">
+          <div className="text-center py-6 text-slate-400 dark:text-slate-500 text-sm border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl">
             Geen transacties gevonden in dit bestand.
             Controleer of u het juiste broker-formaat heeft geselecteerd.
           </div>
         ) : (
-          <div className="overflow-x-auto border border-slate-200 rounded-xl">
+          <div className="overflow-x-auto border border-slate-200 dark:border-slate-700 rounded-xl">
             <table className="w-full text-xs">
-              <thead className="bg-slate-50 border-b border-slate-200">
+              <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
                 <tr>
-                  <th className="text-left px-3 py-2 font-medium text-slate-500">Type</th>
-                  <th className="text-left px-3 py-2 font-medium text-slate-500">Datum</th>
-                  <th className="text-left px-3 py-2 font-medium text-slate-500">Naam</th>
-                  <th className="text-right px-3 py-2 font-medium text-slate-500">Aantal</th>
-                  <th className="text-right px-3 py-2 font-medium text-slate-500">Koers</th>
-                  <th className="text-right px-3 py-2 font-medium text-slate-500">Totaal</th>
-                  <th className="text-center px-3 py-2 font-medium text-slate-500">Status</th>
+                  <th className="text-left px-3 py-2 font-medium text-slate-500 dark:text-slate-400">Type</th>
+                  <th className="text-left px-3 py-2 font-medium text-slate-500 dark:text-slate-400">Datum</th>
+                  <th className="text-left px-3 py-2 font-medium text-slate-500 dark:text-slate-400">Naam</th>
+                  <th className="text-right px-3 py-2 font-medium text-slate-500 dark:text-slate-400">Aantal</th>
+                  <th className="text-right px-3 py-2 font-medium text-slate-500 dark:text-slate-400">Koers</th>
+                  <th className="text-right px-3 py-2 font-medium text-slate-500 dark:text-slate-400">Totaal</th>
+                  <th className="text-center px-3 py-2 font-medium text-slate-500 dark:text-slate-400">Status</th>
                 </tr>
               </thead>
               <tbody>
                 {transactions.map((tx, i) => {
                   const dupe = isDuplicate(tx);
                   return (
-                    <tr key={i} className={`border-b border-slate-100 last:border-0 ${dupe ? 'opacity-40' : ''}`}>
+                    <tr key={i} className={`border-b border-slate-100 dark:border-slate-700 last:border-0 bg-white dark:bg-slate-900 ${dupe ? 'opacity-40' : ''}`}>
                       <td className="px-3 py-2">
                         <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs font-medium ${
                           tx.type === 'buy'
-                            ? 'bg-green-100 text-green-700'
-                            : 'bg-red-100 text-red-700'
+                            ? 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400'
+                            : 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-400'
                         }`}>
                           {tx.type === 'buy'
                             ? <ArrowUpCircle size={10} />
@@ -346,26 +346,26 @@ export default function CsvImportPanel({ existingTransactions, existingHoldings,
                           {tx.type === 'buy' ? 'Koop' : 'Verkoop'}
                         </span>
                       </td>
-                      <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{tx.date}</td>
-                      <td className="px-3 py-2 text-slate-800 max-w-[160px] truncate" title={tx.holdingName}>
+                      <td className="px-3 py-2 text-slate-600 dark:text-slate-300 whitespace-nowrap">{tx.date}</td>
+                      <td className="px-3 py-2 text-slate-800 dark:text-slate-100 max-w-[160px] truncate" title={tx.holdingName}>
                         {tx.holdingName}
-                        {tx.isin && <div className="text-slate-400 font-mono text-xs">{tx.isin}</div>}
+                        {tx.isin && <div className="text-slate-400 dark:text-slate-500 font-mono text-xs">{tx.isin}</div>}
                       </td>
-                      <td className="px-3 py-2 text-right text-slate-700">
+                      <td className="px-3 py-2 text-right text-slate-700 dark:text-slate-200">
                         {tx.quantity.toLocaleString('nl-NL', { maximumFractionDigits: 4 })}
                       </td>
-                      <td className="px-3 py-2 text-right text-slate-600">
+                      <td className="px-3 py-2 text-right text-slate-600 dark:text-slate-300">
                         {nl2.format(tx.priceEur)}
                         {tx.currency !== 'EUR' && (
-                          <span className="text-slate-400 ml-1">({tx.currency})</span>
+                          <span className="text-slate-400 dark:text-slate-500 ml-1">({tx.currency})</span>
                         )}
                       </td>
-                      <td className="px-3 py-2 text-right font-medium text-slate-800">
+                      <td className="px-3 py-2 text-right font-medium text-slate-800 dark:text-slate-100">
                         {nl0.format(tx.quantity * tx.priceEur)}
                       </td>
                       <td className="px-3 py-2 text-center">
                         {dupe ? (
-                          <span className="text-slate-400 text-xs">duplicaat</span>
+                          <span className="text-slate-400 dark:text-slate-500 text-xs">duplicaat</span>
                         ) : (
                           <CheckCircle2 size={13} className="text-green-500 mx-auto" />
                         )}
@@ -395,12 +395,12 @@ export default function CsvImportPanel({ existingTransactions, existingHoldings,
   // ── Step: done ──────────────────────────────────────────────────────────
   return (
     <div className="flex flex-col items-center gap-4 py-8">
-      <div className="w-14 h-14 rounded-full bg-green-100 flex items-center justify-center">
-        <CheckCircle2 size={28} className="text-green-600" />
+      <div className="w-14 h-14 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+        <CheckCircle2 size={28} className="text-green-600 dark:text-green-400" />
       </div>
       <div className="text-center">
-        <p className="text-base font-semibold text-slate-800">{importDone} transacties geïmporteerd</p>
-        <p className="text-sm text-slate-500 mt-1">
+        <p className="text-base font-semibold text-slate-800 dark:text-slate-100">{importDone} transacties geïmporteerd</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
           De transacties zijn toegevoegd aan uw portefeuille.
           Bekijk ze op het tabblad <strong>Transacties</strong> of <strong>Overzicht</strong>.
         </p>

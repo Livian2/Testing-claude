@@ -1,6 +1,7 @@
 import { Calculator, TrendingUp, TrendingDown, Info, Gift } from 'lucide-react';
 import type { TaxResult } from '../types';
 import { fmt, fmtPct } from '../utils/taxCalculations';
+import { useLanguage } from '../i18n/LanguageContext';
 
 interface Props { result: TaxResult }
 
@@ -18,6 +19,7 @@ function Row({ label, value, bold, green, red, indent }: {
 }
 
 export default function TaxResults({ result }: Props) {
+  const { t } = useLanguage();
   const {
     box1, box3, toeslagen, totalTax, netDisposableIncome, totalExpenses,
     portfolioGainLoss, portfolioCurrentValue, portfolioJan1Value,
@@ -39,19 +41,19 @@ export default function TaxResults({ result }: Props) {
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <div>
-            <p className="text-xs text-slate-400 mb-1">Totaal te betalen</p>
+            <p className="text-xs text-slate-400 mb-1">{t.results.totalTax}</p>
             <p className="text-2xl font-bold text-red-400">{fmt(totalTax)}</p>
           </div>
           <div>
-            <p className="text-xs text-slate-400 mb-1">Box 1 belasting</p>
+            <p className="text-xs text-slate-400 mb-1">{t.results.box1Tax}</p>
             <p className="text-2xl font-bold text-orange-400">{fmt(box1.netTax)}</p>
           </div>
           <div>
-            <p className="text-xs text-slate-400 mb-1">Box 3 belasting</p>
+            <p className="text-xs text-slate-400 mb-1">{t.results.box3Tax}</p>
             <p className="text-2xl font-bold text-purple-400">{fmt(box3.netTax)}</p>
           </div>
           <div>
-            <p className="text-xs text-slate-400 mb-1">Netto besteedbaar</p>
+            <p className="text-xs text-slate-400 mb-1">{t.results.netDisposable}</p>
             <p className={`text-2xl font-bold ${netDisposableIncome >= 0 ? 'text-green-400' : 'text-red-400'}`}>
               {fmt(netDisposableIncome)}
             </p>
@@ -112,16 +114,16 @@ export default function TaxResults({ result }: Props) {
       <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
         <div className="flex items-center gap-3 px-6 py-4 border-b-2 border-blue-400 bg-gradient-to-r from-blue-50 to-white dark:from-slate-800 dark:to-slate-800">
           <TrendingUp size={18} className="text-blue-500" />
-          <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">Box 1 — Inkomen uit werk en woning</h3>
+          <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">{t.results.box1Title}</h3>
         </div>
         <div className="p-6 space-y-4">
           {/* Key numbers */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {[
-              { label: 'Belastbaar inkomen',   value: fmt(box1.taxableIncome),      color: 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300' },
-              { label: 'Bruto belasting',       value: fmt(box1.grossTax),           color: 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800 text-orange-700 dark:text-orange-300' },
-              { label: 'Effectief tarief',      value: fmtPct(box1.effectiveRate),   color: 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200' },
-              { label: 'Netto Box 1 belasting', value: fmt(box1.netTax),             color: 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-700 dark:text-red-400' },
+              { label: t.results.taxableIncome, value: fmt(box1.taxableIncome),    color: 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300' },
+              { label: t.results.grossTax,      value: fmt(box1.grossTax),         color: 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800 text-orange-700 dark:text-orange-300' },
+              { label: t.results.effectiveRate, value: fmtPct(box1.effectiveRate), color: 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200' },
+              { label: t.results.netBox1Tax,    value: fmt(box1.netTax),           color: 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-700 dark:text-red-400' },
             ].map(c => (
               <div key={c.label} className={`rounded-xl border p-4 ${c.color}`}>
                 <p className="text-xs font-medium opacity-75 mb-1">{c.label}</p>
@@ -134,7 +136,7 @@ export default function TaxResults({ result }: Props) {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {box1.brackets.length > 0 && (
               <div className="bg-slate-50 dark:bg-slate-900 rounded-xl p-4 border border-slate-100 dark:border-slate-700">
-                <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-3">Schijvenberekening</p>
+                <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-3">{t.results.brackets}</p>
                 {box1.brackets.map((b, i) => (
                   <div key={i} className="flex items-center gap-2 py-1.5 border-b border-slate-100 dark:border-slate-700 last:border-0">
                     <span className="text-xs w-12 text-slate-500 dark:text-slate-400 font-mono shrink-0">{fmtPct(b.rate)}</span>
@@ -148,17 +150,17 @@ export default function TaxResults({ result }: Props) {
               </div>
             )}
             <div className="bg-green-50 dark:bg-green-900/20 rounded-xl p-4 border border-green-100 dark:border-green-800 space-y-2">
-              <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-3">Heffingskortingen</p>
+              <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-3">{t.results.kortingen}</p>
               <div className="flex justify-between text-sm">
-                <span className="text-slate-700 dark:text-slate-200">Algemene heffingskorting</span>
+                <span className="text-slate-700 dark:text-slate-200">{t.results.ahk}</span>
                 <span className="font-semibold text-green-600">− {fmt(box1.algemeneHeffingskorting)}</span>
               </div>
               <div className="flex justify-between text-sm border-b border-green-200 dark:border-green-800 pb-2">
-                <span className="text-slate-700 dark:text-slate-200">Arbeidskorting</span>
+                <span className="text-slate-700 dark:text-slate-200">{t.results.ak}</span>
                 <span className="font-semibold text-green-600">− {fmt(box1.arbeidskorting)}</span>
               </div>
               <div className="flex justify-between text-sm font-semibold">
-                <span className="text-slate-700 dark:text-slate-200">Totaal kortingen</span>
+                <span className="text-slate-700 dark:text-slate-200">{t.results.totalKortingen}</span>
                 <span className="text-green-600">− {fmt(box1.algemeneHeffingskorting + box1.arbeidskorting)}</span>
               </div>
             </div>
@@ -170,7 +172,7 @@ export default function TaxResults({ result }: Props) {
       <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
         <div className="flex items-center gap-3 px-6 py-4 border-b-2 border-purple-400 bg-gradient-to-r from-purple-50 to-white dark:from-slate-800 dark:to-slate-800">
           <TrendingUp size={18} className="text-purple-500" />
-          <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">Box 3 — Vermogen &amp; netto vermogen</h3>
+          <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">{t.results.box3Title} &amp; {t.results.netWorth}</h3>
         </div>
         <div className="p-6 space-y-4">
           <div className="flex items-start gap-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-3 text-xs text-amber-800 dark:text-amber-300">
@@ -186,53 +188,53 @@ export default function TaxResults({ result }: Props) {
 
             {/* Left: Box 3 tax calculation */}
             <div>
-              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-3">Box 3 grondslag (1 jan)</p>
+              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-3">{t.results.box3Grondslag}</p>
               <div className="space-y-0">
-                <Row label="Spaargeld"              value={fmt(box3.breakdown.savings)}     indent />
-                <Row label="Beleggingen"            value={fmt(box3.breakdown.investments)} indent />
+                <Row label={t.results.savingsBalance}    value={fmt(box3.breakdown.savings)}     indent />
+                <Row label={t.results.portfolioValue}    value={fmt(box3.breakdown.investments)} indent />
                 {box3.totalDebts > 0 && (
-                  <Row label="Schulden (na drempel)" value={`− ${fmt(box3.totalDebts)}`}   indent red />
+                  <Row label={t.results.debtsBox3}       value={`− ${fmt(box3.totalDebts)}`}     indent red />
                 )}
                 {box3.afschrijvingenGereserveerd > 0 && (
-                  <Row label="Reservering afschrijvingen" value={`− ${fmt(box3.afschrijvingenGereserveerd)}`} indent red />
+                  <Row label={t.results.reservations}    value={`− ${fmt(box3.afschrijvingenGereserveerd)}`} indent red />
                 )}
-                <Row label="Netto vermogen"         value={fmt(box3.netWealth)}             bold />
-                <Row label="Heffingvrij"            value={`− ${fmt(box3.exemption)}`}      indent green />
-                <Row label="Belastbaar vermogen"    value={fmt(box3.taxableWealth)}         bold />
+                <Row label={t.results.netWorth}          value={fmt(box3.netWealth)}             bold />
+                <Row label={t.results.exemption}         value={`− ${fmt(box3.exemption)}`}      indent green />
+                <Row label={t.results.taxableWealth}     value={fmt(box3.taxableWealth)}         bold />
                 {box3.taxableWealth > 0 && <>
-                  <Row label={`Spaargeld (1,03%)`}         value={fmt(box3.breakdown.savingsFictitious)}     indent />
-                  <Row label={`Bezittingen (5,88%)`}       value={fmt(box3.breakdown.investmentsFictitious)} indent />
+                  <Row label={`Spaargeld (1,03%)`}       value={fmt(box3.breakdown.savingsFictitious)}     indent />
+                  <Row label={`Bezittingen (5,88%)`}     value={fmt(box3.breakdown.investmentsFictitious)} indent />
                   {box3.breakdown.debtsFictitious > 0 && (
-                    <Row label={`Schulden (2,62%)`}        value={`− ${fmt(box3.breakdown.debtsFictitious)}`} indent green />
+                    <Row label={`Schulden (2,62%)`}      value={`− ${fmt(box3.breakdown.debtsFictitious)}`} indent green />
                   )}
-                  <Row label="Fictief rendement"           value={fmt(box3.fictitiousReturn)}                bold />
+                  <Row label={t.results.fictitiousReturn} value={fmt(box3.fictitiousReturn)}               bold />
                 </>}
-                <Row label="Box 3 belasting (36%)"  value={fmt(box3.netTax)}                bold red />
+                <Row label={t.results.box3TaxLabel}      value={fmt(box3.netTax)}                bold red />
                 {actualSavingsInterest > 0 && (
-                  <Row label="Werkelijke spaarrente" value={`+ ${fmt(actualSavingsInterest)}`} indent green />
+                  <Row label="Werkelijke spaarrente"     value={`+ ${fmt(actualSavingsInterest)}`} indent green />
                 )}
               </div>
             </div>
 
             {/* Right: current net worth */}
             <div>
-              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-3">Actueel netto vermogen</p>
+              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-3">{t.results.netWorth}</p>
               {hasPriceDiff && (
                 <div className="mb-3 p-3 bg-purple-50 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-800 rounded-lg text-xs text-purple-700 dark:text-purple-300">
                   Portfolio Jan 1: {fmt(portfolioJan1Value)} → huidig: {fmt(portfolioCurrentValue)}
                 </div>
               )}
               <div className="space-y-0">
-                <Row label="Spaarsaldo"             value={fmt(box3.breakdown.savings)}    indent />
-                <Row label="Beleggingen (huidig)"   value={fmt(portfolioCurrentValue)}     indent />
+                <Row label={t.results.savingsBalance}  value={fmt(box3.breakdown.savings)}    indent />
+                <Row label={t.results.portfolioValue}  value={fmt(portfolioCurrentValue)}     indent />
                 {box3.totalDebts > 0 && (
-                  <Row label="Schulden"             value={`− ${fmt(box3.totalDebts)}`}    indent red />
+                  <Row label={t.results.debtsBox3}     value={`− ${fmt(box3.totalDebts)}`}    indent red />
                 )}
                 {afschrijvingenActueel > 0 && (
-                  <Row label="Reservering afschrijvingen" value={`− ${fmt(afschrijvingenActueel)}`} indent red />
+                  <Row label={t.results.depreciationRes} value={`− ${fmt(afschrijvingenActueel)}`} indent red />
                 )}
                 <Row
-                  label="Netto vermogen"
+                  label={t.results.netWorth}
                   value={fmt(currentNetWorth)}
                   bold
                   green={currentNetWorth >= 0}
@@ -248,17 +250,17 @@ export default function TaxResults({ result }: Props) {
       <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
         <div className="flex items-center gap-3 px-6 py-4 border-b-2 border-green-400 bg-gradient-to-r from-green-50 to-white dark:from-slate-800 dark:to-slate-800">
           <TrendingDown size={18} className="text-green-500" />
-          <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">Kasstroom overzicht</h3>
+          <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">{t.results.cashflow}</h3>
         </div>
         <div className="p-6 space-y-1">
           {[
-            { label: 'Belastbaar inkomen (Box 1)', value:  grossIncome,    sign: '+', color: 'text-green-600' },
-            { label: 'Box 1 belasting',            value: -box1.netTax,   sign: '−', color: 'text-red-500' },
-            { label: 'Box 3 belasting',            value: -box3.netTax,   sign: '−', color: 'text-red-500' },
+            { label: t.results.grossIncome,    value:  grossIncome,    sign: '+', color: 'text-green-600' },
+            { label: t.results.box1Tax,        value: -box1.netTax,   sign: '−', color: 'text-red-500' },
+            { label: t.results.box3Tax,        value: -box3.netTax,   sign: '−', color: 'text-red-500' },
             ...(hasToeslagen
-              ? [{ label: 'Ontvangen toeslagen',   value: toeslagen.total, sign: '+', color: 'text-teal-600' }]
+              ? [{ label: t.results.toeslagen, value: toeslagen.total, sign: '+', color: 'text-teal-600' }]
               : []),
-            { label: 'Totale jaarkosten',          value: -totalExpenses, sign: '−', color: 'text-orange-500' },
+            { label: t.results.totalExpenses,  value: -totalExpenses, sign: '−', color: 'text-orange-500' },
           ].map((row, i) => (
             <div key={i} className="flex justify-between items-center py-2 border-b border-slate-100 dark:border-slate-700 last:border-0 text-sm">
               <span className="text-slate-600 dark:text-slate-300">{row.label}</span>
@@ -266,7 +268,7 @@ export default function TaxResults({ result }: Props) {
             </div>
           ))}
           <div className="flex justify-between items-center pt-3 border-t-2 border-slate-200 dark:border-slate-700">
-            <span className="font-semibold text-slate-700 dark:text-slate-200">Netto besteedbaar inkomen</span>
+            <span className="font-semibold text-slate-700 dark:text-slate-200">{t.results.netDisposable}</span>
             <span className={`text-lg font-bold ${netDisposableIncome >= 0 ? 'text-green-600' : 'text-red-600'}`}>
               {fmt(netDisposableIncome)}
             </span>

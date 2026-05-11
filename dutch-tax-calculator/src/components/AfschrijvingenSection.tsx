@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Plus, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
 import type { AfschrijvingenData, AfschrijvingCategorie, AfschrijvingItem } from '../types';
+import { useLanguage } from '../i18n/LanguageContext';
 import {
   getReplacementDate,
   jaarDeposit,
@@ -213,6 +214,7 @@ function CatRow({ cat, rate, taxYear, years, onUpdate, onRemove }: CatRowProps) 
 // ─── Main section ────────────────────────────────────────────────────────────
 
 export default function AfschrijvingenSection({ data, taxYear, onChange }: Props) {
+  const { t } = useLanguage();
   const rate = data.rentePercentage / 100;
 
   // Determine year range: from earliest purchase year, up to max replacement year (or taxYear+8)
@@ -255,7 +257,7 @@ export default function AfschrijvingenSection({ data, taxYear, onChange }: Props
       {/* Settings bar */}
       <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 flex flex-wrap items-center gap-4">
         <div className="flex items-center gap-2">
-          <label className="text-sm font-medium text-slate-700 dark:text-slate-200 whitespace-nowrap flex items-center gap-1">Afschrijvingen <InfoTooltip tip="Reserveer maandelijks een bedrag voor toekomstige vervangingen (auto, witgoed, etc.). Dit bedrag wordt van uw Box 3 vermogen afgetrokken als 'gereserveerd'." /> · Spaarrente (sinking fund) <InfoTooltip tip="Het jaarlijkse rentepercentage waarmee uw reservering groeit. Gebruik het rendement van de rekening waar u de reservering op zet." /></label>
+          <label className="text-sm font-medium text-slate-700 dark:text-slate-200 whitespace-nowrap flex items-center gap-1">{t.depreciation.sectionTitle} <InfoTooltip tip="Reserveer maandelijks een bedrag voor toekomstige vervangingen (auto, witgoed, etc.). Dit bedrag wordt van uw Box 3 vermogen afgetrokken als 'gereserveerd'." /> · {t.depreciation.sinkingRate} <InfoTooltip tip={t.depreciation.sinkingRateHint} /></label>
           <div className="flex items-center border border-slate-300 dark:border-slate-600 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-orange-400 bg-white dark:bg-slate-700">
             <input
               type="number" step="0.1" min="0" max="20"
@@ -275,7 +277,7 @@ export default function AfschrijvingenSection({ data, taxYear, onChange }: Props
             onClick={addCategorie}
             className="flex items-center gap-1.5 text-xs text-white bg-orange-500 hover:bg-orange-600 px-3 py-1.5 rounded-lg border-0 cursor-pointer"
           >
-            <Plus size={13} /> Categorie
+            <Plus size={13} /> {t.depreciation.addCategory}
           </button>
         </div>
       </div>
@@ -285,12 +287,12 @@ export default function AfschrijvingenSection({ data, taxYear, onChange }: Props
         <table className="w-full border-collapse text-xs" style={{ minWidth: 900 }}>
           <thead>
             <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900">
-              <th className="text-left px-2 py-2 font-medium text-slate-600 dark:text-slate-300">Product</th>
-              <th className="text-left px-2 py-2 font-medium text-slate-600 dark:text-slate-300"><span className="flex items-center gap-1">Aankoopprijs <InfoTooltip tip="De aanschafprijs van het item dat u wilt vervangen. Dit is de huidige aankoopprijs, niet de oorspronkelijke prijs." /></span></th>
-              <th className="text-left px-2 py-2 font-medium text-slate-600 dark:text-slate-300"><span className="flex items-center gap-1">Aankoopdatum <InfoTooltip tip="De datum waarop u het item heeft aangeschaft. Hiermee berekenen we hoever u al in de afschrijvingsperiode zit." /></span></th>
-              <th className="text-left px-2 py-2 font-medium text-slate-600 dark:text-slate-300"><span className="flex items-center gap-1">Looptijd <InfoTooltip tip="Het aantal jaren dat u verwacht dit item te gebruiken voordat u het vervangt. Na deze periode begint een nieuwe afschrijvingscyclus." /></span></th>
-              <th className="text-left px-2 py-2 font-medium text-slate-600 dark:text-slate-300">Vervangingsdatum</th>
-              <th className="text-right px-2 py-2 font-medium text-slate-600 dark:text-slate-300"><span className="flex items-center justify-end gap-1">Gereserveerd <InfoTooltip tip="Het bedrag dat u tot nu toe heeft gereserveerd voor vervanging, als percentage van het totaal benodigde bedrag (inflatie gecorrigeerd)." /></span></th>
+              <th className="text-left px-2 py-2 font-medium text-slate-600 dark:text-slate-300">{t.depreciation.product}</th>
+              <th className="text-left px-2 py-2 font-medium text-slate-600 dark:text-slate-300"><span className="flex items-center gap-1">{t.depreciation.purchasePrice} <InfoTooltip tip="De aanschafprijs van het item dat u wilt vervangen. Dit is de huidige aankoopprijs, niet de oorspronkelijke prijs." /></span></th>
+              <th className="text-left px-2 py-2 font-medium text-slate-600 dark:text-slate-300"><span className="flex items-center gap-1">{t.depreciation.purchaseDate} <InfoTooltip tip="De datum waarop u het item heeft aangeschaft. Hiermee berekenen we hoever u al in de afschrijvingsperiode zit." /></span></th>
+              <th className="text-left px-2 py-2 font-medium text-slate-600 dark:text-slate-300"><span className="flex items-center gap-1">{t.depreciation.lifetimeYears} <InfoTooltip tip="Het aantal jaren dat u verwacht dit item te gebruiken voordat u het vervangt. Na deze periode begint een nieuwe afschrijvingscyclus." /></span></th>
+              <th className="text-left px-2 py-2 font-medium text-slate-600 dark:text-slate-300">{t.depreciation.replacementDate}</th>
+              <th className="text-right px-2 py-2 font-medium text-slate-600 dark:text-slate-300"><span className="flex items-center justify-end gap-1">{t.depreciation.reserved} <InfoTooltip tip="Het bedrag dat u tot nu toe heeft gereserveerd voor vervanging, als percentage van het totaal benodigde bedrag (inflatie gecorrigeerd)." /></span></th>
               {years.map(y => (
                 <th
                   key={y}

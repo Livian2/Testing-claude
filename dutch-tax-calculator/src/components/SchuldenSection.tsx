@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { CreditCard, Plus, Trash2, ChevronDown, ChevronRight, GraduationCap, TrendingDown, BookOpen } from 'lucide-react';
 import type { SchuldenData, SchuldItem, DuoType } from '../types';
 import { simuleerDuo, berekenDuoJaarbetaling, DUO_DRAAGKRACHT_VRIJ, DUO_DRAAGKRACHT_PARTNER_VRIJ, type DuoFase } from '../utils/duo';
+import { useLanguage } from '../i18n/LanguageContext';
 import CurrencyInput from './CurrencyInput';
 import SectionCard from './SectionCard';
 import InfoTooltip from './InfoTooltip';
@@ -34,6 +35,7 @@ interface SchuldCardProps {
 }
 
 function SchuldCard({ item, taxYear, onUpdate, onRemove, canRemove, accent, isDuo }: SchuldCardProps) {
+  const { t } = useLanguage();
   const [open, setOpen] = useState(true);
 
   const jaarRente      = item.bedrag * (item.rentePercentage / 100);
@@ -71,7 +73,7 @@ function SchuldCard({ item, taxYear, onUpdate, onRemove, canRemove, accent, isDu
           {/* Inputs */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="flex flex-col gap-1">
-              <label className="text-xs text-slate-500 dark:text-slate-400">Naam / omschrijving</label>
+              <label className="text-xs text-slate-500 dark:text-slate-400">{t.debts.name}</label>
               <input
                 className="border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-1.5 text-sm bg-white dark:bg-slate-700 dark:text-slate-100 outline-none focus:ring-2 focus:ring-red-400"
                 placeholder="bijv. DUO studieschuld"
@@ -80,8 +82,8 @@ function SchuldCard({ item, taxYear, onUpdate, onRemove, canRemove, accent, isDu
               />
             </div>
             <CurrencyInput
-              label="Schuld bij start rente"
-              hint={isDuo ? 'Schuld bij start rente (startJaar)' : 'Uitstaand saldo op 1 januari'}
+              label={t.debts.debtAtRenteStart}
+              hint={isDuo ? t.debts.debtAtRenteStart : 'Uitstaand saldo op 1 januari'}
               value={item.bedrag}
               onChange={v => onUpdate({ bedrag: v })}
               tooltip={<InfoTooltip tip="Het uitstaande schuldbedrag op het moment dat de rente begint te lopen (startJaar). Voor DUO is dit het totaal geleende bedrag bij afstuderen." />}
@@ -125,7 +127,7 @@ function SchuldCard({ item, taxYear, onUpdate, onRemove, canRemove, accent, isDu
               {/* Lening start — when borrowing began (before interest) */}
               <div className="flex flex-col gap-1">
                 <label className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                  Start lening <span className="text-slate-400 dark:text-slate-500 font-normal">— jaar lening begint</span> <InfoTooltip tip="Het jaar waarin u de lening heeft afgesloten en geld begon te lenen. Vóór de startjaar rente loopt er nog geen rente." />
+                  {t.debts.loanStart} <span className="text-slate-400 dark:text-slate-500 font-normal">— {t.debts.loanStartHint}</span> <InfoTooltip tip="Het jaar waarin u de lening heeft afgesloten en geld begon te lenen. Vóór de startjaar rente loopt er nog geen rente." />
                 </label>
                 <input
                   type="number" min={1990} max={2100}
@@ -142,7 +144,7 @@ function SchuldCard({ item, taxYear, onUpdate, onRemove, canRemove, accent, isDu
               {/* Aflossing start — 15/35-year clock */}
               <div className="flex flex-col gap-1">
                 <label className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                  Aflossing start <span className="text-slate-400 dark:text-slate-500 font-normal">— 15/35-jaar klok</span> <InfoTooltip tip="Het jaar waarvanaf de 15- of 35-jaar terugbetalingstermijn begint. Na deze termijn wordt de restschuld kwijtgescholden." />
+                  {t.debts.repaymentStart} <span className="text-slate-400 dark:text-slate-500 font-normal">— {t.debts.repaymentStartHint}</span> <InfoTooltip tip="Het jaar waarvanaf de 15- of 35-jaar terugbetalingstermijn begint. Na deze termijn wordt de restschuld kwijtgescholden." />
                 </label>
                 <input
                   type="number" min={1990} max={2100}
@@ -204,22 +206,22 @@ function SchuldCard({ item, taxYear, onUpdate, onRemove, canRemove, accent, isDu
           {item.bedrag > 0 && item.rentePercentage > 0 && (
             <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-3 grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
               <div>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">Jaarlijkse rente</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">{t.debts.yearlyInterestAmt}</p>
                 <p className="font-bold text-red-800 dark:text-red-400">{nl2.format(jaarRente)}</p>
               </div>
               <div>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">Maandelijkse rente</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">{t.debts.monthlyInterest}</p>
                 <p className="font-bold text-red-700 dark:text-red-400">{nl2.format(maandRente)}</p>
               </div>
               <div>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">Rente vast t/m</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">{t.debts.rateFixedUntil}</p>
                 <p className="font-bold text-slate-700 dark:text-slate-200">{eindeVast}</p>
-                <p className="text-xs text-slate-400 dark:text-slate-500">{Math.max(0, eindeVast - taxYear)} jaar resterend</p>
+                <p className="text-xs text-slate-400 dark:text-slate-500">{Math.max(0, eindeVast - taxYear)} {t.debts.yearsRemaining}</p>
               </div>
               <div>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">Aflossing voltooid</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">{t.debts.repaymentDone}</p>
                 <p className="font-bold text-slate-700 dark:text-slate-200">{eindeLooptijd}</p>
-                <p className="text-xs text-slate-400 dark:text-slate-500">{jarenResterend} jaar resterend</p>
+                <p className="text-xs text-slate-400 dark:text-slate-500">{jarenResterend} {t.debts.yearsRemaining}</p>
               </div>
             </div>
           )}
@@ -243,6 +245,7 @@ interface DebtGroupProps {
 }
 
 function DebtGroup({ title, icon, items, taxYear, accent, buttonColor, isDuo, onAdd, onUpdate, onRemove }: DebtGroupProps) {
+  const { t } = useLanguage();
   const totaal = items.reduce((s, d) => s + d.bedrag, 0);
   const totaalRente = items.reduce((s, d) => s + d.bedrag * (d.rentePercentage / 100), 0);
 
@@ -251,7 +254,7 @@ function DebtGroup({ title, icon, items, taxYear, accent, buttonColor, isDuo, on
       <div className="space-y-3">
         {items.length === 0 ? (
           <div className="text-center py-5 text-slate-400 dark:text-slate-500 text-sm border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl">
-            Geen schulden toegevoegd
+            {t.common.noItems}
           </div>
         ) : (
           items.map(item => (
@@ -274,13 +277,13 @@ function DebtGroup({ title, icon, items, taxYear, accent, buttonColor, isDuo, on
               onClick={() => onAdd('sf15')}
               className={`flex items-center gap-1.5 text-xs text-white px-3 py-1.5 rounded-lg transition-colors cursor-pointer border-0 ${buttonColor}`}
             >
-              <Plus size={13} /> SF15 toevoegen
+              <Plus size={13} /> {t.debts.addSf15}
             </button>
             <button
               onClick={() => onAdd('sf35')}
               className={`flex items-center gap-1.5 text-xs text-white px-3 py-1.5 rounded-lg transition-colors cursor-pointer border-0 ${buttonColor}`}
             >
-              <Plus size={13} /> SF35 toevoegen
+              <Plus size={13} /> {t.debts.addSf35}
             </button>
           </div>
         ) : (
@@ -288,18 +291,18 @@ function DebtGroup({ title, icon, items, taxYear, accent, buttonColor, isDuo, on
             onClick={() => onAdd()}
             className={`flex items-center gap-1.5 text-xs text-white px-3 py-1.5 rounded-lg transition-colors cursor-pointer border-0 ${buttonColor}`}
           >
-            <Plus size={13} /> Schuld toevoegen
+            <Plus size={13} /> {t.debts.addDebt}
           </button>
         )}
 
         {items.length > 0 && totaal > 0 && (
           <div className="grid grid-cols-2 gap-3 pt-1">
             <div className="bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800 rounded-xl px-4 py-2.5">
-              <p className="text-xs text-slate-500 dark:text-slate-400">Totale restschuld (Box 3)</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">{t.debts.totalDebts}</p>
               <p className="text-base font-bold text-red-800 dark:text-red-400">{nl.format(totaal)}</p>
             </div>
             <div className="bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800 rounded-xl px-4 py-2.5">
-              <p className="text-xs text-slate-500 dark:text-slate-400">Totale jaarlijkse rente</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">{t.debts.yearlyInterest}</p>
               <p className="text-base font-bold text-red-700 dark:text-red-400">{nl2.format(totaalRente)}</p>
             </div>
           </div>
@@ -431,6 +434,7 @@ function DuoChart({ points, chartStart, maxBal, taxYear }: {
 function DuoSimulatieCard({
   duo, taxYear, grossSalary, isPartner,
 }: { duo: SchuldItem[]; taxYear: number; grossSalary: number; isPartner: boolean }) {
+  const { t } = useLanguage();
   const [inkomensstijging, setInkomensstijging] = useState(2);
 
   const drempel = isPartner ? DUO_DRAAGKRACHT_PARTNER_VRIJ : DUO_DRAAGKRACHT_VRIJ;
@@ -497,18 +501,18 @@ function DuoSimulatieCard({
   const noIncome = grossSalary <= drempel;
 
   return (
-    <SectionCard title="DUO aflossing — simulatie op basis van inkomen" icon={<BookOpen size={20} />} accent="border-blue-400">
+    <SectionCard title={t.debts.simulation} icon={<BookOpen size={20} />} accent="border-blue-400">
       <div className="space-y-4">
         {/* Parameters */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-xl px-4 py-3">
-            <p className="text-xs text-slate-500 dark:text-slate-400">Bruto-inkomen (huidig)</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">{t.debts.currentIncome}</p>
             <p className="text-base font-bold text-blue-800 dark:text-blue-300">
               {nl.format(grossSalary)}<span className="text-xs font-normal text-slate-400 dark:text-slate-500">/jr</span>
             </p>
           </div>
           <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-xl px-4 py-3">
-            <p className="text-xs text-slate-500 dark:text-slate-400">DUO-betaling nu</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">{t.debts.paymentNow}</p>
             <p className="text-base font-bold text-blue-700 dark:text-blue-300">
               {noIncome
                 ? <span className="text-slate-400 dark:text-slate-500 text-sm">€0 — onder drempel</span>

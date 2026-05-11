@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { PiggyBank, Target, TrendingUp } from 'lucide-react';
 import type { SavingsData } from '../types';
+import { useLanguage } from '../i18n/LanguageContext';
 import CurrencyInput from './CurrencyInput';
 import SectionCard from './SectionCard';
 
@@ -122,6 +123,7 @@ function SavingsChart({
 // ── Main component ─────────────────────────────────────────────────────────
 
 export default function SavingsSection({ data, totalSavingsBalance, onChange }: Props) {
+  const { t } = useLanguage();
   const [projYears, setProjYears] = useState(20);
   const [projRate,  setProjRate]  = useState(3.5);
 
@@ -139,11 +141,11 @@ export default function SavingsSection({ data, totalSavingsBalance, onChange }: 
   return (
     <div className="space-y-4">
       {/* Monthly contribution card */}
-      <SectionCard title="Maandelijkse spaarbijdrage" icon={<PiggyBank size={20} />} accent="border-green-400">
+      <SectionCard title={t.savings.monthlyContrib} icon={<PiggyBank size={20} />} accent="border-green-400">
         <div className="space-y-4">
           <CurrencyInput
-            label="Spaarbijdrage per maand"
-            hint="Hoeveel spaart u elke maand bij?"
+            label={t.savings.monthlyContrib}
+            hint={t.savings.monthlyContribHint}
             value={data.monthlySavingsContribution}
             onChange={v => onChange({ ...data, monthlySavingsContribution: v })}
           />
@@ -153,11 +155,11 @@ export default function SavingsSection({ data, totalSavingsBalance, onChange }: 
           {totalSavingsBalance > 0 && (
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-green-50 dark:bg-green-900/20 rounded-xl px-4 py-3 border border-green-100 dark:border-green-800">
-                <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Huidig totaal saldo</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">{t.savings.currentBalance}</p>
                 <p className="text-base font-bold text-green-700">{nl.format(totalSavingsBalance)}</p>
               </div>
               <div className="bg-green-50 dark:bg-green-900/20 rounded-xl px-4 py-3 border border-green-100 dark:border-green-800">
-                <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Jaarlijkse bijdrage</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">{t.savings.yearlyContrib}</p>
                 <p className="text-base font-bold text-green-700">{nl.format(data.monthlySavingsContribution * 12)}</p>
               </div>
             </div>
@@ -166,21 +168,21 @@ export default function SavingsSection({ data, totalSavingsBalance, onChange }: 
       </SectionCard>
 
       {/* Growth projection */}
-      <SectionCard title="Spaardoel prognose" icon={<Target size={20} />} accent="border-teal-400">
+      <SectionCard title={t.savings.projectionTitle} icon={<Target size={20} />} accent="border-teal-400">
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Looptijd</label>
+              <label className="text-sm font-medium text-slate-700 dark:text-slate-200">{t.savings.duration}</label>
               <div className="relative">
                 <input type="number" min="1" max="50" step="1" value={projYears}
                   onChange={e => setProjYears(Math.max(1, Math.min(50, parseInt(e.target.value) || 20)))}
                   className="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 pr-12 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400 bg-white dark:bg-slate-700 dark:text-slate-100"
                 />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 text-sm">jaar</span>
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 text-sm">{t.savings.years}</span>
               </div>
             </div>
             <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Verwacht rendement</label>
+              <label className="text-sm font-medium text-slate-700 dark:text-slate-200">{t.savings.expectedReturn}</label>
               <div className="relative">
                 <input type="number" min="0" max="20" step="0.1" value={projRate}
                   onChange={e => setProjRate(Math.max(0, parseFloat(e.target.value) || 0))}
@@ -211,18 +213,18 @@ export default function SavingsSection({ data, totalSavingsBalance, onChange }: 
           {/* Outcome summary */}
           <div className="grid grid-cols-3 gap-3">
             <div className="bg-teal-50 dark:bg-teal-900/20 border border-teal-100 dark:border-teal-800 rounded-xl px-3 py-3 text-center">
-              <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Eindwaarde na {projYears}j</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">{t.savings.finalValue} {projYears}{t.savings.years}</p>
               <p className="text-base font-bold text-teal-700">{nl.format(finalBalance)}</p>
             </div>
             <div className="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800 rounded-xl px-3 py-3 text-center">
-              <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Totale inleg</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">{t.savings.totalDeposit}</p>
               <p className="text-base font-bold text-indigo-600">
                 {nl.format(totalSavingsBalance + data.monthlySavingsContribution * projYears * 12)}
               </p>
             </div>
             <div className="bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-800 rounded-xl px-3 py-3 text-center">
               <p className="text-xs text-slate-500 dark:text-slate-400 mb-1 flex items-center justify-center gap-1">
-                <TrendingUp size={10} />Rente-opbrengst
+                <TrendingUp size={10} />{t.savings.interestReturn}
               </p>
               <p className="text-base font-bold text-green-600">{nl.format(Math.max(0, interest))}</p>
             </div>

@@ -1,5 +1,6 @@
 import { CalendarDays, Plus, Trash2, Landmark, PiggyBank, Wallet } from 'lucide-react';
 import type { WaardesData, BeleggingRekening, SpaarRekening, BetaalRekening, AssetType } from '../types';
+import { useLanguage } from '../i18n/LanguageContext';
 import CurrencyInput from './CurrencyInput';
 import SectionCard from './SectionCard';
 import InfoTooltip from './InfoTooltip';
@@ -26,6 +27,7 @@ const ASSET_TYPE_OPTIONS: { value: AssetType; label: string }[] = [
 // ── Section: Beleggingen ──────────────────────────────────────────────────
 
 function BeleggingenSection({ data, onChange }: Props) {
+  const { t } = useLanguage();
   const add = () => onChange({
     ...data,
     beleggingen: [...data.beleggingen, { id: uid(), naam: '', broker: '', type: 'etf', waardeJan1: 0 }],
@@ -44,7 +46,7 @@ function BeleggingenSection({ data, onChange }: Props) {
   const total = data.beleggingen.reduce((s, b) => s + b.waardeJan1, 0);
 
   return (
-    <SectionCard title={<span className="flex items-center gap-1.5">Beleggingsrekeningen <InfoTooltip tip="Voer de waarde in van uw beleggingsportefeuille op 1 januari. ETF's en aandelen vallen onder de 'beleggingen' categorie (fictief rendement 5,88%)." /></span>} icon={<Landmark size={20} />} accent="border-purple-400">
+    <SectionCard title={<span className="flex items-center gap-1.5">{t.values.investments} <InfoTooltip tip={t.values.investmentsHint} /></span>} icon={<Landmark size={20} />} accent="border-purple-400">
       <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
         Waarde van uw beleggingen op <strong>1 januari</strong> — dit is de Box 3 grondslag.
         Voer in per broker / rekening.
@@ -59,7 +61,7 @@ function BeleggingenSection({ data, onChange }: Props) {
           {data.beleggingen.map(b => (
             <div key={b.id} className="grid grid-cols-12 gap-2 items-end p-3 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700">
               <div className="col-span-12 sm:col-span-3 flex flex-col gap-1">
-                <label className="text-xs text-slate-500 dark:text-slate-400">Naam / omschrijving</label>
+                <label className="text-xs text-slate-500 dark:text-slate-400">{t.values.accountName}</label>
                 <input
                   className="border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1.5 text-sm bg-white dark:bg-slate-700 dark:text-slate-100 outline-none focus:ring-2 focus:ring-purple-400"
                   placeholder="bijv. VWCE portfolio"
@@ -68,7 +70,7 @@ function BeleggingenSection({ data, onChange }: Props) {
                 />
               </div>
               <div className="col-span-6 sm:col-span-2 flex flex-col gap-1">
-                <label className="text-xs text-slate-500 dark:text-slate-400">Broker</label>
+                <label className="text-xs text-slate-500 dark:text-slate-400">{t.values.broker}</label>
                 <input
                   className="border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1.5 text-sm bg-white dark:bg-slate-700 dark:text-slate-100 outline-none focus:ring-2 focus:ring-purple-400"
                   placeholder="DEGIRO"
@@ -77,7 +79,7 @@ function BeleggingenSection({ data, onChange }: Props) {
                 />
               </div>
               <div className="col-span-5 sm:col-span-2 flex flex-col gap-1">
-                <label className="text-xs text-slate-500 dark:text-slate-400">Type</label>
+                <label className="text-xs text-slate-500 dark:text-slate-400">{t.values.assetType}</label>
                 <select
                   className="border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1.5 text-sm bg-white dark:bg-slate-700 dark:text-slate-100 outline-none focus:ring-2 focus:ring-purple-400"
                   value={b.type}
@@ -87,7 +89,7 @@ function BeleggingenSection({ data, onChange }: Props) {
                 </select>
               </div>
               <div className="col-span-11 sm:col-span-4">
-                <CurrencyInput label="Waarde 1 januari" value={b.waardeJan1}
+                <CurrencyInput label={t.values.valueJan1} value={b.waardeJan1}
                   onChange={v => update(b.id, { waardeJan1: v })}
                   tooltip={<InfoTooltip tip="De waarde van deze rekening/portefeuille op exactement 1 januari van het belastingjaar." />}
                 />
@@ -105,13 +107,13 @@ function BeleggingenSection({ data, onChange }: Props) {
 
       <button onClick={add}
         className="flex items-center gap-1.5 text-xs bg-purple-600 text-white px-3 py-1.5 rounded-lg hover:bg-purple-700 cursor-pointer border-0 mb-4">
-        <Plus size={13} /> Beleggingsrekening toevoegen
+        <Plus size={13} /> {t.values.addInvestment}
       </button>
 
       {total > 0 && (
         <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-xl p-4 space-y-2">
           <div className="flex justify-between items-center">
-            <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Totaal beleggingen</span>
+            <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">{t.values.totalInvestments}</span>
             <span className="text-base font-bold text-purple-700">{nl.format(total)}</span>
           </div>
           {Object.entries(byBroker).length > 1 && (
@@ -133,6 +135,7 @@ function BeleggingenSection({ data, onChange }: Props) {
 // ── Section: Spaarrekeningen ──────────────────────────────────────────────
 
 function SpaarSection({ data, onChange }: Props) {
+  const { t } = useLanguage();
   const add = () => onChange({
     ...data,
     spaarrekeningen: [...data.spaarrekeningen, { id: uid(), naam: '', instelling: '', saldoJan1: 0, rentePercentage: 0 }],
@@ -145,7 +148,7 @@ function SpaarSection({ data, onChange }: Props) {
   const totalRente    = data.spaarrekeningen.reduce((s, a) => s + a.saldoJan1 * (a.rentePercentage / 100), 0);
 
   return (
-    <SectionCard title={<span className="flex items-center gap-1.5">Spaarrekeningen <InfoTooltip tip="Spaargeld valt in Box 3 onder de 'spaargeld' categorie met een lager fictief rendement (1,03% in 2026)." /></span>} icon={<PiggyBank size={20} />} accent="border-green-400">
+    <SectionCard title={<span className="flex items-center gap-1.5">{t.values.savings} <InfoTooltip tip={t.values.savingsHint} /></span>} icon={<PiggyBank size={20} />} accent="border-green-400">
       <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
         Saldo op <strong>1 januari</strong>. Fictief rendement 2026: <strong>1,03%</strong> (ongeacht werkelijke rente).
       </p>
@@ -159,7 +162,7 @@ function SpaarSection({ data, onChange }: Props) {
           {data.spaarrekeningen.map(s => (
             <div key={s.id} className="grid grid-cols-12 gap-2 items-end p-3 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700">
               <div className="col-span-12 sm:col-span-3 flex flex-col gap-1">
-                <label className="text-xs text-slate-500 dark:text-slate-400">Naam rekening</label>
+                <label className="text-xs text-slate-500 dark:text-slate-400">{t.values.accountName}</label>
                 <input
                   className="border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1.5 text-sm bg-white dark:bg-slate-700 dark:text-slate-100 outline-none focus:ring-2 focus:ring-green-400"
                   placeholder="bijv. ING Spaarrekening"
@@ -168,7 +171,7 @@ function SpaarSection({ data, onChange }: Props) {
                 />
               </div>
               <div className="col-span-6 sm:col-span-2 flex flex-col gap-1">
-                <label className="text-xs text-slate-500 dark:text-slate-400">Bank / instelling</label>
+                <label className="text-xs text-slate-500 dark:text-slate-400">{t.values.institution}</label>
                 <input
                   className="border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1.5 text-sm bg-white dark:bg-slate-700 dark:text-slate-100 outline-none focus:ring-2 focus:ring-green-400"
                   placeholder="ING"
@@ -177,7 +180,7 @@ function SpaarSection({ data, onChange }: Props) {
                 />
               </div>
               <div className="col-span-5 sm:col-span-2 flex flex-col gap-1">
-                <label className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">Rente % <InfoTooltip tip="Het jaarlijkse rentepercentage dat u ontvangt op deze spaarrekening. Dit wordt gebruikt voor de daadwerkelijke rente-inkomsten berekening." /></label>
+                <label className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">{t.values.interestRate} <InfoTooltip tip="Het jaarlijkse rentepercentage dat u ontvangt op deze spaarrekening. Dit wordt gebruikt voor de daadwerkelijke rente-inkomsten berekening." /></label>
                 <div className="relative">
                   <input type="number" min="0" max="20" step="0.01"
                     className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1.5 pr-8 text-sm bg-white dark:bg-slate-700 dark:text-slate-100 outline-none focus:ring-2 focus:ring-green-400"
@@ -192,7 +195,7 @@ function SpaarSection({ data, onChange }: Props) {
                 )}
               </div>
               <div className="col-span-11 sm:col-span-4">
-                <CurrencyInput label="Saldo 1 januari" value={s.saldoJan1}
+                <CurrencyInput label={t.values.balanceJan1} value={s.saldoJan1}
                   onChange={v => update(s.id, { saldoJan1: v })}
                   tooltip={<InfoTooltip tip="De waarde van deze rekening/portefeuille op exactement 1 januari van het belastingjaar." />}
                 />
@@ -210,13 +213,13 @@ function SpaarSection({ data, onChange }: Props) {
 
       <button onClick={add}
         className="flex items-center gap-1.5 text-xs bg-green-600 text-white px-3 py-1.5 rounded-lg hover:bg-green-700 cursor-pointer border-0 mb-4">
-        <Plus size={13} /> Spaarrekening toevoegen
+        <Plus size={13} /> {t.values.addSavings}
       </button>
 
       {totalSaldo > 0 && (
         <div className="grid grid-cols-2 gap-3">
           <div className="bg-green-50 dark:bg-green-900/20 rounded-xl px-4 py-3 border border-green-100 dark:border-green-800">
-            <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Totaal saldo (Box 3)</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">{t.values.totalSavings}</p>
             <p className="text-base font-bold text-green-700">{nl.format(totalSaldo)}</p>
           </div>
           <div className="bg-green-50 dark:bg-green-900/20 rounded-xl px-4 py-3 border border-green-100 dark:border-green-800">
@@ -232,6 +235,7 @@ function SpaarSection({ data, onChange }: Props) {
 // ── Section: Betaalrekeningen ─────────────────────────────────────────────
 
 function BetaalSection({ data, onChange }: Props) {
+  const { t } = useLanguage();
   const add = () => onChange({
     ...data,
     betaalrekeningen: [...data.betaalrekeningen, { id: uid(), naam: '', instelling: '', saldoJan1: 0 }],
@@ -243,7 +247,7 @@ function BetaalSection({ data, onChange }: Props) {
   const total = data.betaalrekeningen.reduce((s, b) => s + b.saldoJan1, 0);
 
   return (
-    <SectionCard title={<span className="flex items-center gap-1.5">Betaalrekeningen <InfoTooltip tip="Het saldo op uw betaalrekening op 1 januari telt ook mee voor Box 3. Houd er rekening mee dat dit inclusief evt. buffer is." /></span>} icon={<Wallet size={20} />} accent="border-sky-400">
+    <SectionCard title={<span className="flex items-center gap-1.5">{t.values.checking} <InfoTooltip tip={t.values.checkingHint} /></span>} icon={<Wallet size={20} />} accent="border-sky-400">
       <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
         Saldo betaalrekening(en) op <strong>1 januari</strong> — telt mee als spaartegoed in Box 3 (fictief rendement 1,03%).
       </p>
@@ -257,7 +261,7 @@ function BetaalSection({ data, onChange }: Props) {
           {data.betaalrekeningen.map(b => (
             <div key={b.id} className="grid grid-cols-12 gap-2 items-end p-3 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700">
               <div className="col-span-12 sm:col-span-3 flex flex-col gap-1">
-                <label className="text-xs text-slate-500 dark:text-slate-400">Naam rekening</label>
+                <label className="text-xs text-slate-500 dark:text-slate-400">{t.values.accountName}</label>
                 <input
                   className="border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1.5 text-sm bg-white dark:bg-slate-700 dark:text-slate-100 outline-none focus:ring-2 focus:ring-sky-400"
                   placeholder="bijv. ABN AMRO betaalrekening"
@@ -266,7 +270,7 @@ function BetaalSection({ data, onChange }: Props) {
                 />
               </div>
               <div className="col-span-5 sm:col-span-3 flex flex-col gap-1">
-                <label className="text-xs text-slate-500 dark:text-slate-400">Bank / instelling</label>
+                <label className="text-xs text-slate-500 dark:text-slate-400">{t.values.institution}</label>
                 <input
                   className="border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1.5 text-sm bg-white dark:bg-slate-700 dark:text-slate-100 outline-none focus:ring-2 focus:ring-sky-400"
                   placeholder="ABN AMRO"
@@ -275,7 +279,7 @@ function BetaalSection({ data, onChange }: Props) {
                 />
               </div>
               <div className="col-span-6 sm:col-span-5">
-                <CurrencyInput label="Saldo 1 januari" value={b.saldoJan1}
+                <CurrencyInput label={t.values.balanceJan1} value={b.saldoJan1}
                   onChange={v => update(b.id, { saldoJan1: v })}
                   tooltip={<InfoTooltip tip="De waarde van deze rekening/portefeuille op exactement 1 januari van het belastingjaar." />}
                 />
@@ -293,12 +297,12 @@ function BetaalSection({ data, onChange }: Props) {
 
       <button onClick={add}
         className="flex items-center gap-1.5 text-xs bg-sky-600 text-white px-3 py-1.5 rounded-lg hover:bg-sky-700 cursor-pointer border-0 mb-4">
-        <Plus size={13} /> Betaalrekening toevoegen
+        <Plus size={13} /> {t.values.addChecking}
       </button>
 
       {total > 0 && (
         <div className="bg-sky-50 dark:bg-sky-900/20 rounded-xl px-4 py-3 border border-sky-100 dark:border-sky-800">
-          <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Totaal betaalrekeningen (Box 3)</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">{t.values.totalChecking}</p>
           <p className="text-base font-bold text-sky-700">{nl.format(total)}</p>
         </div>
       )}

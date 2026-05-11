@@ -3,6 +3,7 @@ import type { TaxFormData, PrognoseConfig } from '../types';
 import { berekenHypotheek } from '../utils/hypotheek';
 import { computePositions } from '../utils/taxCalculations';
 import { simuleerDuo } from '../utils/duo';
+import { useLanguage } from '../i18n/LanguageContext';
 import SectionCard from './SectionCard';
 import { TrendingUp } from 'lucide-react';
 
@@ -71,6 +72,7 @@ function niceTickRange(min: number, max: number, tickCount = 6): number[] {
 }
 
 export default function NetWorthProjection({ data, config, onConfigChange }: Props) {
+  const { t } = useLanguage();
   const currentYear = data.personal.taxYear;
 
   const jaarlijksSparen   = data.savings.monthlySavingsContribution * 12;
@@ -187,13 +189,13 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
   const breakEvenYear = now.netWorth < 0 && breakEvenPoint ? breakEvenPoint.year : null;
 
   const periodOptions: { value: number; label: string }[] = [
-    { value: 10, label: '10 jr' },
-    { value: 20, label: '20 jr' },
-    { value: 30, label: '30 jr' },
+    { value: 10, label: `10 ${t.forecast.years}` },
+    { value: 20, label: `20 ${t.forecast.years}` },
+    { value: 30, label: `30 ${t.forecast.years}` },
   ];
 
   return (
-    <SectionCard title="Vermogensprognose" icon={<TrendingUp size={20} />} accent="border-emerald-400">
+    <SectionCard title={t.forecast.title} icon={<TrendingUp size={20} />} accent="border-emerald-400">
       {/* Config inputs */}
       <div className="bg-slate-50 dark:bg-slate-900 rounded-xl p-4 mb-4 border border-slate-200 dark:border-slate-700">
         <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
@@ -202,7 +204,7 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
         </p>
         <div className="grid grid-cols-3 gap-4 mb-4">
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Verwacht rendement beleggingen</label>
+            <label className="text-sm font-medium text-slate-700 dark:text-slate-200">{t.forecast.investReturn}</label>
             <div className="flex items-center border border-slate-300 dark:border-slate-600 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-orange-400 focus-within:border-orange-400 bg-white dark:bg-slate-700">
               <input
                 type="number"
@@ -217,7 +219,7 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
             </div>
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Verwacht spaarrente</label>
+            <label className="text-sm font-medium text-slate-700 dark:text-slate-200">{t.forecast.savingsRate}</label>
             <div className="flex items-center border border-slate-300 dark:border-slate-600 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-orange-400 focus-within:border-orange-400 bg-white dark:bg-slate-700">
               <input
                 type="number"
@@ -232,7 +234,7 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
             </div>
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Jaarlijkse inkomensstijging (DUO)</label>
+            <label className="text-sm font-medium text-slate-700 dark:text-slate-200">{t.forecast.incomeGrowth}</label>
             <div className="flex items-center border border-slate-300 dark:border-slate-600 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-orange-400 focus-within:border-orange-400 bg-white dark:bg-slate-700">
               <input
                 type="number"
