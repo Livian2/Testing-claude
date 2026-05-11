@@ -124,7 +124,8 @@ export interface SchuldItem {
   rentePercentage: number;    // annual interest rate %
   looptijd: number;           // total loan duration in years
   rentevastePeriode: number;  // fixed-rate period in years
-  startJaar: number;          // year loan started
+  startJaar: number;          // year interest starts accruing
+  leningStartJaar?: number;   // year loan was taken out (before interest, DUO only)
   aflossingsStartJaar?: number; // year repayment starts (DUO grace period support)
   duoType?: DuoType;          // SF15 (≤2015 stelsel, 15 jr) or SF35 (nieuw stelsel, 35 jr)
 }

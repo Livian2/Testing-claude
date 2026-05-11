@@ -20,7 +20,7 @@ export function berekenDuoJaarbetaling(
   return Math.max(0, (toetsingsinkomen - drempel) * DUO_DRAAGKRACHT_PCT);
 }
 
-export type DuoFase = 'voor-start' | 'aangroei' | 'aflossing' | 'kwijtschelding' | 'afgelost';
+export type DuoFase = 'voor-start' | 'lening' | 'aangroei' | 'aflossing' | 'kwijtschelding' | 'afgelost';
 
 export interface DuoJaarPunt {
   jaar: number;
@@ -45,11 +45,12 @@ export interface DuoSimulatie {
  * Simulate full DUO lifecycle year-by-year.
  *
  * Phases:
- *  1. startJaar → aflossStart      : interest accrues, balance grows, no payment
- *  2. aflossStart → aflossEind     : income-based repayments (4% above drempel)
- *  3. jaar >= aflossEind           : kwijtschelding of remaining balance
+ *  0. leningStartJaar → startJaar   : loan exists, balance flat (bedrag), no interest
+ *  1. startJaar → aflossStart       : interest accrues, balance grows, no payment
+ *  2. aflossStart → aflossEind      : income-based repayments (4% above drempel)
+ *  3. jaar >= aflossEind            : kwijtschelding of remaining balance
  *
- * @param schuld           DUO SchuldItem; bedrag = balance at schuld.startJaar
+ * @param schuld           DUO SchuldItem; bedrag = balance at startJaar (interest start)
  * @param startInkomen     Gross income in taxYear
  * @param inkomensstijging Annual income growth (decimal, e.g. 0.02)
  * @param taxYear          Current tax year (income reference point)
@@ -62,7 +63,8 @@ export function simuleerDuo(
   taxYear: number,
   isPartner = false,
 ): DuoSimulatie {
-  const leningStart = schuld.startJaar;
+  const leningStart = schuld.leningStartJaar ?? schuld.startJaar; // loan taken out, balance flat
+  const renteStart  = schuld.startJaar;                           // interest starts accruing
   const aflossStart = schuld.aflossingsStartJaar ?? schuld.startJaar;
   const aflossEind  = aflossStart + schuld.looptijd;
   const rente       = schuld.rentePercentage / 100;
@@ -82,9 +84,15 @@ export function simuleerDuo(
     const jaar   = simStart + i;
     const inkomen = startInkomen * Math.pow(1 + inkomensstijging, jaar - taxYear);
 
-    // Before loan / interest starts
+    // Before loan exists
     if (jaar < leningStart) {
       punten.push({ jaar, balans: 0, betaling: 0, rente: 0, inkomen, fase: 'voor-start' });
+      continue;
+    }
+
+    // Loan taken out but interest not yet active: balance is flat at bedrag
+    if (jaar < renteStart) {
+      punten.push({ jaar, balans: schuld.bedrag, betaling: 0, rente: 0, inkomen, fase: 'lening' });
       continue;
     }
 

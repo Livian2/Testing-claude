@@ -120,10 +120,27 @@ function SchuldCard({ item, taxYear, onUpdate, onRemove, canRemove, accent, isDu
                 </p>
               </div>
 
-              {/* Grace period */}
-              <div className="flex flex-col gap-1 col-span-2">
+              {/* Lening start — when borrowing began (before interest) */}
+              <div className="flex flex-col gap-1">
                 <label className="text-xs text-slate-500">
-                  Aflossing start (jr) <span className="text-slate-400 font-normal">— start van de 15/35-jaar klok</span>
+                  Start lening <span className="text-slate-400 font-normal">— jaar lening begint</span>
+                </label>
+                <input
+                  type="number" min={1990} max={2100}
+                  className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm bg-white outline-none focus:ring-2 focus:ring-violet-400"
+                  placeholder={String(item.startJaar)}
+                  value={item.leningStartJaar || ''}
+                  onChange={e => {
+                    const v = parseInt(e.target.value);
+                    onUpdate({ leningStartJaar: isNaN(v) ? undefined : v });
+                  }}
+                />
+              </div>
+
+              {/* Aflossing start — 15/35-year clock */}
+              <div className="flex flex-col gap-1">
+                <label className="text-xs text-slate-500">
+                  Aflossing start <span className="text-slate-400 font-normal">— 15/35-jaar klok</span>
                 </label>
                 <input
                   type="number" min={1990} max={2100}
@@ -296,6 +313,7 @@ const W = 560, H = 130, PAD = { t: 8, r: 12, b: 28, l: 56 };
 
 const FASE_COLOR: Record<DuoFase, string> = {
   'voor-start':    '#94a3b8',
+  'lening':        '#a78bfa',
   'aangroei':      '#f59e0b',
   'aflossing':     '#3b82f6',
   'kwijtschelding':'#ef4444',
@@ -421,8 +439,8 @@ function DuoSimulatieCard({
     simuleerDuo(d, grossSalary, inkomensstijging / 100, taxYear, isPartner)
   );
 
-  // Chart starts at the earliest of taxYear or any leningStart
-  const minLeningStart = activeDuo.reduce((min, d) => Math.min(min, d.startJaar), taxYear);
+  // Chart starts at the earliest of taxYear or any leningStartJaar (or startJaar fallback)
+  const minLeningStart = activeDuo.reduce((min, d) => Math.min(min, d.leningStartJaar ?? d.startJaar), taxYear);
   const chartStart = Math.min(taxYear, minLeningStart);
 
   // Chart ends a few years past the latest aflossEind
@@ -438,7 +456,7 @@ function DuoSimulatieCard({
     let totaalBalans = 0;
     let dominantFase: DuoFase = 'afgelost';
 
-    const fasePriority: DuoFase[] = ['aangroei', 'aflossing', 'kwijtschelding', 'voor-start', 'afgelost'];
+    const fasePriority: DuoFase[] = ['aangroei', 'aflossing', 'kwijtschelding', 'lening', 'voor-start', 'afgelost'];
 
     simulations.forEach(sim => {
       const pt = sim.punten.find(p => p.jaar === jaar);
@@ -467,6 +485,7 @@ function DuoSimulatieCard({
   }, null);
 
   // Phase legend entries that appear in the chart
+  const hasLening     = chartPoints.some(p => p.fase === 'lening');
   const hasAangroei   = chartPoints.some(p => p.fase === 'aangroei');
   const hasAflossing  = chartPoints.some(p => p.fase === 'aflossing');
   const hasKwijtschelding = chartPoints.some(p => p.fase === 'kwijtschelding');
@@ -531,6 +550,12 @@ function DuoSimulatieCard({
             <div className="flex items-center justify-between mb-1">
               <p className="text-xs font-semibold text-slate-600">Verloop DUO-schuld</p>
               <div className="flex items-center gap-3 text-xs text-slate-500">
+                {hasLening && (
+                  <span className="flex items-center gap-1">
+                    <span className="w-3 h-1.5 rounded-full inline-block" style={{ backgroundColor: FASE_COLOR['lening'] }} />
+                    Lening
+                  </span>
+                )}
                 {hasAangroei && (
                   <span className="flex items-center gap-1">
                     <span className="w-3 h-1.5 rounded-full inline-block" style={{ backgroundColor: FASE_COLOR['aangroei'] }} />
