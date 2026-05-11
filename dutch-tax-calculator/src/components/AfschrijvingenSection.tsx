@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Trash2, ChevronDown, ChevronRight, RefreshCw } from 'lucide-react';
+import { Plus, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
 import type { AfschrijvingenData, AfschrijvingCategorie, AfschrijvingItem } from '../types';
 
 interface Props {
@@ -12,13 +12,6 @@ const nl2 = new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR',
 const nl0 = new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
 
 function uid() { return Math.random().toString(36).slice(2); }
-
-// Sinking fund: annual deposit to accumulate FV in n years at rate r
-function sinkingFundPMT(fv: number, r: number, n: number): number {
-  if (n <= 0 || fv <= 0) return 0;
-  if (r === 0) return fv / n;
-  return fv * r / (Math.pow(1 + r, n) - 1);
-}
 
 function parseDate(s: string): Date | null {
   if (!s) return null;
@@ -34,35 +27,75 @@ function getReplacementDate(item: AfschrijvingItem): Date | null {
   return r;
 }
 
-// Amount to deposit in a specific calendar year toward this item's replacement
+// Signed day difference: to - from in whole days
+function daysBetween(from: Date, to: Date): number {
+  return Math.round((to.getTime() - from.getTime()) / (24 * 3600 * 1000));
+}
+
+/**
+ * Inflation-indexed annual deposit for calendar year `year`.
+ *
+ * Mirrors the Excel formula where:
+ *   M3 = Jan 1 of (year+1)  — end of the displayed year column
+ *   L3 = Jan 1 of  year     — start of the displayed year column
+ *   D4 = purchase date, J4 = replacement date
+ *   C4 / (F4 * 365) = base daily rate
+ *
+ * Three cases:
+ *   1. First partial year  — M3 within 364 days of purchase
+ *   2. Middle full years   — M3 before replacement date
+ *   3. Last partial year   — M3 within 364 days past replacement date
+ */
 function jaarDeposit(item: AfschrijvingItem, rate: number, year: number): number {
   const purchase = parseDate(item.aankoopdatum);
   const replace  = getReplacementDate(item);
   if (!purchase || !replace || !item.aankoopprijs || !item.looptijdJaren) return 0;
 
-  const yearStart = new Date(year, 0, 1);
-  const yearEnd   = new Date(year + 1, 0, 1);
+  const M3 = new Date(year + 1, 0, 1); // Jan 1 of year+1
+  const L3 = new Date(year, 0, 1);      // Jan 1 of year
 
-  const effectiveStart = purchase > yearStart ? purchase : yearStart;
-  const effectiveEnd   = replace  < yearEnd   ? replace  : yearEnd;
-  if (effectiveEnd <= effectiveStart) return 0;
+  if (M3 <= purchase) return 0;
 
-  const replacementCost = item.aankoopprijs * Math.pow(1 + rate, item.looptijdJaren);
-  const pmt      = sinkingFundPMT(replacementCost, rate, item.looptijdJaren);
-  const MS_YEAR  = 365.25 * 24 * 3600 * 1000;
-  const fraction = (effectiveEnd.getTime() - effectiveStart.getTime()) / MS_YEAR;
-  return pmt * fraction;
+  const daysMD   = daysBetween(purchase, M3);   // DAGEN(M3, D4)
+  const daysLM   = daysBetween(L3, M3);          // DAGEN(M3, L3) = days in this year
+  const daysMJ   = daysBetween(replace, M3);     // DAGEN(M3, J4)
+  const baseDaily = item.aankoopprijs / (item.looptijdJaren * 365);
+
+  if (daysMD < 364) {
+    // First partial year: prorated from purchase to year-end
+    return daysMD * baseDaily * (1 + rate);
+  }
+  if (M3 < replace) {
+    // Middle full years: full year deposit, inflation-indexed by years elapsed since purchase
+    const yearsElapsed = Math.ceil(daysMD / 365);
+    return daysLM * baseDaily * Math.pow(1 + rate, yearsElapsed);
+  }
+  if (daysMJ < 364) {
+    // Last partial year: prorated from year-start to replacement date
+    return (365 - daysMJ) * baseDaily * (1 + rate);
+  }
+  return 0;
 }
 
-// Total deposited so far (from purchase date up to and including today's date)
+// Total of all year deposits from purchase year through replacement year
+function totalVervanging(item: AfschrijvingItem, rate: number): number {
+  const purchase = parseDate(item.aankoopdatum);
+  const replace  = getReplacementDate(item);
+  if (!purchase || !replace) return 0;
+  const startYear = purchase.getFullYear();
+  const endYear   = replace.getFullYear();
+  let total = 0;
+  for (let y = startYear; y <= endYear; y++) total += jaarDeposit(item, rate, y);
+  return total;
+}
+
+// Sum of deposits from purchase year up to and including upToYear
 function gereserveerdTotNu(item: AfschrijvingItem, rate: number, upToYear: number): number {
   const purchase = parseDate(item.aankoopdatum);
   if (!purchase) return 0;
   const startYear = purchase.getFullYear();
   let total = 0;
-  for (let y = startYear; y <= upToYear; y++) {
-    total += jaarDeposit(item, rate, y);
-  }
+  for (let y = startYear; y <= upToYear; y++) total += jaarDeposit(item, rate, y);
   return total;
 }
 
@@ -153,12 +186,10 @@ function CatRow({ cat, rate, taxYear, years, onUpdate, onRemove }: CatRowProps) 
 
       {/* Item rows */}
       {open && cat.items.map(item => {
-        const replDate       = getReplacementDate(item);
-        const replYear       = replDate ? replDate.getFullYear() : null;
-        const replacementCost = item.aankoopprijs > 0
-          ? item.aankoopprijs * Math.pow(1 + rate, item.looptijdJaren)
-          : 0;
-        const reserved       = item.aankoopprijs > 0 ? gereserveerdTotNu(item, rate, taxYear) : 0;
+        const replDate  = getReplacementDate(item);
+        const replYear  = replDate ? replDate.getFullYear() : null;
+        const target    = item.aankoopprijs > 0 ? totalVervanging(item, rate) : 0;
+        const reserved  = item.aankoopprijs > 0 ? gereserveerdTotNu(item, rate, taxYear) : 0;
 
         return (
           <tr key={item.id} className="border-b border-slate-100 hover:bg-slate-50">
@@ -214,10 +245,10 @@ function CatRow({ cat, rate, taxYear, years, onUpdate, onRemove }: CatRowProps) 
                 <span className="ml-1 text-red-500 font-semibold">!</span>
               )}
             </td>
-            {/* Reserved so far / inflation-adjusted target */}
+            {/* Reserved so far / total target (sum of all year deposits) */}
             <td className="px-2 py-1.5 text-xs text-right">
               {item.aankoopprijs > 0 ? (
-                <span className="text-slate-500">{nl0.format(reserved)} / {nl0.format(replacementCost)}</span>
+                <span className="text-slate-500">{nl0.format(reserved)} / {nl0.format(target)}</span>
               ) : '—'}
             </td>
             {/* Year cells */}
@@ -402,7 +433,7 @@ export default function AfschrijvingenSection({ data, taxYear, onChange }: Props
         <span className="flex items-center gap-1.5"><span className="inline-block w-3 h-3 rounded bg-red-100" />Verleden (gespaard)</span>
         <span className="flex items-center gap-1.5"><span className="inline-block w-3 h-3 rounded bg-amber-100" />Huidig jaar</span>
         <span className="flex items-center gap-1.5"><span className="inline-block w-3 h-3 rounded bg-green-100" />Toekomstige jaren</span>
-        <span className="ml-2">Sinking fund: gelijke jaarlijkse inleg om de inflatie-gecorrigeerde vervangingskosten te sparen o.b.v. spaarrente.</span>
+        <span className="ml-2">Inflatie-geïndexeerde jaarinleg: basisbedrag (aankoopprijs ÷ looptijd) × (1 + rente)^jaar. Gereserveerd-doel = som van alle jaarinlagen.</span>
       </div>
     </div>
   );
