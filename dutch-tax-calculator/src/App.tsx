@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
-import { Flag, RefreshCw, Users, Download, Upload, Home } from 'lucide-react';
+import { Flag, RefreshCw, Users, Download, Upload, Home, Moon, Sun } from 'lucide-react';
 import type { TaxFormData, FilingStatus, PrognoseConfig } from './types';
 import { calculateTaxes } from './utils/taxCalculations';
 import IncomeSection from './components/IncomeSection';
@@ -52,6 +52,16 @@ const DEFAULT_DATA: TaxFormData = {
 const STORAGE_KEY         = 'nl-belasting-data-v1';
 const PROGNOSE_STORAGE_KEY = 'nl-belasting-prognose-v1';
 const TABS_STORAGE_KEY    = 'nl-belasting-tabs-v1';
+const THEME_STORAGE_KEY   = 'nl-belasting-theme';
+
+function loadInitialDark(): boolean {
+  try {
+    const stored = localStorage.getItem(THEME_STORAGE_KEY);
+    if (stored === 'dark') return true;
+    if (stored === 'light') return false;
+  } catch { /* ignore */ }
+  return window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false;
+}
 
 const DEFAULT_PROGNOSE: PrognoseConfig = {
   rendementBeleggingen: 7.0,
@@ -130,7 +140,19 @@ export default function App() {
   const [prognose, setPrognose]   = useState<PrognoseConfig>(loadSavedPrognose);
   const [enabledTabs, setEnabledTabs] = useState<Set<Tab>>(loadEnabledTabs);
   const [tab, setTab]             = useState<AnyTab>('home');
+  const [isDark, setIsDark]       = useState<boolean>(loadInitialDark);
   const importRef                 = useRef<HTMLInputElement>(null);
+
+  // Apply / remove .dark class on <html> and persist preference
+  useEffect(() => {
+    if (isDark) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem(THEME_STORAGE_KEY, 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem(THEME_STORAGE_KEY, 'light');
+    }
+  }, [isDark]);
 
   useEffect(() => {
     localStorage.setItem(TABS_STORAGE_KEY, JSON.stringify([...enabledTabs]));
@@ -210,9 +232,9 @@ export default function App() {
     setData(d => ({ ...d, personal: { ...d.personal, ...patch } }));
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-100 to-slate-200">
+    <div className="min-h-screen bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-900 dark:to-slate-800">
       {/* Header */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-20 shadow-sm">
+      <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-20 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1.5 bg-orange-500 text-white rounded-xl px-3 py-1.5">
@@ -220,21 +242,21 @@ export default function App() {
               <span className="text-sm font-bold">NL Belasting</span>
             </div>
             <div className="hidden sm:block">
-              <h1 className="text-base font-semibold text-slate-800 m-0">Belastingcalculator voor Beleggers</h1>
-              <p className="text-xs text-slate-500 m-0">Box 1 &amp; Box 3 — Belastingjaar 2026</p>
+              <h1 className="text-base font-semibold text-slate-800 dark:text-slate-100 m-0">Belastingcalculator voor Beleggers</h1>
+              <p className="text-xs text-slate-500 dark:text-slate-400 m-0">Box 1 &amp; Box 3 — Belastingjaar 2026</p>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-0 bg-slate-100 rounded-xl p-1">
+            <div className="flex items-center gap-0 bg-slate-100 dark:bg-slate-800 rounded-xl p-1">
               {(['single', 'partner'] as FilingStatus[]).map(s => (
                 <button
                   key={s}
                   onClick={() => setPersonal({ filingStatus: s })}
                   className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg transition-colors cursor-pointer border-0 ${
                     data.personal.filingStatus === s
-                      ? 'bg-white text-slate-800 font-medium shadow-sm'
-                      : 'bg-transparent text-slate-500 hover:text-slate-700'
+                      ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 font-medium shadow-sm'
+                      : 'bg-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
                   }`}
                 >
                   <Users size={12} />
@@ -245,7 +267,7 @@ export default function App() {
 
             <button
               onClick={handleExport}
-              className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-700 transition-colors px-2 py-1.5 bg-transparent border-0 cursor-pointer"
+              className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors px-2 py-1.5 bg-transparent border-0 cursor-pointer"
               title="Exporteer gegevens als JSON"
             >
               <Download size={14} />
@@ -253,7 +275,7 @@ export default function App() {
             </button>
 
             <label
-              className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-700 transition-colors px-2 py-1.5 cursor-pointer"
+              className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors px-2 py-1.5 cursor-pointer"
               title="Importeer gegevens uit JSON"
             >
               <Upload size={14} />
@@ -263,11 +285,20 @@ export default function App() {
 
             <button
               onClick={() => setData(DEFAULT_DATA)}
-              className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-700 transition-colors px-2 py-1.5 bg-transparent border-0 cursor-pointer"
+              className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors px-2 py-1.5 bg-transparent border-0 cursor-pointer"
               title="Reset alle gegevens"
             >
               <RefreshCw size={14} />
               <span className="hidden sm:inline">Reset</span>
+            </button>
+
+            <button
+              onClick={() => setIsDark(d => !d)}
+              className="flex items-center justify-center w-8 h-8 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors bg-transparent border-0 cursor-pointer"
+              title={isDark ? 'Schakel naar lichte modus' : 'Schakel naar donkere modus'}
+              aria-label={isDark ? 'Lichte modus' : 'Donkere modus'}
+            >
+              {isDark ? <Sun size={16} /> : <Moon size={16} />}
             </button>
           </div>
         </div>
@@ -280,7 +311,7 @@ export default function App() {
             className={`flex items-center gap-1.5 px-3 py-2.5 text-sm whitespace-nowrap border-b-2 transition-colors cursor-pointer bg-transparent border-x-0 border-t-0 ${
               tab === 'home'
                 ? 'border-orange-500 text-orange-600 font-medium'
-                : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+                : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600'
             }`}
           >
             <Home size={14} />
@@ -295,7 +326,7 @@ export default function App() {
               className={`flex items-center gap-1.5 px-3 py-2.5 text-sm whitespace-nowrap border-b-2 transition-colors cursor-pointer bg-transparent border-x-0 border-t-0 ${
                 tab === t.id
                   ? 'border-orange-500 text-orange-600 font-medium'
-                  : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+                  : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600'
               }`}
             >
               <span>{t.emoji}</span>
@@ -315,8 +346,8 @@ export default function App() {
         {tab === 'home' && (
           <div className="space-y-6">
             <div>
-              <h2 className="text-xl font-bold text-slate-800 mb-1">Welkom bij NL Belastingcalculator</h2>
-              <p className="text-sm text-slate-500">Kies hieronder welke tabbladen je wilt gebruiken. Klik op een tabblad om er naartoe te gaan.</p>
+              <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-1">Welkom bij NL Belastingcalculator</h2>
+              <p className="text-sm text-slate-500 dark:text-slate-400">Kies hieronder welke tabbladen je wilt gebruiken. Klik op een tabblad om er naartoe te gaan.</p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -325,20 +356,20 @@ export default function App() {
                 return (
                   <div
                     key={t.id}
-                    className={`bg-white border-2 rounded-2xl p-4 flex flex-col gap-3 transition-all ${
-                      enabled ? 'border-orange-200 shadow-sm' : 'border-slate-200 opacity-60'
+                    className={`bg-white dark:bg-slate-800 border-2 rounded-2xl p-4 flex flex-col gap-3 transition-all ${
+                      enabled ? 'border-orange-200 dark:border-orange-800 shadow-sm' : 'border-slate-200 dark:border-slate-700 opacity-60'
                     }`}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-center gap-2">
                         <span className="text-2xl">{t.emoji}</span>
-                        <span className="font-semibold text-slate-800 text-sm">{t.label}</span>
+                        <span className="font-semibold text-slate-800 dark:text-slate-100 text-sm">{t.label}</span>
                       </div>
                       {/* Toggle */}
                       <button
                         onClick={() => toggleTab(t.id)}
                         className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none ${
-                          enabled ? 'bg-orange-500' : 'bg-slate-200'
+                          enabled ? 'bg-orange-500' : 'bg-slate-200 dark:bg-slate-700'
                         }`}
                         role="switch"
                         aria-checked={enabled}
@@ -350,7 +381,7 @@ export default function App() {
                         />
                       </button>
                     </div>
-                    <p className="text-xs text-slate-500 leading-relaxed">{t.description}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{t.description}</p>
                     {enabled && (
                       <button
                         onClick={() => setTab(t.id)}
@@ -364,7 +395,7 @@ export default function App() {
               })}
             </div>
 
-            <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-xs text-blue-800">
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl px-4 py-3 text-xs text-blue-800 dark:text-blue-300">
               <strong>Tip:</strong> Zet tabbladen die je niet gebruikt uit om de navigatie overzichtelijk te houden. Je gegevens blijven bewaard.
             </div>
           </div>
@@ -427,7 +458,7 @@ export default function App() {
               onChange={portfolio => setData(d => ({ ...d, portfolio }))}
             />
             <InfoBox>
-              Vul tickers in (bijv. <code className="bg-blue-100 px-1 rounded">VWCE.AS</code>) voor live koersen.
+              Vul tickers in (bijv. <code className="bg-blue-100 dark:bg-blue-900/30 px-1 rounded">VWCE.AS</code>) voor live koersen.
               Box 3 belastingwaardes (1 jan) invullen op het tabblad <strong>Waardes 1 jan</strong>.
             </InfoBox>
           </div>
@@ -451,7 +482,7 @@ export default function App() {
         )}
       </main>
 
-      <footer className="max-w-7xl mx-auto px-4 sm:px-6 py-6 text-center text-xs text-slate-400 border-t border-slate-200 mt-4">
+      <footer className="max-w-7xl mx-auto px-4 sm:px-6 py-6 text-center text-xs text-slate-400 dark:text-slate-500 border-t border-slate-200 dark:border-slate-700 mt-4">
         Indicatieve berekening o.b.v. belastingregels 2026. Raadpleeg altijd een belastingadviseur voor persoonlijk advies.
       </footer>
     </div>
@@ -460,7 +491,7 @@ export default function App() {
 
 function InfoBox({ children }: { children: React.ReactNode }) {
   return (
-    <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-xs text-blue-800">
+    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl px-4 py-3 text-xs text-blue-800 dark:text-blue-300">
       {children}
     </div>
   );

@@ -195,15 +195,15 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
   return (
     <SectionCard title="Vermogensprognose" icon={<TrendingUp size={20} />} accent="border-emerald-400">
       {/* Config inputs */}
-      <div className="bg-slate-50 rounded-xl p-4 mb-4 border border-slate-200">
-        <p className="text-xs text-slate-500 mb-3">
+      <div className="bg-slate-50 dark:bg-slate-900 rounded-xl p-4 mb-4 border border-slate-200 dark:border-slate-700">
+        <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
           Spaar- en beleggingsbijdragen instellen op het tabblad <strong>Kosten</strong>.
           Huidige bijdragen: sparen <strong>{nl0.format(jaarlijksSparen)}/jr</strong> · beleggen <strong>{nl0.format(jaarlijksBeleggen)}/jr</strong>.
         </p>
         <div className="grid grid-cols-3 gap-4 mb-4">
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-slate-700">Verwacht rendement beleggingen</label>
-            <div className="flex items-center border border-slate-300 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-orange-400 focus-within:border-orange-400 bg-white">
+            <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Verwacht rendement beleggingen</label>
+            <div className="flex items-center border border-slate-300 dark:border-slate-600 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-orange-400 focus-within:border-orange-400 bg-white dark:bg-slate-700">
               <input
                 type="number"
                 step="0.1"
@@ -211,14 +211,14 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
                 max="30"
                 value={config.rendementBeleggingen}
                 onChange={e => onConfigChange({ ...config, rendementBeleggingen: parseFloat(e.target.value) || 0 })}
-                className="flex-1 px-3 py-2 text-sm outline-none bg-white min-w-0"
+                className="flex-1 px-3 py-2 text-sm outline-none bg-white dark:bg-slate-700 dark:text-slate-100 min-w-0"
               />
-              <span className="px-3 py-2 bg-slate-100 text-slate-500 text-sm border-l border-slate-300 select-none">%</span>
+              <span className="px-3 py-2 bg-slate-100 dark:bg-slate-600 text-slate-500 dark:text-slate-300 text-sm border-l border-slate-300 dark:border-slate-600 select-none">%</span>
             </div>
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-slate-700">Verwacht spaarrente</label>
-            <div className="flex items-center border border-slate-300 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-orange-400 focus-within:border-orange-400 bg-white">
+            <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Verwacht spaarrente</label>
+            <div className="flex items-center border border-slate-300 dark:border-slate-600 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-orange-400 focus-within:border-orange-400 bg-white dark:bg-slate-700">
               <input
                 type="number"
                 step="0.1"
@@ -226,14 +226,14 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
                 max="20"
                 value={config.spaarrente}
                 onChange={e => onConfigChange({ ...config, spaarrente: parseFloat(e.target.value) || 0 })}
-                className="flex-1 px-3 py-2 text-sm outline-none bg-white min-w-0"
+                className="flex-1 px-3 py-2 text-sm outline-none bg-white dark:bg-slate-700 dark:text-slate-100 min-w-0"
               />
-              <span className="px-3 py-2 bg-slate-100 text-slate-500 text-sm border-l border-slate-300 select-none">%</span>
+              <span className="px-3 py-2 bg-slate-100 dark:bg-slate-600 text-slate-500 dark:text-slate-300 text-sm border-l border-slate-300 dark:border-slate-600 select-none">%</span>
             </div>
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-slate-700">Jaarlijkse inkomensstijging (DUO)</label>
-            <div className="flex items-center border border-slate-300 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-orange-400 focus-within:border-orange-400 bg-white">
+            <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Jaarlijkse inkomensstijging (DUO)</label>
+            <div className="flex items-center border border-slate-300 dark:border-slate-600 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-orange-400 focus-within:border-orange-400 bg-white dark:bg-slate-700">
               <input
                 type="number"
                 step="0.1"
@@ -241,17 +241,17 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
                 max="20"
                 value={config.inkomensstijging ?? 2}
                 onChange={e => onConfigChange({ ...config, inkomensstijging: parseFloat(e.target.value) || 0 })}
-                className="flex-1 px-3 py-2 text-sm outline-none bg-white min-w-0"
+                className="flex-1 px-3 py-2 text-sm outline-none bg-white dark:bg-slate-700 dark:text-slate-100 min-w-0"
               />
-              <span className="px-3 py-2 bg-slate-100 text-slate-500 text-sm border-l border-slate-300 select-none">%</span>
+              <span className="px-3 py-2 bg-slate-100 dark:bg-slate-600 text-slate-500 dark:text-slate-300 text-sm border-l border-slate-300 dark:border-slate-600 select-none">%</span>
             </div>
           </div>
         </div>
 
         {/* Period toggle */}
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-slate-700 mr-1">Prognoseperiode:</span>
-          <div className="flex rounded-lg border border-slate-300 overflow-hidden">
+          <span className="text-sm font-medium text-slate-700 dark:text-slate-200 mr-1">Prognoseperiode:</span>
+          <div className="flex rounded-lg border border-slate-300 dark:border-slate-600 overflow-hidden">
             {periodOptions.map(opt => (
               <button
                 key={opt.value}
@@ -259,7 +259,7 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
                 className={`px-4 py-1.5 text-sm font-medium transition-colors ${
                   config.jaren === opt.value
                     ? 'bg-emerald-500 text-white'
-                    : 'bg-white text-slate-600 hover:bg-slate-50'
+                    : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-600'
                 }`}
               >
                 {opt.label}
@@ -270,7 +270,7 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
       </div>
 
       {/* Chart */}
-      <div className="bg-white border border-slate-200 rounded-xl p-4">
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4">
         <svg
           viewBox={`0 0 ${W} ${H}`}
           width="100%"
@@ -389,7 +389,7 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
                   strokeDasharray={dashed ? '4 2' : undefined}
                 />
               </svg>
-              <span className="text-xs text-slate-600">{label}</span>
+              <span className="text-xs text-slate-600 dark:text-slate-300">{label}</span>
             </div>
           ))}
         </div>
@@ -397,21 +397,21 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
 
       {/* Summary cards */}
       <div className="grid grid-cols-3 gap-3 mt-4">
-        <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
-          <p className="text-xs text-slate-500 mb-1">Netto vermogen nu</p>
+        <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-4">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Netto vermogen nu</p>
           <p className={`text-base font-bold ${now.netWorth >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
             {nl0.format(now.netWorth)}
           </p>
         </div>
-        <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
-          <p className="text-xs text-slate-500 mb-1">Netto vermogen in {config.jaren} jaar</p>
+        <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-4">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Netto vermogen in {config.jaren} jaar</p>
           <p className={`text-base font-bold ${last.netWorth >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
             {nl0.format(last.netWorth)}
           </p>
         </div>
-        <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
-          <p className="text-xs text-slate-500 mb-1">Break-even jaar</p>
-          <p className="text-base font-bold text-slate-800">
+        <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-4">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Break-even jaar</p>
+          <p className="text-base font-bold text-slate-800 dark:text-slate-100">
             {breakEvenYear !== null ? breakEvenYear : '—'}
           </p>
         </div>

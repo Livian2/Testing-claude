@@ -41,19 +41,19 @@ export default function ExpensesSection({ data, onChange, savings, onSavingsChan
           ))}
         </div>
         <div className="mt-4 grid grid-cols-2 gap-3">
-          <div className="flex justify-between items-center bg-rose-50 rounded-xl px-4 py-3 border border-rose-100">
-            <span className="text-sm font-medium text-slate-700">Kosten per maand</span>
+          <div className="flex justify-between items-center bg-rose-50 dark:bg-rose-900/20 rounded-xl px-4 py-3 border border-rose-100 dark:border-rose-800">
+            <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Kosten per maand</span>
             <span className="text-base font-bold text-rose-600">{nl.format(monthlyExpenses)}</span>
           </div>
-          <div className="flex justify-between items-center bg-rose-50 rounded-xl px-4 py-3 border border-rose-100">
-            <span className="text-sm font-medium text-slate-700">Kosten per jaar</span>
+          <div className="flex justify-between items-center bg-rose-50 dark:bg-rose-900/20 rounded-xl px-4 py-3 border border-rose-100 dark:border-rose-800">
+            <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Kosten per jaar</span>
             <span className="text-base font-bold text-rose-700">{nl.format(monthlyExpenses * 12)}</span>
           </div>
         </div>
       </SectionCard>
 
       <SectionCard title="Maandelijkse bijdragen — Sparen & Beleggen" icon={<PiggyBank size={20} />} accent="border-emerald-400">
-        <p className="text-xs text-slate-500 mb-4">
+        <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
           Deze bijdragen worden ook gebruikt in de <strong>Prognose</strong> om uw toekomstig vermogen te berekenen.
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -75,17 +75,17 @@ export default function ExpensesSection({ data, onChange, savings, onSavingsChan
           />
         </div>
         <div className="mt-4 grid grid-cols-3 gap-3">
-          <div className="bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-2.5">
-            <p className="text-xs text-slate-500">Sparen/mnd</p>
+          <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 rounded-xl px-3 py-2.5">
+            <p className="text-xs text-slate-500 dark:text-slate-400">Sparen/mnd</p>
             <p className="text-base font-bold text-emerald-700">{nl.format(savings.monthlySavingsContribution)}</p>
           </div>
-          <div className="bg-purple-50 border border-purple-100 rounded-xl px-3 py-2.5">
-            <p className="text-xs text-slate-500">Beleggen/mnd</p>
+          <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-800 rounded-xl px-3 py-2.5">
+            <p className="text-xs text-slate-500 dark:text-slate-400">Beleggen/mnd</p>
             <p className="text-base font-bold text-purple-700">{nl.format(savings.maandelijksBeleggen)}</p>
           </div>
-          <div className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5">
-            <p className="text-xs text-slate-500">Totaal uitgaand/jr</p>
-            <p className="text-base font-bold text-slate-700">{nl.format(yearlyTotal)}</p>
+          <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5">
+            <p className="text-xs text-slate-500 dark:text-slate-400">Totaal uitgaand/jr</p>
+            <p className="text-base font-bold text-slate-700 dark:text-slate-200">{nl.format(yearlyTotal)}</p>
           </div>
         </div>
       </SectionCard>

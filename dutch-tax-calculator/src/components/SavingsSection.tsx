@@ -147,17 +147,17 @@ export default function SavingsSection({ data, totalSavingsBalance, onChange }: 
             value={data.monthlySavingsContribution}
             onChange={v => onChange({ ...data, monthlySavingsContribution: v })}
           />
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
             Voer uw actuele spaarsaldi in op het tabblad <strong>Waardes 1 jan</strong> — die worden gebruikt voor de Box 3 berekening.
           </p>
           {totalSavingsBalance > 0 && (
             <div className="grid grid-cols-2 gap-3">
-              <div className="bg-green-50 rounded-xl px-4 py-3 border border-green-100">
-                <p className="text-xs text-slate-500 mb-1">Huidig totaal saldo</p>
+              <div className="bg-green-50 dark:bg-green-900/20 rounded-xl px-4 py-3 border border-green-100 dark:border-green-800">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Huidig totaal saldo</p>
                 <p className="text-base font-bold text-green-700">{nl.format(totalSavingsBalance)}</p>
               </div>
-              <div className="bg-green-50 rounded-xl px-4 py-3 border border-green-100">
-                <p className="text-xs text-slate-500 mb-1">Jaarlijkse bijdrage</p>
+              <div className="bg-green-50 dark:bg-green-900/20 rounded-xl px-4 py-3 border border-green-100 dark:border-green-800">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Jaarlijkse bijdrage</p>
                 <p className="text-base font-bold text-green-700">{nl.format(data.monthlySavingsContribution * 12)}</p>
               </div>
             </div>
@@ -170,23 +170,23 @@ export default function SavingsSection({ data, totalSavingsBalance, onChange }: 
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-slate-700">Looptijd</label>
+              <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Looptijd</label>
               <div className="relative">
                 <input type="number" min="1" max="50" step="1" value={projYears}
                   onChange={e => setProjYears(Math.max(1, Math.min(50, parseInt(e.target.value) || 20)))}
-                  className="w-full border border-slate-300 rounded-xl px-3 py-2 pr-12 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
+                  className="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 pr-12 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400 bg-white dark:bg-slate-700 dark:text-slate-100"
                 />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">jaar</span>
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 text-sm">jaar</span>
               </div>
             </div>
             <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-slate-700">Verwacht rendement</label>
+              <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Verwacht rendement</label>
               <div className="relative">
                 <input type="number" min="0" max="20" step="0.1" value={projRate}
                   onChange={e => setProjRate(Math.max(0, parseFloat(e.target.value) || 0))}
-                  className="w-full border border-slate-300 rounded-xl px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
+                  className="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400 bg-white dark:bg-slate-700 dark:text-slate-100"
                 />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">%</span>
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 text-sm">%</span>
               </div>
             </div>
           </div>
@@ -199,7 +199,7 @@ export default function SavingsSection({ data, totalSavingsBalance, onChange }: 
           />
 
           {/* Legend */}
-          <div className="flex items-center gap-4 text-xs text-slate-500">
+          <div className="flex items-center gap-4 text-xs text-slate-500 dark:text-slate-400">
             <span className="flex items-center gap-1.5">
               <span className="w-4 h-0.5 bg-green-500 inline-block" />Eindwaarde met rente
             </span>
@@ -210,18 +210,18 @@ export default function SavingsSection({ data, totalSavingsBalance, onChange }: 
 
           {/* Outcome summary */}
           <div className="grid grid-cols-3 gap-3">
-            <div className="bg-teal-50 border border-teal-100 rounded-xl px-3 py-3 text-center">
-              <p className="text-xs text-slate-500 mb-1">Eindwaarde na {projYears}j</p>
+            <div className="bg-teal-50 dark:bg-teal-900/20 border border-teal-100 dark:border-teal-800 rounded-xl px-3 py-3 text-center">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Eindwaarde na {projYears}j</p>
               <p className="text-base font-bold text-teal-700">{nl.format(finalBalance)}</p>
             </div>
-            <div className="bg-indigo-50 border border-indigo-100 rounded-xl px-3 py-3 text-center">
-              <p className="text-xs text-slate-500 mb-1">Totale inleg</p>
+            <div className="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800 rounded-xl px-3 py-3 text-center">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Totale inleg</p>
               <p className="text-base font-bold text-indigo-600">
                 {nl.format(totalSavingsBalance + data.monthlySavingsContribution * projYears * 12)}
               </p>
             </div>
-            <div className="bg-green-50 border border-green-100 rounded-xl px-3 py-3 text-center">
-              <p className="text-xs text-slate-500 mb-1 flex items-center justify-center gap-1">
+            <div className="bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-800 rounded-xl px-3 py-3 text-center">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mb-1 flex items-center justify-center gap-1">
                 <TrendingUp size={10} />Rente-opbrengst
               </p>
               <p className="text-base font-bold text-green-600">{nl.format(Math.max(0, interest))}</p>

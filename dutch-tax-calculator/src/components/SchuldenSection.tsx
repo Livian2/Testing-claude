@@ -47,15 +47,15 @@ function SchuldCard({ item, taxYear, onUpdate, onRemove, canRemove, accent, isDu
   return (
     <div className={`border-2 rounded-xl overflow-hidden ${accent}`}>
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 bg-white bg-opacity-60">
+      <div className="flex items-center justify-between px-4 py-3 bg-white dark:bg-slate-800 bg-opacity-60">
         <button
           onClick={() => setOpen(o => !o)}
-          className="flex items-center gap-2 text-sm font-semibold text-slate-800 bg-transparent border-0 cursor-pointer p-0"
+          className="flex items-center gap-2 text-sm font-semibold text-slate-800 dark:text-slate-100 bg-transparent border-0 cursor-pointer p-0"
         >
           {open ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
           {item.label || 'Schuld'}
           {item.bedrag > 0 && (
-            <span className="text-xs font-normal text-slate-500 ml-1">{nl.format(item.bedrag)}</span>
+            <span className="text-xs font-normal text-slate-500 dark:text-slate-400 ml-1">{nl.format(item.bedrag)}</span>
           )}
         </button>
         {canRemove && (
@@ -67,13 +67,13 @@ function SchuldCard({ item, taxYear, onUpdate, onRemove, canRemove, accent, isDu
       </div>
 
       {open && (
-        <div className="px-4 pb-4 pt-2 bg-white space-y-4">
+        <div className="px-4 pb-4 pt-2 bg-white dark:bg-slate-800 space-y-4">
           {/* Inputs */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="flex flex-col gap-1">
-              <label className="text-xs text-slate-500">Naam / omschrijving</label>
+              <label className="text-xs text-slate-500 dark:text-slate-400">Naam / omschrijving</label>
               <input
-                className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm bg-white outline-none focus:ring-2 focus:ring-red-400"
+                className="border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-1.5 text-sm bg-white dark:bg-slate-700 dark:text-slate-100 outline-none focus:ring-2 focus:ring-red-400"
                 placeholder="bijv. DUO studieschuld"
                 value={item.label}
                 onChange={e => onUpdate({ label: e.target.value })}
@@ -92,8 +92,8 @@ function SchuldCard({ item, taxYear, onUpdate, onRemove, canRemove, accent, isDu
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {/* SF15 / SF35 selector */}
               <div className="flex flex-col gap-1 col-span-2">
-                <label className="text-xs text-slate-500">Stelsel</label>
-                <div className="flex rounded-lg border border-slate-300 overflow-hidden">
+                <label className="text-xs text-slate-500 dark:text-slate-400">Stelsel</label>
+                <div className="flex rounded-lg border border-slate-300 dark:border-slate-600 overflow-hidden">
                   {([
                     { value: 'sf15' as DuoType, label: 'SF15', desc: 'Oud stelsel (vóór sept. 2015) · 15 jaar', tip: 'Studenten die vóór september 2015 zijn begonnen met studeren vallen onder het oude stelsel met een aflossingstermijn van 15 jaar.' },
                     { value: 'sf35' as DuoType, label: 'SF35', desc: 'Nieuw stelsel (vanaf sept. 2015) · 35 jaar', tip: 'Studenten die vanaf september 2015 zijn begonnen met studeren vallen onder het nieuwe stelsel met een aflossingstermijn van 35 jaar.' },
@@ -108,14 +108,14 @@ function SchuldCard({ item, taxYear, onUpdate, onRemove, canRemove, accent, isDu
                       className={`flex-1 px-3 py-1.5 text-xs font-semibold transition-colors border-0 cursor-pointer ${
                         (item.duoType ?? 'sf35') === opt.value
                           ? 'bg-blue-600 text-white'
-                          : 'bg-white text-slate-600 hover:bg-slate-50'
+                          : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-600'
                       }`}
                     >
                       <span className="flex items-center justify-center gap-1">{opt.label} <InfoTooltip tip={opt.tip} /></span>
                     </button>
                   ))}
                 </div>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-slate-400 dark:text-slate-500">
                   {(item.duoType ?? 'sf35') === 'sf15'
                     ? 'Oud stelsel: looptijd 15 jaar (studenten vóór september 2015)'
                     : 'Nieuw stelsel: looptijd 35 jaar (studenten vanaf september 2015)'}
@@ -124,12 +124,12 @@ function SchuldCard({ item, taxYear, onUpdate, onRemove, canRemove, accent, isDu
 
               {/* Lening start — when borrowing began (before interest) */}
               <div className="flex flex-col gap-1">
-                <label className="text-xs text-slate-500 flex items-center gap-1">
-                  Start lening <span className="text-slate-400 font-normal">— jaar lening begint</span> <InfoTooltip tip="Het jaar waarin u de lening heeft afgesloten en geld begon te lenen. Vóór de startjaar rente loopt er nog geen rente." />
+                <label className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                  Start lening <span className="text-slate-400 dark:text-slate-500 font-normal">— jaar lening begint</span> <InfoTooltip tip="Het jaar waarin u de lening heeft afgesloten en geld begon te lenen. Vóór de startjaar rente loopt er nog geen rente." />
                 </label>
                 <input
                   type="number" min={1990} max={2100}
-                  className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm bg-white outline-none focus:ring-2 focus:ring-violet-400"
+                  className="border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-1.5 text-sm bg-white dark:bg-slate-700 dark:text-slate-100 outline-none focus:ring-2 focus:ring-violet-400"
                   placeholder={String(item.startJaar)}
                   value={item.leningStartJaar || ''}
                   onChange={e => {
@@ -141,12 +141,12 @@ function SchuldCard({ item, taxYear, onUpdate, onRemove, canRemove, accent, isDu
 
               {/* Aflossing start — 15/35-year clock */}
               <div className="flex flex-col gap-1">
-                <label className="text-xs text-slate-500 flex items-center gap-1">
-                  Aflossing start <span className="text-slate-400 font-normal">— 15/35-jaar klok</span> <InfoTooltip tip="Het jaar waarvanaf de 15- of 35-jaar terugbetalingstermijn begint. Na deze termijn wordt de restschuld kwijtgescholden." />
+                <label className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                  Aflossing start <span className="text-slate-400 dark:text-slate-500 font-normal">— 15/35-jaar klok</span> <InfoTooltip tip="Het jaar waarvanaf de 15- of 35-jaar terugbetalingstermijn begint. Na deze termijn wordt de restschuld kwijtgescholden." />
                 </label>
                 <input
                   type="number" min={1990} max={2100}
-                  className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm bg-white outline-none focus:ring-2 focus:ring-blue-400"
+                  className="border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-1.5 text-sm bg-white dark:bg-slate-700 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-400"
                   placeholder={String(item.startJaar)}
                   value={item.aflossingsStartJaar || ''}
                   onChange={e => {
@@ -159,40 +159,40 @@ function SchuldCard({ item, taxYear, onUpdate, onRemove, canRemove, accent, isDu
           )}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="flex flex-col gap-1">
-              <label className="text-xs text-slate-500">Rente (%)</label>
+              <label className="text-xs text-slate-500 dark:text-slate-400">Rente (%)</label>
               <input
                 type="number" min={0} max={20} step={0.01}
-                className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm bg-white outline-none focus:ring-2 focus:ring-red-400"
+                className="border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-1.5 text-sm bg-white dark:bg-slate-700 dark:text-slate-100 outline-none focus:ring-2 focus:ring-red-400"
                 placeholder="2.5"
                 value={item.rentePercentage || ''}
                 onChange={e => onUpdate({ rentePercentage: parseFloat(e.target.value) || 0 })}
               />
             </div>
             <div className="flex flex-col gap-1">
-              <label className="text-xs text-slate-500 flex items-center gap-1">Looptijd (jr) <InfoTooltip tip="De maximale terugbetalingstermijn: 15 jaar (SF15) of 35 jaar (SF35). Na afloop wordt de resterende schuld kwijtgescholden." /></label>
+              <label className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">Looptijd (jr) <InfoTooltip tip="De maximale terugbetalingstermijn: 15 jaar (SF15) of 35 jaar (SF35). Na afloop wordt de resterende schuld kwijtgescholden." /></label>
               <input
                 type="number" min={1} max={50}
-                className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm bg-white outline-none focus:ring-2 focus:ring-red-400"
+                className="border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-1.5 text-sm bg-white dark:bg-slate-700 dark:text-slate-100 outline-none focus:ring-2 focus:ring-red-400"
                 placeholder="15"
                 value={item.looptijd || ''}
                 onChange={e => onUpdate({ looptijd: parseInt(e.target.value) || 1 })}
               />
             </div>
             <div className="flex flex-col gap-1">
-              <label className="text-xs text-slate-500">Rentevaste periode (jr)</label>
+              <label className="text-xs text-slate-500 dark:text-slate-400">Rentevaste periode (jr)</label>
               <input
                 type="number" min={1} max={30}
-                className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm bg-white outline-none focus:ring-2 focus:ring-red-400"
+                className="border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-1.5 text-sm bg-white dark:bg-slate-700 dark:text-slate-100 outline-none focus:ring-2 focus:ring-red-400"
                 placeholder="5"
                 value={item.rentevastePeriode || ''}
                 onChange={e => onUpdate({ rentevastePeriode: parseInt(e.target.value) || 1 })}
               />
             </div>
             <div className="flex flex-col gap-1">
-              <label className="text-xs text-slate-500 flex items-center gap-1">Startjaar rente <InfoTooltip tip="Het jaar waarvanaf DUO rente in rekening brengt over uw schuld. Meestal het jaar na afstuderen na een rentevrije periode." /></label>
+              <label className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">Startjaar rente <InfoTooltip tip="Het jaar waarvanaf DUO rente in rekening brengt over uw schuld. Meestal het jaar na afstuderen na een rentevrije periode." /></label>
               <input
                 type="number" min={1990} max={2050}
-                className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm bg-white outline-none focus:ring-2 focus:ring-red-400"
+                className="border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-1.5 text-sm bg-white dark:bg-slate-700 dark:text-slate-100 outline-none focus:ring-2 focus:ring-red-400"
                 placeholder="2020"
                 value={item.startJaar || ''}
                 onChange={e => onUpdate({ startJaar: parseInt(e.target.value) || 2020 })}
@@ -202,24 +202,24 @@ function SchuldCard({ item, taxYear, onUpdate, onRemove, canRemove, accent, isDu
 
           {/* Summary */}
           {item.bedrag > 0 && item.rentePercentage > 0 && (
-            <div className="bg-red-50 border border-red-200 rounded-xl p-3 grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-3 grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
               <div>
-                <p className="text-xs text-slate-500 mb-0.5">Jaarlijkse rente</p>
-                <p className="font-bold text-red-800">{nl2.format(jaarRente)}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">Jaarlijkse rente</p>
+                <p className="font-bold text-red-800 dark:text-red-400">{nl2.format(jaarRente)}</p>
               </div>
               <div>
-                <p className="text-xs text-slate-500 mb-0.5">Maandelijkse rente</p>
-                <p className="font-bold text-red-700">{nl2.format(maandRente)}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">Maandelijkse rente</p>
+                <p className="font-bold text-red-700 dark:text-red-400">{nl2.format(maandRente)}</p>
               </div>
               <div>
-                <p className="text-xs text-slate-500 mb-0.5">Rente vast t/m</p>
-                <p className="font-bold text-slate-700">{eindeVast}</p>
-                <p className="text-xs text-slate-400">{Math.max(0, eindeVast - taxYear)} jaar resterend</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">Rente vast t/m</p>
+                <p className="font-bold text-slate-700 dark:text-slate-200">{eindeVast}</p>
+                <p className="text-xs text-slate-400 dark:text-slate-500">{Math.max(0, eindeVast - taxYear)} jaar resterend</p>
               </div>
               <div>
-                <p className="text-xs text-slate-500 mb-0.5">Aflossing voltooid</p>
-                <p className="font-bold text-slate-700">{eindeLooptijd}</p>
-                <p className="text-xs text-slate-400">{jarenResterend} jaar resterend</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">Aflossing voltooid</p>
+                <p className="font-bold text-slate-700 dark:text-slate-200">{eindeLooptijd}</p>
+                <p className="text-xs text-slate-400 dark:text-slate-500">{jarenResterend} jaar resterend</p>
               </div>
             </div>
           )}
@@ -250,7 +250,7 @@ function DebtGroup({ title, icon, items, taxYear, accent, buttonColor, isDuo, on
     <SectionCard title={title} icon={icon} accent={accent}>
       <div className="space-y-3">
         {items.length === 0 ? (
-          <div className="text-center py-5 text-slate-400 text-sm border-2 border-dashed border-slate-200 rounded-xl">
+          <div className="text-center py-5 text-slate-400 dark:text-slate-500 text-sm border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl">
             Geen schulden toegevoegd
           </div>
         ) : (
@@ -294,13 +294,13 @@ function DebtGroup({ title, icon, items, taxYear, accent, buttonColor, isDuo, on
 
         {items.length > 0 && totaal > 0 && (
           <div className="grid grid-cols-2 gap-3 pt-1">
-            <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-2.5">
-              <p className="text-xs text-slate-500">Totale restschuld (Box 3)</p>
-              <p className="text-base font-bold text-red-800">{nl.format(totaal)}</p>
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800 rounded-xl px-4 py-2.5">
+              <p className="text-xs text-slate-500 dark:text-slate-400">Totale restschuld (Box 3)</p>
+              <p className="text-base font-bold text-red-800 dark:text-red-400">{nl.format(totaal)}</p>
             </div>
-            <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-2.5">
-              <p className="text-xs text-slate-500">Totale jaarlijkse rente</p>
-              <p className="text-base font-bold text-red-700">{nl2.format(totaalRente)}</p>
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800 rounded-xl px-4 py-2.5">
+              <p className="text-xs text-slate-500 dark:text-slate-400">Totale jaarlijkse rente</p>
+              <p className="text-base font-bold text-red-700 dark:text-red-400">{nl2.format(totaalRente)}</p>
             </div>
           </div>
         )}
@@ -501,48 +501,48 @@ function DuoSimulatieCard({
       <div className="space-y-4">
         {/* Parameters */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3">
-            <p className="text-xs text-slate-500">Bruto-inkomen (huidig)</p>
-            <p className="text-base font-bold text-blue-800">
-              {nl.format(grossSalary)}<span className="text-xs font-normal text-slate-400">/jr</span>
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-xl px-4 py-3">
+            <p className="text-xs text-slate-500 dark:text-slate-400">Bruto-inkomen (huidig)</p>
+            <p className="text-base font-bold text-blue-800 dark:text-blue-300">
+              {nl.format(grossSalary)}<span className="text-xs font-normal text-slate-400 dark:text-slate-500">/jr</span>
             </p>
           </div>
-          <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3">
-            <p className="text-xs text-slate-500">DUO-betaling nu</p>
-            <p className="text-base font-bold text-blue-700">
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-xl px-4 py-3">
+            <p className="text-xs text-slate-500 dark:text-slate-400">DUO-betaling nu</p>
+            <p className="text-base font-bold text-blue-700 dark:text-blue-300">
               {noIncome
-                ? <span className="text-slate-400 text-sm">€0 — onder drempel</span>
-                : <>{nl.format(maandBetaling)}<span className="text-xs font-normal text-slate-400">/mnd</span></>
+                ? <span className="text-slate-400 dark:text-slate-500 text-sm">€0 — onder drempel</span>
+                : <>{nl.format(maandBetaling)}<span className="text-xs font-normal text-slate-400 dark:text-slate-500">/mnd</span></>
               }
             </p>
           </div>
           <div className="flex flex-col gap-1 sm:col-span-1 col-span-2">
-            <label className="text-xs text-slate-500">Verwachte inkomensstijging/jr</label>
-            <div className="flex items-center border border-slate-300 rounded-lg overflow-hidden bg-white focus-within:ring-2 focus-within:ring-blue-400">
+            <label className="text-xs text-slate-500 dark:text-slate-400">Verwachte inkomensstijging/jr</label>
+            <div className="flex items-center border border-slate-300 dark:border-slate-600 rounded-lg overflow-hidden bg-white dark:bg-slate-700 focus-within:ring-2 focus-within:ring-blue-400">
               <input
                 type="number" step="0.5" min="0" max="15"
                 value={inkomensstijging}
                 onChange={e => setInkomensstijging(parseFloat(e.target.value) || 0)}
-                className="flex-1 px-3 py-2 text-sm outline-none bg-white min-w-0"
+                className="flex-1 px-3 py-2 text-sm outline-none bg-white dark:bg-slate-700 dark:text-slate-100 min-w-0"
               />
-              <span className="px-3 py-2 bg-slate-100 text-slate-500 text-sm border-l border-slate-300 select-none">%</span>
+              <span className="px-3 py-2 bg-slate-100 dark:bg-slate-600 text-slate-500 dark:text-slate-300 text-sm border-l border-slate-300 dark:border-slate-600 select-none">%</span>
             </div>
           </div>
         </div>
 
         {/* Rule explanation */}
-        <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-600 space-y-1">
+        <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-xs text-slate-600 dark:text-slate-300 space-y-1">
           <p>
-            <span className="font-semibold text-slate-700">DUO-betalingsregel 2026: </span>
+            <span className="font-semibold text-slate-700 dark:text-slate-200">DUO-betalingsregel 2026: </span>
             4% van inkomen boven de draagkrachtvrije voet van <strong>{nl.format(drempel)}</strong>/jr
             {isPartner ? ' (fiscaal partner)' : ' (alleenstaand)'}.
             Restschuld wordt na de looptijd kwijtgescholden.
           </p>
           {duo.some(d => d.duoType === 'sf15') && (
-            <p><span className="inline-block bg-blue-100 text-blue-700 font-semibold rounded px-1 mr-1">SF15</span>Oud stelsel · looptijd 15 jaar (studenten vóór september 2015)</p>
+            <p><span className="inline-block bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 font-semibold rounded px-1 mr-1">SF15</span>Oud stelsel · looptijd 15 jaar (studenten vóór september 2015)</p>
           )}
           {duo.some(d => !d.duoType || d.duoType === 'sf35') && (
-            <p><span className="inline-block bg-indigo-100 text-indigo-700 font-semibold rounded px-1 mr-1">SF35</span>Nieuw stelsel · looptijd 35 jaar (studenten vanaf september 2015)</p>
+            <p><span className="inline-block bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 font-semibold rounded px-1 mr-1">SF35</span>Nieuw stelsel · looptijd 35 jaar (studenten vanaf september 2015)</p>
           )}
         </div>
 
@@ -550,8 +550,8 @@ function DuoSimulatieCard({
         {chartPoints.length > 1 && (
           <div>
             <div className="flex items-center justify-between mb-1">
-              <p className="text-xs font-semibold text-slate-600">Verloop DUO-schuld</p>
-              <div className="flex items-center gap-3 text-xs text-slate-500">
+              <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">Verloop DUO-schuld</p>
+              <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
                 {hasLening && (
                   <span className="flex items-center gap-1">
                     <span className="w-3 h-1.5 rounded-full inline-block" style={{ backgroundColor: FASE_COLOR['lening'] }} />
@@ -589,33 +589,33 @@ function DuoSimulatieCard({
 
         {/* Summary */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
-          <div className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5">
-            <p className="text-xs text-slate-500">Schuld bij start rente</p>
-            <p className="font-bold text-slate-800">{nl.format(totalStartDebt)}</p>
+          <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5">
+            <p className="text-xs text-slate-500 dark:text-slate-400">Schuld bij start rente</p>
+            <p className="font-bold text-slate-800 dark:text-slate-100">{nl.format(totalStartDebt)}</p>
           </div>
           {totalBalansAflossStart > totalStartDebt && (
-            <div className="bg-amber-50 border border-amber-100 rounded-xl px-3 py-2.5">
-              <p className="text-xs text-slate-500">Schuld bij start aflossing</p>
+            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800 rounded-xl px-3 py-2.5">
+              <p className="text-xs text-slate-500 dark:text-slate-400">Schuld bij start aflossing</p>
               <p className="font-bold text-amber-700">{nl.format(Math.round(totalBalansAflossStart))}</p>
-              <p className="text-xs text-slate-400">na aangroei</p>
+              <p className="text-xs text-slate-400 dark:text-slate-500">na aangroei</p>
             </div>
           )}
-          <div className="bg-blue-50 border border-blue-100 rounded-xl px-3 py-2.5">
-            <p className="text-xs text-slate-500">Totaal betaald</p>
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-xl px-3 py-2.5">
+            <p className="text-xs text-slate-500 dark:text-slate-400">Totaal betaald</p>
             <p className="font-bold text-blue-700">{nl.format(Math.round(totalBetaald))}</p>
-            <p className="text-xs text-slate-400">incl. {nl.format(Math.round(totalRenteTotaal))} rente</p>
+            <p className="text-xs text-slate-400 dark:text-slate-500">incl. {nl.format(Math.round(totalRenteTotaal))} rente</p>
           </div>
-          <div className={`border rounded-xl px-3 py-2.5 ${totalKwijtschelding > 0 ? 'bg-red-50 border-red-100' : 'bg-green-50 border-green-100'}`}>
-            <p className="text-xs text-slate-500">{totalKwijtschelding > 0 ? 'Kwijtschelding' : 'Volledig afgelost'}</p>
-            <p className={`font-bold ${totalKwijtschelding > 0 ? 'text-red-700' : 'text-green-700'}`}>
+          <div className={`border rounded-xl px-3 py-2.5 ${totalKwijtschelding > 0 ? 'bg-red-50 dark:bg-red-900/20 border-red-100 dark:border-red-800' : 'bg-green-50 dark:bg-green-900/20 border-green-100 dark:border-green-800'}`}>
+            <p className="text-xs text-slate-500 dark:text-slate-400">{totalKwijtschelding > 0 ? 'Kwijtschelding' : 'Volledig afgelost'}</p>
+            <p className={`font-bold ${totalKwijtschelding > 0 ? 'text-red-700 dark:text-red-400' : 'text-green-700 dark:text-green-400'}`}>
               {totalKwijtschelding > 0
                 ? nl.format(Math.round(totalKwijtschelding))
                 : (allAfgelost && latestAfgelost ? String(latestAfgelost) : '—')}
             </p>
           </div>
-          <div className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5">
-            <p className="text-xs text-slate-500">{allAfgelost ? 'Afgelost in' : 'Kwijtschelding in'}</p>
-            <p className="font-bold text-slate-700">
+          <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5">
+            <p className="text-xs text-slate-500 dark:text-slate-400">{allAfgelost ? 'Afgelost in' : 'Kwijtschelding in'}</p>
+            <p className="font-bold text-slate-700 dark:text-slate-200">
               {allAfgelost && latestAfgelost
                 ? `${latestAfgelost} (${latestAfgelost - taxYear} jr)`
                 : activeDuo.map(d => {
@@ -627,7 +627,7 @@ function DuoSimulatieCard({
         </div>
 
         {noIncome && (
-          <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+          <p className="text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl px-3 py-2">
             Uw inkomen ({nl.format(grossSalary)}) ligt onder de draagkrachtvrije voet ({nl.format(drempel)}).
             U betaalt momenteel niets aan DUO. Pas uw inkomen aan op het Inkomen-tabblad om de simulatie te zien.
           </p>
@@ -700,24 +700,24 @@ export default function SchuldenSection({ data, taxYear, grossSalary, isPartner,
       {totalDebts > 0 && (
         <SectionCard title="Schulden samenvatting — Box 3" icon={<CreditCard size={20} />} accent="border-red-400">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="bg-slate-50 rounded-xl px-4 py-3">
-              <p className="text-xs text-slate-500">Totale schulden</p>
-              <p className="text-base font-bold text-slate-800">{nl.format(totalDebts)}</p>
+            <div className="bg-slate-50 dark:bg-slate-900 rounded-xl px-4 py-3">
+              <p className="text-xs text-slate-500 dark:text-slate-400">Totale schulden</p>
+              <p className="text-base font-bold text-slate-800 dark:text-slate-100">{nl.format(totalDebts)}</p>
             </div>
-            <div className="bg-slate-50 rounded-xl px-4 py-3">
-              <p className="text-xs text-slate-500">Drempel Box 3</p>
-              <p className="text-base font-bold text-slate-500">– {nl.format(3700)}</p>
+            <div className="bg-slate-50 dark:bg-slate-900 rounded-xl px-4 py-3">
+              <p className="text-xs text-slate-500 dark:text-slate-400">Drempel Box 3</p>
+              <p className="text-base font-bold text-slate-500 dark:text-slate-400">– {nl.format(3700)}</p>
             </div>
-            <div className="bg-red-50 rounded-xl px-4 py-3">
-              <p className="text-xs text-slate-500">Aftrekbaar Box 3</p>
+            <div className="bg-red-50 dark:bg-red-900/20 rounded-xl px-4 py-3">
+              <p className="text-xs text-slate-500 dark:text-slate-400">Aftrekbaar Box 3</p>
               <p className="text-base font-bold text-red-700">{nl.format(box3Debts)}</p>
             </div>
-            <div className="bg-orange-50 rounded-xl px-4 py-3">
-              <p className="text-xs text-slate-500">Totale jaarrente</p>
+            <div className="bg-orange-50 dark:bg-orange-900/20 rounded-xl px-4 py-3">
+              <p className="text-xs text-slate-500 dark:text-slate-400">Totale jaarrente</p>
               <p className="text-base font-bold text-orange-700">{nl2.format(totaalRente)}</p>
             </div>
           </div>
-          <p className="text-xs text-slate-400 mt-3 flex items-start gap-1">
+          <p className="text-xs text-slate-400 dark:text-slate-500 mt-3 flex items-start gap-1">
             <InfoTooltip tip="De eerste €3.700 aan schulden per persoon is niet aftrekbaar in Box 3. Alleen het bedrag daarboven verlaagt uw belastbare vermogen." />
             Schulden verlagen uw Box 3 vermogen. De eerste €3.700 per persoon is niet aftrekbaar (drempel).
             Fictief rendement op schulden: <strong>2,62%</strong> (2026).

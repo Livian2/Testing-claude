@@ -45,41 +45,41 @@ function BeleggingenSection({ data, onChange }: Props) {
 
   return (
     <SectionCard title={<span className="flex items-center gap-1.5">Beleggingsrekeningen <InfoTooltip tip="Voer de waarde in van uw beleggingsportefeuille op 1 januari. ETF's en aandelen vallen onder de 'beleggingen' categorie (fictief rendement 5,88%)." /></span>} icon={<Landmark size={20} />} accent="border-purple-400">
-      <p className="text-xs text-slate-500 mb-4">
+      <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
         Waarde van uw beleggingen op <strong>1 januari</strong> — dit is de Box 3 grondslag.
         Voer in per broker / rekening.
       </p>
 
       {data.beleggingen.length === 0 ? (
-        <div className="text-center py-5 text-slate-400 text-sm border-2 border-dashed border-slate-200 rounded-xl mb-3">
+        <div className="text-center py-5 text-slate-400 dark:text-slate-500 text-sm border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl mb-3">
           Nog geen beleggingsrekeningen toegevoegd
         </div>
       ) : (
         <div className="space-y-2 mb-3">
           {data.beleggingen.map(b => (
-            <div key={b.id} className="grid grid-cols-12 gap-2 items-end p-3 bg-slate-50 rounded-xl border border-slate-200">
+            <div key={b.id} className="grid grid-cols-12 gap-2 items-end p-3 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700">
               <div className="col-span-12 sm:col-span-3 flex flex-col gap-1">
-                <label className="text-xs text-slate-500">Naam / omschrijving</label>
+                <label className="text-xs text-slate-500 dark:text-slate-400">Naam / omschrijving</label>
                 <input
-                  className="border border-slate-300 rounded-lg px-2 py-1.5 text-sm bg-white outline-none focus:ring-2 focus:ring-purple-400"
+                  className="border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1.5 text-sm bg-white dark:bg-slate-700 dark:text-slate-100 outline-none focus:ring-2 focus:ring-purple-400"
                   placeholder="bijv. VWCE portfolio"
                   value={b.naam}
                   onChange={e => update(b.id, { naam: e.target.value })}
                 />
               </div>
               <div className="col-span-6 sm:col-span-2 flex flex-col gap-1">
-                <label className="text-xs text-slate-500">Broker</label>
+                <label className="text-xs text-slate-500 dark:text-slate-400">Broker</label>
                 <input
-                  className="border border-slate-300 rounded-lg px-2 py-1.5 text-sm bg-white outline-none focus:ring-2 focus:ring-purple-400"
+                  className="border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1.5 text-sm bg-white dark:bg-slate-700 dark:text-slate-100 outline-none focus:ring-2 focus:ring-purple-400"
                   placeholder="DEGIRO"
                   value={b.broker}
                   onChange={e => update(b.id, { broker: e.target.value })}
                 />
               </div>
               <div className="col-span-5 sm:col-span-2 flex flex-col gap-1">
-                <label className="text-xs text-slate-500">Type</label>
+                <label className="text-xs text-slate-500 dark:text-slate-400">Type</label>
                 <select
-                  className="border border-slate-300 rounded-lg px-2 py-1.5 text-sm bg-white outline-none focus:ring-2 focus:ring-purple-400"
+                  className="border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1.5 text-sm bg-white dark:bg-slate-700 dark:text-slate-100 outline-none focus:ring-2 focus:ring-purple-400"
                   value={b.type}
                   onChange={e => update(b.id, { type: e.target.value as AssetType })}
                 >
@@ -109,15 +109,15 @@ function BeleggingenSection({ data, onChange }: Props) {
       </button>
 
       {total > 0 && (
-        <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 space-y-2">
+        <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-xl p-4 space-y-2">
           <div className="flex justify-between items-center">
-            <span className="text-sm font-semibold text-slate-700">Totaal beleggingen</span>
+            <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Totaal beleggingen</span>
             <span className="text-base font-bold text-purple-700">{nl.format(total)}</span>
           </div>
           {Object.entries(byBroker).length > 1 && (
-            <div className="space-y-1 pt-1 border-t border-purple-200">
+            <div className="space-y-1 pt-1 border-t border-purple-200 dark:border-purple-800">
               {Object.entries(byBroker).map(([broker, val]) => (
-                <div key={broker} className="flex justify-between text-xs text-slate-600">
+                <div key={broker} className="flex justify-between text-xs text-slate-600 dark:text-slate-300">
                   <span>{broker}</span>
                   <span className="font-medium">{nl.format(val)}</span>
                 </div>
@@ -146,46 +146,46 @@ function SpaarSection({ data, onChange }: Props) {
 
   return (
     <SectionCard title={<span className="flex items-center gap-1.5">Spaarrekeningen <InfoTooltip tip="Spaargeld valt in Box 3 onder de 'spaargeld' categorie met een lager fictief rendement (1,03% in 2026)." /></span>} icon={<PiggyBank size={20} />} accent="border-green-400">
-      <p className="text-xs text-slate-500 mb-4">
+      <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
         Saldo op <strong>1 januari</strong>. Fictief rendement 2026: <strong>1,03%</strong> (ongeacht werkelijke rente).
       </p>
 
       {data.spaarrekeningen.length === 0 ? (
-        <div className="text-center py-5 text-slate-400 text-sm border-2 border-dashed border-slate-200 rounded-xl mb-3">
+        <div className="text-center py-5 text-slate-400 dark:text-slate-500 text-sm border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl mb-3">
           Nog geen spaarrekeningen toegevoegd
         </div>
       ) : (
         <div className="space-y-2 mb-3">
           {data.spaarrekeningen.map(s => (
-            <div key={s.id} className="grid grid-cols-12 gap-2 items-end p-3 bg-slate-50 rounded-xl border border-slate-200">
+            <div key={s.id} className="grid grid-cols-12 gap-2 items-end p-3 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700">
               <div className="col-span-12 sm:col-span-3 flex flex-col gap-1">
-                <label className="text-xs text-slate-500">Naam rekening</label>
+                <label className="text-xs text-slate-500 dark:text-slate-400">Naam rekening</label>
                 <input
-                  className="border border-slate-300 rounded-lg px-2 py-1.5 text-sm bg-white outline-none focus:ring-2 focus:ring-green-400"
+                  className="border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1.5 text-sm bg-white dark:bg-slate-700 dark:text-slate-100 outline-none focus:ring-2 focus:ring-green-400"
                   placeholder="bijv. ING Spaarrekening"
                   value={s.naam}
                   onChange={e => update(s.id, { naam: e.target.value })}
                 />
               </div>
               <div className="col-span-6 sm:col-span-2 flex flex-col gap-1">
-                <label className="text-xs text-slate-500">Bank / instelling</label>
+                <label className="text-xs text-slate-500 dark:text-slate-400">Bank / instelling</label>
                 <input
-                  className="border border-slate-300 rounded-lg px-2 py-1.5 text-sm bg-white outline-none focus:ring-2 focus:ring-green-400"
+                  className="border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1.5 text-sm bg-white dark:bg-slate-700 dark:text-slate-100 outline-none focus:ring-2 focus:ring-green-400"
                   placeholder="ING"
                   value={s.instelling}
                   onChange={e => update(s.id, { instelling: e.target.value })}
                 />
               </div>
               <div className="col-span-5 sm:col-span-2 flex flex-col gap-1">
-                <label className="text-xs text-slate-500 flex items-center gap-1">Rente % <InfoTooltip tip="Het jaarlijkse rentepercentage dat u ontvangt op deze spaarrekening. Dit wordt gebruikt voor de daadwerkelijke rente-inkomsten berekening." /></label>
+                <label className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">Rente % <InfoTooltip tip="Het jaarlijkse rentepercentage dat u ontvangt op deze spaarrekening. Dit wordt gebruikt voor de daadwerkelijke rente-inkomsten berekening." /></label>
                 <div className="relative">
                   <input type="number" min="0" max="20" step="0.01"
-                    className="w-full border border-slate-300 rounded-lg px-2 py-1.5 pr-8 text-sm bg-white outline-none focus:ring-2 focus:ring-green-400"
+                    className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1.5 pr-8 text-sm bg-white dark:bg-slate-700 dark:text-slate-100 outline-none focus:ring-2 focus:ring-green-400"
                     placeholder="0.00"
                     value={s.rentePercentage || ''}
                     onChange={e => update(s.id, { rentePercentage: parseFloat(e.target.value) || 0 })}
                   />
-                  <span className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 text-xs">%</span>
+                  <span className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 text-xs">%</span>
                 </div>
                 {s.saldoJan1 > 0 && s.rentePercentage > 0 && (
                   <p className="text-xs text-green-600 font-medium">≈ {nl.format(s.saldoJan1 * s.rentePercentage / 100)}/jr</p>
@@ -215,12 +215,12 @@ function SpaarSection({ data, onChange }: Props) {
 
       {totalSaldo > 0 && (
         <div className="grid grid-cols-2 gap-3">
-          <div className="bg-green-50 rounded-xl px-4 py-3 border border-green-100">
-            <p className="text-xs text-slate-500 mb-1">Totaal saldo (Box 3)</p>
+          <div className="bg-green-50 dark:bg-green-900/20 rounded-xl px-4 py-3 border border-green-100 dark:border-green-800">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Totaal saldo (Box 3)</p>
             <p className="text-base font-bold text-green-700">{nl.format(totalSaldo)}</p>
           </div>
-          <div className="bg-green-50 rounded-xl px-4 py-3 border border-green-100">
-            <p className="text-xs text-slate-500 mb-1">Werkelijke rente-opbrengst</p>
+          <div className="bg-green-50 dark:bg-green-900/20 rounded-xl px-4 py-3 border border-green-100 dark:border-green-800">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Werkelijke rente-opbrengst</p>
             <p className="text-base font-bold text-green-700">{nl.format(totalRente)}</p>
           </div>
         </div>
@@ -244,31 +244,31 @@ function BetaalSection({ data, onChange }: Props) {
 
   return (
     <SectionCard title={<span className="flex items-center gap-1.5">Betaalrekeningen <InfoTooltip tip="Het saldo op uw betaalrekening op 1 januari telt ook mee voor Box 3. Houd er rekening mee dat dit inclusief evt. buffer is." /></span>} icon={<Wallet size={20} />} accent="border-sky-400">
-      <p className="text-xs text-slate-500 mb-4">
+      <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
         Saldo betaalrekening(en) op <strong>1 januari</strong> — telt mee als spaartegoed in Box 3 (fictief rendement 1,03%).
       </p>
 
       {data.betaalrekeningen.length === 0 ? (
-        <div className="text-center py-5 text-slate-400 text-sm border-2 border-dashed border-slate-200 rounded-xl mb-3">
+        <div className="text-center py-5 text-slate-400 dark:text-slate-500 text-sm border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl mb-3">
           Nog geen betaalrekeningen toegevoegd
         </div>
       ) : (
         <div className="space-y-2 mb-3">
           {data.betaalrekeningen.map(b => (
-            <div key={b.id} className="grid grid-cols-12 gap-2 items-end p-3 bg-slate-50 rounded-xl border border-slate-200">
+            <div key={b.id} className="grid grid-cols-12 gap-2 items-end p-3 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700">
               <div className="col-span-12 sm:col-span-3 flex flex-col gap-1">
-                <label className="text-xs text-slate-500">Naam rekening</label>
+                <label className="text-xs text-slate-500 dark:text-slate-400">Naam rekening</label>
                 <input
-                  className="border border-slate-300 rounded-lg px-2 py-1.5 text-sm bg-white outline-none focus:ring-2 focus:ring-sky-400"
+                  className="border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1.5 text-sm bg-white dark:bg-slate-700 dark:text-slate-100 outline-none focus:ring-2 focus:ring-sky-400"
                   placeholder="bijv. ABN AMRO betaalrekening"
                   value={b.naam}
                   onChange={e => update(b.id, { naam: e.target.value })}
                 />
               </div>
               <div className="col-span-5 sm:col-span-3 flex flex-col gap-1">
-                <label className="text-xs text-slate-500">Bank / instelling</label>
+                <label className="text-xs text-slate-500 dark:text-slate-400">Bank / instelling</label>
                 <input
-                  className="border border-slate-300 rounded-lg px-2 py-1.5 text-sm bg-white outline-none focus:ring-2 focus:ring-sky-400"
+                  className="border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1.5 text-sm bg-white dark:bg-slate-700 dark:text-slate-100 outline-none focus:ring-2 focus:ring-sky-400"
                   placeholder="ABN AMRO"
                   value={b.instelling}
                   onChange={e => update(b.id, { instelling: e.target.value })}
@@ -297,8 +297,8 @@ function BetaalSection({ data, onChange }: Props) {
       </button>
 
       {total > 0 && (
-        <div className="bg-sky-50 rounded-xl px-4 py-3 border border-sky-100">
-          <p className="text-xs text-slate-500 mb-1">Totaal betaalrekeningen (Box 3)</p>
+        <div className="bg-sky-50 dark:bg-sky-900/20 rounded-xl px-4 py-3 border border-sky-100 dark:border-sky-800">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Totaal betaalrekeningen (Box 3)</p>
           <p className="text-base font-bold text-sky-700">{nl.format(total)}</p>
         </div>
       )}
@@ -322,14 +322,14 @@ function Box3Summary({ data }: { data: WaardesData }) {
   ].filter(r => r.val > 0);
 
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-5 space-y-3">
-      <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
-        <CalendarDays size={16} className="text-slate-500" />
-        <span className="text-sm font-semibold text-slate-700 flex items-center gap-1">Totaal Box 3 vermogen (1 jan) <InfoTooltip tip="De Belastingdienst gebruikt de waarde van uw vermogen op 1 januari van het belastingjaar als grondslag voor Box 3. Dit heet de peildatum." /></span>
-        <span className="ml-auto text-lg font-bold text-slate-900">{nl.format(grandTotal)}</span>
+    <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm p-5 space-y-3">
+      <div className="flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-slate-700">
+        <CalendarDays size={16} className="text-slate-500 dark:text-slate-400" />
+        <span className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1">Totaal Box 3 vermogen (1 jan) <InfoTooltip tip="De Belastingdienst gebruikt de waarde van uw vermogen op 1 januari van het belastingjaar als grondslag voor Box 3. Dit heet de peildatum." /></span>
+        <span className="ml-auto text-lg font-bold text-slate-900 dark:text-slate-100">{nl.format(grandTotal)}</span>
       </div>
       {/* Bar visualisation */}
-      <div className="h-3 rounded-full overflow-hidden flex gap-px bg-slate-100">
+      <div className="h-3 rounded-full overflow-hidden flex gap-px bg-slate-100 dark:bg-slate-700">
         {rows.map(r => (
           <div
             key={r.label}
@@ -340,11 +340,11 @@ function Box3Summary({ data }: { data: WaardesData }) {
       </div>
       <div className="flex flex-wrap gap-4">
         {rows.map(r => (
-          <div key={r.label} className="flex items-center gap-1.5 text-xs text-slate-600">
+          <div key={r.label} className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">
             <span className={`w-2.5 h-2.5 rounded-full ${r.color}`} />
             <span>{r.label}</span>
-            <span className="font-semibold text-slate-800">{nl.format(r.val)}</span>
-            <span className="text-slate-400">({nl2.format((r.val / grandTotal) * 100)}%)</span>
+            <span className="font-semibold text-slate-800 dark:text-slate-100">{nl.format(r.val)}</span>
+            <span className="text-slate-400 dark:text-slate-500">({nl2.format((r.val / grandTotal) * 100)}%)</span>
           </div>
         ))}
       </div>

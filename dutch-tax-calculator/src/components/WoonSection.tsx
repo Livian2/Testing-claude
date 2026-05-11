@@ -70,7 +70,7 @@ function MortgageChart({ hyp, taxYear }: { hyp: HypotheekData; taxYear: number }
 
   return (
     <div className="mt-3">
-      <p className="text-xs font-semibold text-slate-600 mb-1 flex items-center gap-1.5">
+      <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1 flex items-center gap-1.5">
         <BarChart2 size={12} />Verloop restschuld
       </p>
       <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ maxHeight: 160 }}>
@@ -146,17 +146,17 @@ function HypotheekCard({
   }, [hyp, taxYear]);
 
   return (
-    <div className="border border-slate-200 rounded-xl overflow-hidden">
+    <div className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
       {/* Header */}
-      <div className="flex items-center gap-2 px-4 py-2.5 bg-slate-50 border-b border-slate-200">
+      <div className="flex items-center gap-2 px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700">
         <button
           onClick={() => setOpen(o => !o)}
-          className="flex items-center gap-2 flex-1 text-sm font-medium text-slate-700 bg-transparent border-0 cursor-pointer text-left"
+          className="flex items-center gap-2 flex-1 text-sm font-medium text-slate-700 dark:text-slate-200 bg-transparent border-0 cursor-pointer text-left"
         >
-          {open ? <ChevronDown size={15} className="text-orange-500" /> : <ChevronRight size={15} className="text-slate-400" />}
+          {open ? <ChevronDown size={15} className="text-orange-500" /> : <ChevronRight size={15} className="text-slate-400 dark:text-slate-500" />}
           <span>{hyp.label || 'Hypotheek'}</span>
           {berekening && (
-            <span className="ml-2 text-xs text-slate-500 font-normal">
+            <span className="ml-2 text-xs text-slate-500 dark:text-slate-400 font-normal">
               {nl2.format(berekening.maandlast)}/mnd · rente {nl.format(berekening.jaarRente)}/jr
             </span>
           )}
@@ -169,12 +169,12 @@ function HypotheekCard({
       </div>
 
       {open && (
-        <div className="p-4 space-y-4 bg-white">
+        <div className="p-4 space-y-4 bg-white dark:bg-slate-800">
           {/* Label */}
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-slate-600">Naam / omschrijving</label>
+            <label className="text-xs font-medium text-slate-600 dark:text-slate-300">Naam / omschrijving</label>
             <input
-              className="border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+              className="border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white dark:bg-slate-700 dark:text-slate-100"
               placeholder="bijv. Eerste hypotheek"
               value={hyp.label}
               onChange={e => onUpdate({ label: e.target.value })}
@@ -183,7 +183,7 @@ function HypotheekCard({
 
           {/* Type */}
           <div>
-            <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">Type hypotheek</p>
+            <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">Type hypotheek</p>
             <div className="grid grid-cols-3 gap-2">
               {HYPOTHEEK_TYPES.map(ht => (
                 <button
@@ -191,8 +191,8 @@ function HypotheekCard({
                   onClick={() => onUpdate({ type: ht.value })}
                   className={`flex flex-col items-center gap-0.5 py-2.5 px-2 rounded-xl border-2 text-center transition-colors cursor-pointer ${
                     hyp.type === ht.value
-                      ? 'border-blue-500 bg-blue-50 text-blue-800'
-                      : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300'
+                      : 'border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-500'
                   }`}
                 >
                   <span className="text-xs font-semibold flex items-center gap-1">{ht.label} <InfoTooltip tip={ht.tip} /></span>
@@ -212,44 +212,44 @@ function HypotheekCard({
               tooltip={<InfoTooltip tip="Het oorspronkelijk geleende bedrag van de hypotheek." />}
             />
             <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-slate-700 flex items-center gap-1">Rentepercentage <InfoTooltip tip="Het jaarlijkse rentepercentage dat u betaalt over de hypotheekschuld." /></label>
+              <label className="text-sm font-medium text-slate-700 dark:text-slate-200 flex items-center gap-1">Rentepercentage <InfoTooltip tip="Het jaarlijkse rentepercentage dat u betaalt over de hypotheekschuld." /></label>
               <div className="relative">
                 <input type="number" min="0" max="20" step="0.01" value={hyp.rentePercentage || ''}
                   onChange={e => onUpdate({ rentePercentage: parseFloat(e.target.value) || 0 })}
                   placeholder="3.75"
-                  className="w-full border border-slate-300 rounded-xl px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  className="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white dark:bg-slate-700 dark:text-slate-100"
                 />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">%</span>
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 text-sm">%</span>
               </div>
             </div>
             <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-slate-700 flex items-center gap-1">Rentevaste periode <InfoTooltip tip="Het aantal jaren dat uw rente vaststaat. Na deze periode wordt de rente opnieuw vastgesteld op basis van de marktrente." /></label>
+              <label className="text-sm font-medium text-slate-700 dark:text-slate-200 flex items-center gap-1">Rentevaste periode <InfoTooltip tip="Het aantal jaren dat uw rente vaststaat. Na deze periode wordt de rente opnieuw vastgesteld op basis van de marktrente." /></label>
               <div className="relative">
                 <input type="number" min="1" max="30" step="1" value={hyp.rentevastePeriode || ''}
                   onChange={e => onUpdate({ rentevastePeriode: parseInt(e.target.value) || 0 })}
                   placeholder="10"
-                  className="w-full border border-slate-300 rounded-xl px-3 py-2 pr-12 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  className="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 pr-12 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white dark:bg-slate-700 dark:text-slate-100"
                 />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">jaar</span>
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 text-sm">jaar</span>
               </div>
             </div>
             <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-slate-700 flex items-center gap-1">Looptijd lening <InfoTooltip tip="De totale duur van de hypotheek in jaren. Standaard is 30 jaar." /></label>
+              <label className="text-sm font-medium text-slate-700 dark:text-slate-200 flex items-center gap-1">Looptijd lening <InfoTooltip tip="De totale duur van de hypotheek in jaren. Standaard is 30 jaar." /></label>
               <div className="relative">
                 <input type="number" min="1" max="40" step="1" value={hyp.looptijd || ''}
                   onChange={e => onUpdate({ looptijd: parseInt(e.target.value) || 0 })}
                   placeholder="30"
-                  className="w-full border border-slate-300 rounded-xl px-3 py-2 pr-12 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  className="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 pr-12 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white dark:bg-slate-700 dark:text-slate-100"
                 />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">jaar</span>
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 text-sm">jaar</span>
               </div>
             </div>
             <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-slate-700">Startjaar hypotheek</label>
+              <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Startjaar hypotheek</label>
               <input type="number" min="1990" max="2040" step="1" value={hyp.startJaar || ''}
                 onChange={e => onUpdate({ startJaar: parseInt(e.target.value) || taxYear })}
                 placeholder={String(taxYear)}
-                className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                className="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white dark:bg-slate-700 dark:text-slate-100"
               />
             </div>
             <CurrencyInput
@@ -264,8 +264,8 @@ function HypotheekCard({
 
           {/* Computed results */}
           {berekening && (
-            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-3">
-              <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide">Berekening {taxYear}</p>
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 space-y-3">
+              <p className="text-xs font-semibold text-blue-700 dark:text-blue-300 uppercase tracking-wide">Berekening {taxYear}</p>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {[
                   { label: 'Maandlast',      val: nl2.format(berekening.maandlast) },
@@ -274,12 +274,12 @@ function HypotheekCard({
                   { label: 'Restschuld eind',  val: nl.format(berekening.restschuldEind) },
                 ].map(r => (
                   <div key={r.label} className="text-center">
-                    <p className="text-xs text-blue-600 mb-0.5">{r.label}</p>
-                    <p className="text-sm font-bold text-blue-900">{r.val}</p>
+                    <p className="text-xs text-blue-600 dark:text-blue-400 mb-0.5">{r.label}</p>
+                    <p className="text-sm font-bold text-blue-900 dark:text-blue-200">{r.val}</p>
                   </div>
                 ))}
               </div>
-              <p className="text-xs text-blue-700 border-t border-blue-200 pt-2">
+              <p className="text-xs text-blue-700 dark:text-blue-300 border-t border-blue-200 dark:border-blue-800 pt-2">
                 Jaarrente van <strong>{nl.format(berekening.jaarRente)}</strong> wordt automatisch als Box 1 aftrekpost meegenomen.
               </p>
               {hyp.leningBedrag > 0 && hyp.looptijd > 0 && (
@@ -327,8 +327,8 @@ export default function WoonSection({ data, taxYear, onChange }: Props) {
               <button key={t} onClick={() => onChange({ ...data, woningType: t })}
                 className={`flex flex-col items-center gap-1 py-3 px-2 rounded-xl border-2 text-center transition-colors cursor-pointer ${
                   data.woningType === t
-                    ? 'border-teal-500 bg-teal-50 text-teal-800'
-                    : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                    ? 'border-teal-500 bg-teal-50 dark:bg-teal-900/20 text-teal-800 dark:text-teal-300'
+                    : 'border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-500'
                 }`}
               >
                 <span className="text-sm font-semibold">{t === 'huur' ? 'Huurwoning' : 'Koopwoning'}</span>
@@ -343,15 +343,15 @@ export default function WoonSection({ data, taxYear, onChange }: Props) {
                 value={data.maandhuur} onChange={v => onChange({ ...data, maandhuur: v })}
                 tooltip={<InfoTooltip tip="De kale huurprijs per maand zonder servicekosten of gas/water/licht." />}
               />
-              <label className="flex items-center gap-2.5 cursor-pointer select-none py-2 px-3 bg-teal-50 border border-teal-200 rounded-xl">
+              <label className="flex items-center gap-2.5 cursor-pointer select-none py-2 px-3 bg-teal-50 dark:bg-teal-900/20 border border-teal-200 dark:border-teal-800 rounded-xl">
                 <input
                   type="checkbox"
                   className="w-4 h-4 accent-teal-600"
                   checked={data.huurtoeslagEnabled !== false}
                   onChange={e => onChange({ ...data, huurtoeslagEnabled: e.target.checked })}
                 />
-                <span className="text-sm text-teal-800 font-medium flex items-center gap-1">Huurtoeslag aanvragen <InfoTooltip tip="Huurtoeslag is een maandelijkse bijdrage van de overheid als uw huur en inkomen niet te hoog zijn. U heeft recht op huurtoeslag als uw huur onder de liberalisatiegrens (€900/mnd) ligt." /></span>
-                <span className="text-xs text-teal-600 ml-1">— wordt automatisch berekend bij lage inkomens</span>
+                <span className="text-sm text-teal-800 dark:text-teal-300 font-medium flex items-center gap-1">Huurtoeslag aanvragen <InfoTooltip tip="Huurtoeslag is een maandelijkse bijdrage van de overheid als uw huur en inkomen niet te hoog zijn. U heeft recht op huurtoeslag als uw huur onder de liberalisatiegrens (€900/mnd) ligt." /></span>
+                <span className="text-xs text-teal-600 dark:text-teal-400 ml-1">— wordt automatisch berekend bij lage inkomens</span>
               </label>
             </div>
           )}
@@ -383,33 +383,33 @@ export default function WoonSection({ data, taxYear, onChange }: Props) {
                 const hraRate = 0.3748;
                 const belastingVoordeel = totaalRente * hraRate;
                 return (
-                  <div className="bg-green-50 border border-green-200 rounded-xl p-4 space-y-2">
-                    <p className="text-xs font-semibold text-green-700 uppercase tracking-wide">Hypotheekrenteaftrek (HRA) — {taxYear}</p>
+                  <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl p-4 space-y-2">
+                    <p className="text-xs font-semibold text-green-700 dark:text-green-300 uppercase tracking-wide">Hypotheekrenteaftrek (HRA) — {taxYear}</p>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
                       <div>
-                        <p className="text-xs text-slate-500 mb-0.5">Totale jaarrente</p>
-                        <p className="font-bold text-slate-800">{nl.format(totaalRente)}</p>
-                        <p className="text-xs text-slate-400">aftrekbaar van Box 1 inkomen</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">Totale jaarrente</p>
+                        <p className="font-bold text-slate-800 dark:text-slate-100">{nl.format(totaalRente)}</p>
+                        <p className="text-xs text-slate-400 dark:text-slate-500">aftrekbaar van Box 1 inkomen</p>
                       </div>
                       <div>
-                        <p className="text-xs text-slate-500 mb-0.5">Aftrekvoet (max 2026)</p>
-                        <p className="font-bold text-slate-800">37,48%</p>
-                        <p className="text-xs text-slate-400">2e schijf Box 1 tarief</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">Aftrekvoet (max 2026)</p>
+                        <p className="font-bold text-slate-800 dark:text-slate-100">37,48%</p>
+                        <p className="text-xs text-slate-400 dark:text-slate-500">2e schijf Box 1 tarief</p>
                       </div>
                       <div>
-                        <p className="text-xs text-slate-500 mb-0.5">Belastingvoordeel</p>
-                        <p className="font-bold text-green-700">{nl.format(belastingVoordeel)}/jaar</p>
-                        <p className="text-xs text-slate-400">≈ {nl.format(belastingVoordeel / 12)}/mnd</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">Belastingvoordeel</p>
+                        <p className="font-bold text-green-700 dark:text-green-400">{nl.format(belastingVoordeel)}/jaar</p>
+                        <p className="text-xs text-slate-400 dark:text-slate-500">≈ {nl.format(belastingVoordeel / 12)}/mnd</p>
                       </div>
                     </div>
                     {data.hypotheken.length > 1 && (
-                      <div className="border-t border-green-200 pt-2 space-y-1">
+                      <div className="border-t border-green-200 dark:border-green-800 pt-2 space-y-1">
                         {data.hypotheken.map(h => {
                           if (h.leningBedrag <= 0) return null;
                           try {
                             const r = berekenHypotheek(h, taxYear).jaarRente;
                             return (
-                              <div key={h.id} className="flex justify-between text-xs text-slate-600">
+                              <div key={h.id} className="flex justify-between text-xs text-slate-600 dark:text-slate-300">
                                 <span>{h.label}</span>
                                 <span className="font-medium">{nl.format(r)}/jaar</span>
                               </div>
@@ -418,7 +418,7 @@ export default function WoonSection({ data, taxYear, onChange }: Props) {
                         })}
                       </div>
                     )}
-                    <p className="text-xs text-green-700 border-t border-green-200 pt-2">
+                    <p className="text-xs text-green-700 dark:text-green-300 border-t border-green-200 dark:border-green-800 pt-2">
                       De hypotheekrente verlaagt uw belastbaar Box 1 inkomen. Het werkelijke voordeel hangt af van uw marginale tarief — bij een tarief van 35,82% (1e schijf) is het voordeel {nl.format(totaalRente * 0.3582)}/jaar.
                     </p>
                   </div>
@@ -445,13 +445,13 @@ export default function WoonSection({ data, taxYear, onChange }: Props) {
         </div>
 
         <div className="mt-4 grid grid-cols-2 gap-3">
-          <div className="bg-orange-50 rounded-xl px-4 py-3 border border-orange-100 space-y-0.5">
-            <p className="text-xs text-slate-500">Totale woonlast per maand</p>
+          <div className="bg-orange-50 dark:bg-orange-900/20 rounded-xl px-4 py-3 border border-orange-100 dark:border-orange-800 space-y-0.5">
+            <p className="text-xs text-slate-500 dark:text-slate-400">Totale woonlast per maand</p>
             <p className="text-base font-bold text-orange-700">{nl.format(maandTotaal)}</p>
           </div>
-          <div className="bg-orange-50 rounded-xl px-4 py-3 border border-orange-100 space-y-0.5">
-            <p className="text-xs text-slate-500">Totale woonlast per jaar</p>
-            <p className="text-base font-bold text-orange-800">{nl.format(maandTotaal * 12)}</p>
+          <div className="bg-orange-50 dark:bg-orange-900/20 rounded-xl px-4 py-3 border border-orange-100 dark:border-orange-800 space-y-0.5">
+            <p className="text-xs text-slate-500 dark:text-slate-400">Totale woonlast per jaar</p>
+            <p className="text-base font-bold text-orange-800 dark:text-orange-300">{nl.format(maandTotaal * 12)}</p>
           </div>
         </div>
       </SectionCard>

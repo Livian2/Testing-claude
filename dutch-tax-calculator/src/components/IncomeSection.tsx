@@ -56,20 +56,20 @@ export default function IncomeSection({ data, onChange }: Props) {
         />
 
         <div className="space-y-2 pt-1">
-          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">
+          <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">
             Aanvullende inkomsten &amp; aftrekposten
           </p>
           {OPTIONAL_FIELDS.map(f => (
-            <div key={f.key} className="rounded-xl border border-slate-200 overflow-hidden">
+            <div key={f.key} className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
               <button
                 onClick={() => toggle(f.key)}
-                className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors bg-white border-0 cursor-pointer text-left"
+                className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors bg-white dark:bg-slate-800 border-0 cursor-pointer text-left"
               >
                 <span className="flex items-center gap-2">
                   {open.has(f.key)
                     ? <ChevronDown size={15} className="text-orange-500" />
-                    : <ChevronRight size={15} className="text-slate-400" />}
-                  <span className={open.has(f.key) ? 'font-medium text-slate-800' : ''}>{f.label}</span>
+                    : <ChevronRight size={15} className="text-slate-400 dark:text-slate-500" />}
+                  <span className={open.has(f.key) ? 'font-medium text-slate-800 dark:text-slate-100' : ''}>{f.label}</span>
                 </span>
                 {(data[f.key] as number) > 0 && (
                   <span className="text-xs font-semibold text-blue-600">
@@ -78,7 +78,7 @@ export default function IncomeSection({ data, onChange }: Props) {
                 )}
               </button>
               {open.has(f.key) && (
-                <div className="px-4 pb-4 pt-1 bg-slate-50 border-t border-slate-100">
+                <div className="px-4 pb-4 pt-1 bg-slate-50 dark:bg-slate-900 border-t border-slate-100 dark:border-slate-700">
                   <CurrencyInput
                     label={f.label}
                     hint={f.hint}

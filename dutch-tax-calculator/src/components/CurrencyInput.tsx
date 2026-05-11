@@ -42,11 +42,11 @@ export default function CurrencyInput({
 
   return (
     <div className="flex flex-col gap-1">
-      <label className="text-sm font-medium text-slate-700 flex items-center gap-1">{label}{tooltip}</label>
-      {hint && <p className="text-xs text-slate-500">{hint}</p>}
-      <div className="flex items-center border border-slate-300 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-orange-400 focus-within:border-orange-400 bg-white">
+      <label className="text-sm font-medium text-slate-700 dark:text-slate-200 flex items-center gap-1">{label}{tooltip}</label>
+      {hint && <p className="text-xs text-slate-500 dark:text-slate-400">{hint}</p>}
+      <div className="flex items-center border border-slate-300 dark:border-slate-600 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-orange-400 focus-within:border-orange-400 bg-white dark:bg-slate-700">
         {prefix && (
-          <span className="px-3 py-2 bg-slate-100 text-slate-500 text-sm border-r border-slate-300 select-none">
+          <span className="px-3 py-2 bg-slate-100 dark:bg-slate-600 text-slate-500 dark:text-slate-300 text-sm border-r border-slate-300 dark:border-slate-600 select-none">
             {prefix}
           </span>
         )}
@@ -70,10 +70,10 @@ export default function CurrencyInput({
             focused.current = false;
             setDisplay(formatNL(value, decimals));
           }}
-          className="flex-1 px-3 py-2 text-sm outline-none bg-white min-w-0"
+          className="flex-1 px-3 py-2 text-sm outline-none bg-white dark:bg-slate-700 dark:text-slate-100 min-w-0"
         />
         {suffix && (
-          <span className="px-3 py-2 bg-slate-100 text-slate-500 text-sm border-l border-slate-300 select-none">
+          <span className="px-3 py-2 bg-slate-100 dark:bg-slate-600 text-slate-500 dark:text-slate-300 text-sm border-l border-slate-300 dark:border-slate-600 select-none">
             {suffix}
           </span>
         )}
