@@ -28,135 +28,108 @@ const DEFAULT_HYP: Omit<HypotheekData, 'id' | 'label'> = {
 // ── Amortisation SVG chart ──────────────────────────────────────────────────
 
 function MortgageChart({ hyp, taxYear }: { hyp: HypotheekData; taxYear: number }) {
-  const W = 520; const H = 140; const PAD = { t: 10, r: 10, b: 28, l: 48 };
-  const iW = W - PAD.l - PAD.r;
-  const iH = H - PAD.t - PAD.b;
+  const W = 520; const H = 140;
+  const PAD_T = 10; const PAD_R = 10; const PAD_B = 28; const PAD_L = 48;
+  const iW = W - PAD_L - PAD_R;
+  const iH = H - PAD_T - PAD_B;
 
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
-  const svgRef = useRef<SVGSVGElement>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
 
   const chartData = useMemo(() => {
     const pts: { year: number; balance: number; interest: number; principal: number }[] = [];
     if (hyp.leningBedrag <= 0 || hyp.looptijd <= 0) return pts;
     for (let yr = 0; yr <= hyp.looptijd; yr++) {
       const absYear = hyp.startJaar + yr;
-      const b = berekenHypotheek({ ...hyp, startJaar: hyp.startJaar }, absYear);
-      const balStart = berekenHypotheek({ ...hyp }, absYear).restschuldBegin;
-      pts.push({ year: absYear, balance: balStart, interest: b.jaarRente, principal: b.jaarAflossing });
+      const b = berekenHypotheek(hyp, absYear);
+      pts.push({ year: absYear, balance: b.restschuldBegin, interest: b.jaarRente, principal: b.jaarAflossing });
     }
     return pts;
   }, [hyp]);
 
-  const handleMouseMove = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
-    const svg = svgRef.current;
-    if (!svg || chartData.length < 2) return;
-    const rect = svg.getBoundingClientRect();
-    const svgX = ((e.clientX - rect.left) / rect.width) * W;
-    const relX = svgX - PAD.l;
-    const idx = Math.round((relX / iW) * (chartData.length - 1));
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const wrap = wrapRef.current;
+    if (!wrap || chartData.length < 2) return;
+    const rect = wrap.getBoundingClientRect();
+    const relX  = e.clientX - rect.left;
+    const chartX = relX - (rect.width * PAD_L / W);
+    const chartW = rect.width * iW / W;
+    const idx = Math.round((chartX / chartW) * (chartData.length - 1));
     setHoverIdx(Math.max(0, Math.min(chartData.length - 1, idx)));
   }, [chartData.length, iW]);
 
   if (chartData.length < 2) return null;
 
-  const maxBal  = hyp.leningBedrag;
-  const years   = chartData.length;
+  const maxBal = Math.max(hyp.leningBedrag, 1);
+  const years  = chartData.length;
 
-  const xScale = (i: number) => PAD.l + (i / (years - 1)) * iW;
-  const yBal   = (v: number) => PAD.t + iH - (v / maxBal) * iH;
+  const xScale = (i: number) => PAD_L + (i / (years - 1)) * iW;
+  const yBal   = (v: number) => PAD_T + iH - (v / maxBal) * iH;
 
-  const balancePts = chartData.map((d, i) => `${i === 0 ? 'M' : 'L'}${xScale(i)},${yBal(d.balance)}`).join(' ');
-  const areaPath   = `${balancePts} L${xScale(years - 1)},${PAD.t + iH} L${xScale(0)},${PAD.t + iH} Z`;
+  const balancePath = chartData.map((d, i) => `${i === 0 ? 'M' : 'L'}${xScale(i)},${yBal(d.balance)}`).join(' ');
+  const areaPath    = `${balancePath} L${xScale(years - 1)},${PAD_T + iH} L${xScale(0)},${PAD_T + iH} Z`;
 
   const currentIdx = chartData.findIndex(d => d.year === taxYear);
-  const activeIdx  = hoverIdx ?? currentIdx;
-  const activeData = activeIdx >= 0 ? chartData[activeIdx] : null;
+  const activeIdx  = hoverIdx !== null ? hoverIdx : currentIdx;
+  const activeData = activeIdx >= 0 && activeIdx < chartData.length ? chartData[activeIdx] : null;
 
-  const yTicks = [0, 0.25, 0.5, 0.75, 1].map(f => ({ val: f * maxBal, y: PAD.t + iH - f * iH }));
+  const yTicks = [0, 0.25, 0.5, 0.75, 1].map(f => ({ val: f * maxBal, y: PAD_T + iH - f * iH }));
   const xTicks = chartData.filter(d => (d.year - hyp.startJaar) % 5 === 0);
 
-  // Tooltip box positioning — keep inside chart
-  const tipX    = activeIdx >= 0 ? xScale(activeIdx) : 0;
-  const tipW    = 120;
-  const tipLeft = tipX + tipW + 8 > W - PAD.r ? tipX - tipW - 6 : tipX + 6;
+  // Tooltip: position as % of SVG width so it scales with the element
+  const tipPctLeft = activeIdx >= 0 ? xScale(activeIdx) / W * 100 : 0;
+  const tipOnRight = tipPctLeft < 65;
+
+  const fmt = (v: number) => v >= 1000 ? `€${Math.round(v / 1000)}k` : `€${Math.round(v)}`;
 
   return (
     <div className="mt-3">
       <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1 flex items-center gap-1.5">
         <BarChart2 size={12} />Verloop restschuld
       </p>
-      <div className="relative">
-        <svg
-          ref={svgRef}
-          viewBox={`0 0 ${W} ${H}`}
-          className="w-full cursor-crosshair"
-          style={{ maxHeight: 160 }}
-          onMouseMove={handleMouseMove}
-          onMouseLeave={() => setHoverIdx(null)}
-        >
+      <div ref={wrapRef} className="relative" style={{ cursor: 'crosshair' }}
+        onMouseMove={handleMouseMove} onMouseLeave={() => setHoverIdx(null)}>
+        <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ maxHeight: 160, display: 'block' }}>
           <defs>
-            <linearGradient id={`bg-${hyp.id}`} x1="0" y1="0" x2="0" y2="1">
+            <linearGradient id={`mg-${hyp.id}`} x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="#6366f1" stopOpacity="0.35" />
               <stop offset="100%" stopColor="#6366f1" stopOpacity="0.04" />
             </linearGradient>
           </defs>
 
-          {/* Grid lines */}
           {yTicks.map((t, i) => (
             <g key={i}>
-              <line x1={PAD.l} y1={t.y} x2={W - PAD.r} y2={t.y} stroke="#e2e8f0" strokeWidth="1" />
-              <text x={PAD.l - 4} y={t.y + 4} textAnchor="end" fontSize="9" fill="#94a3b8">
+              <line x1={PAD_L} y1={t.y} x2={W - PAD_R} y2={t.y} stroke="#e2e8f0" strokeWidth="1" />
+              <text x={PAD_L - 4} y={t.y + 4} textAnchor="end" fontSize="9" fill="#94a3b8">
                 {t.val >= 1000 ? `${Math.round(t.val / 1000)}k` : Math.round(t.val)}
               </text>
             </g>
           ))}
 
-          {/* Area */}
-          <path d={areaPath} fill={`url(#bg-${hyp.id})`} />
+          <path d={areaPath} fill={`url(#mg-${hyp.id})`} />
+          <polyline points={chartData.map((d, i) => `${xScale(i)},${yBal(d.balance)}`).join(' ')}
+            fill="none" stroke="#6366f1" strokeWidth="2" strokeLinejoin="round" />
 
-          {/* Balance line */}
-          <polyline
-            points={chartData.map((d, i) => `${xScale(i)},${yBal(d.balance)}`).join(' ')}
-            fill="none" stroke="#6366f1" strokeWidth="2" strokeLinejoin="round"
-          />
-
-          {/* Current year marker (shown when not hovering) */}
-          {currentIdx >= 0 && hoverIdx === null && (
+          {/* Current-year marker */}
+          {currentIdx >= 0 && (
             <g>
-              <line x1={xScale(currentIdx)} y1={PAD.t} x2={xScale(currentIdx)} y2={PAD.t + iH}
+              <line x1={xScale(currentIdx)} y1={PAD_T} x2={xScale(currentIdx)} y2={PAD_T + iH}
                 stroke="#f97316" strokeWidth="1.5" strokeDasharray="3,2" />
               <circle cx={xScale(currentIdx)} cy={yBal(chartData[currentIdx].balance)} r="4"
                 fill="#f97316" stroke="white" strokeWidth="1.5" />
             </g>
           )}
 
-          {/* Hover crosshair + dot */}
+          {/* Hover crosshair */}
           {hoverIdx !== null && activeData && (
             <g>
-              <line x1={xScale(hoverIdx)} y1={PAD.t} x2={xScale(hoverIdx)} y2={PAD.t + iH}
-                stroke="#6366f1" strokeWidth="1" strokeDasharray="3,2" strokeOpacity="0.6" />
+              <line x1={xScale(hoverIdx)} y1={PAD_T} x2={xScale(hoverIdx)} y2={PAD_T + iH}
+                stroke="#6366f1" strokeWidth="1" strokeDasharray="3,2" />
               <circle cx={xScale(hoverIdx)} cy={yBal(activeData.balance)} r="4"
                 fill="#6366f1" stroke="white" strokeWidth="1.5" />
-
-              {/* Inline tooltip inside SVG */}
-              <rect x={tipLeft} y={PAD.t + 2} width={tipW} height={46} rx="4"
-                fill="white" stroke="#e2e8f0" strokeWidth="1" opacity="0.95" />
-              <text x={tipLeft + 6} y={PAD.t + 14} fontSize="9" fontWeight="600" fill="#1e293b">
-                {activeData.year}
-              </text>
-              <text x={tipLeft + 6} y={PAD.t + 24} fontSize="8" fill="#64748b">
-                Restschuld: {activeData.balance >= 1000 ? `€${Math.round(activeData.balance / 1000)}k` : `€${Math.round(activeData.balance)}`}
-              </text>
-              <text x={tipLeft + 6} y={PAD.t + 34} fontSize="8" fill="#64748b">
-                Rente: {activeData.interest >= 1000 ? `€${Math.round(activeData.interest / 1000)}k` : `€${Math.round(activeData.interest)}`}
-              </text>
-              <text x={tipLeft + 6} y={PAD.t + 44} fontSize="8" fill="#64748b">
-                Aflossing: {activeData.principal >= 1000 ? `€${Math.round(activeData.principal / 1000)}k` : `€${Math.round(activeData.principal)}`}
-              </text>
             </g>
           )}
 
-          {/* X-axis labels */}
           {xTicks.map((d, i) => {
             const idx = chartData.findIndex(p => p.year === d.year);
             return (
@@ -166,10 +139,22 @@ function MortgageChart({ hyp, taxYear }: { hyp: HypotheekData; taxYear: number }
             );
           })}
 
-          {/* Axes */}
-          <line x1={PAD.l} y1={PAD.t} x2={PAD.l} y2={PAD.t + iH} stroke="#cbd5e1" strokeWidth="1" />
-          <line x1={PAD.l} y1={PAD.t + iH} x2={W - PAD.r} y2={PAD.t + iH} stroke="#cbd5e1" strokeWidth="1" />
+          <line x1={PAD_L} y1={PAD_T} x2={PAD_L} y2={PAD_T + iH} stroke="#cbd5e1" strokeWidth="1" />
+          <line x1={PAD_L} y1={PAD_T + iH} x2={W - PAD_R} y2={PAD_T + iH} stroke="#cbd5e1" strokeWidth="1" />
         </svg>
+
+        {/* HTML tooltip overlay */}
+        {hoverIdx !== null && activeData && (
+          <div
+            className="absolute top-1 pointer-events-none z-10 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg shadow-md px-2.5 py-2 text-xs"
+            style={{ [tipOnRight ? 'left' : 'right']: `${tipOnRight ? tipPctLeft : 100 - tipPctLeft}%` }}
+          >
+            <p className="font-semibold text-slate-800 dark:text-slate-100 mb-1">{activeData.year}</p>
+            <p className="text-slate-500 dark:text-slate-400">Restschuld <span className="font-medium text-slate-700 dark:text-slate-200">{fmt(activeData.balance)}</span></p>
+            <p className="text-slate-500 dark:text-slate-400">Rente <span className="font-medium text-blue-600 dark:text-blue-400">{fmt(activeData.interest)}</span></p>
+            <p className="text-slate-500 dark:text-slate-400">Aflossing <span className="font-medium text-green-600 dark:text-green-400">{fmt(activeData.principal)}</span></p>
+          </div>
+        )}
       </div>
     </div>
   );

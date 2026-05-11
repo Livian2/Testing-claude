@@ -102,14 +102,15 @@ const BOX3_EXEMPTION_PARTNER = 115368;
 
 export function calculateBox3(data: TaxFormData): Box3Result {
   const { waardes, schulden, personal, afschrijvingen } = data;
+  const bankData = data.bankData ?? { spaarrekeningen: [], betaalrekeningen: [] };
   const isPartner = personal.filingStatus === 'partner';
   const exemption = isPartner ? BOX3_EXEMPTION_PARTNER : BOX3_EXEMPTION_SINGLE;
   const threshold = isPartner ? BOX3_DEBT_THRESHOLD * 2 : BOX3_DEBT_THRESHOLD;
 
-  // Savings = spaarrekeningen + betaalrekeningen + beleggingen of type 'savings'
+  // Savings = bankData current balances + beleggingen of type 'savings' (from Waardes 1 jan)
   const totalSavings =
-    waardes.spaarrekeningen.reduce((s, a) => s + a.saldoJan1, 0) +
-    waardes.betaalrekeningen.reduce((s, a) => s + a.saldoJan1, 0) +
+    bankData.spaarrekeningen.reduce((s, a) => s + a.saldoHuidig, 0) +
+    bankData.betaalrekeningen.reduce((s, a) => s + a.saldoHuidig, 0) +
     waardes.beleggingen.filter(b => b.type === 'savings').reduce((s, b) => s + b.waardeJan1, 0);
 
   const totalInvestments =
