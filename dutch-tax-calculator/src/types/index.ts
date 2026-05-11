@@ -112,6 +112,28 @@ export interface SavingsData {
   maandelijksBeleggen: number;
 }
 
+// ---- Bank accounts (current balances, for net worth) ----
+
+export interface BankSpaarRekening {
+  id: string;
+  naam: string;
+  instelling: string;
+  saldoHuidig: number;
+  rentePercentage: number;
+}
+
+export interface BankBetaalRekening {
+  id: string;
+  naam: string;
+  instelling: string;
+  saldoHuidig: number;
+}
+
+export interface BankData {
+  spaarrekeningen: BankSpaarRekening[];
+  betaalrekeningen: BankBetaalRekening[];
+}
+
 export interface PortfolioData {
   holdings: Holding[];
   transactions: Transaction[];
@@ -176,6 +198,7 @@ export interface TaxFormData {
   income: IncomeData;
   expenses: ExpensesData;
   savings: SavingsData;
+  bankData: BankData;
   schulden: SchuldenData;
   portfolio: PortfolioData;
   afschrijvingen: AfschrijvingenData;

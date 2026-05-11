@@ -12,6 +12,7 @@ import WaardesSection from './components/WaardesSection';
 import TaxResults from './components/TaxResults';
 import NetWorthProjection from './components/NetWorthProjection';
 import AfschrijvingenSection from './components/AfschrijvingenSection';
+import BankRekeningenSection from './components/BankRekeningenSection';
 import './index.css';
 
 const DEFAULT_DATA: TaxFormData = {
@@ -42,6 +43,7 @@ const DEFAULT_DATA: TaxFormData = {
     healthcare: 0, education: 0, leisure: 0, other: 0,
   },
   savings: { monthlySavingsContribution: 0, maandelijksBeleggen: 0 },
+  bankData: { spaarrekeningen: [], betaalrekeningen: [] },
   schulden: { duo: [], beleggingen: [] },
   portfolio: { holdings: [], transactions: [] },
   afschrijvingen: {
@@ -87,6 +89,7 @@ function loadSavedData(): TaxFormData {
       income:    { ...DEFAULT_DATA.income,     ...saved.income    },
       expenses:  { ...DEFAULT_DATA.expenses,   ...saved.expenses  },
       savings:   { ...DEFAULT_DATA.savings,    ...saved.savings   },
+      bankData:  { ...DEFAULT_DATA.bankData,   ...saved.bankData  },
       schulden:       { ...DEFAULT_DATA.schulden,       ...saved.schulden       },
       portfolio:      { ...DEFAULT_DATA.portfolio,      ...saved.portfolio      },
       afschrijvingen: { ...DEFAULT_DATA.afschrijvingen, ...saved.afschrijvingen },
@@ -96,7 +99,7 @@ function loadSavedData(): TaxFormData {
   }
 }
 
-type Tab = 'income' | 'woon' | 'waardes' | 'expenses' | 'schulden' | 'portfolio' | 'afschrijvingen' | 'prognose' | 'results';
+type Tab = 'income' | 'woon' | 'waardes' | 'expenses' | 'schulden' | 'bank' | 'portfolio' | 'afschrijvingen' | 'prognose' | 'results';
 type AnyTab = Tab | 'home';
 
 interface TabMeta { id: Tab; label: string; emoji: string; description: string }
@@ -107,6 +110,7 @@ const ALL_TABS: TabMeta[] = [
   { id: 'waardes',        label: 'Waardes 1 jan',   emoji: '📋', description: 'Box 3 vermogen op 1 januari: beleggingen, spaar- en betaalrekeningen.' },
   { id: 'expenses',       label: 'Kosten',          emoji: '🛒', description: 'Maandelijkse uitgaven, spaar- en beleggingsbijdragen.' },
   { id: 'schulden',       label: 'Schulden',        emoji: '💳', description: 'DUO studieschuld (SF15/SF35) met aflossing simulatie, en beleggingsschulden.' },
+  { id: 'bank',           label: 'Bankrekeningen',  emoji: '🏦', description: 'Actuele saldi van spaar- en betaalrekeningen — tellen mee voor netto vermogen.' },
   { id: 'portfolio',      label: 'Beleggen',        emoji: '📈', description: 'Portefeuille beheer: aankopen, verkopen, live koersen en dividenden.' },
   { id: 'afschrijvingen', label: 'Afschrijvingen',  emoji: '🔄', description: 'Sinking fund calculator: hoeveel spaar je per jaar voor vervangingen?' },
   { id: 'prognose',       label: 'Prognose',        emoji: '🔮', description: 'Vermogensprognose over 10/20/30 jaar: sparen, beleggen, schulden, netto vermogen.' },
@@ -182,6 +186,7 @@ export default function App() {
     waardes:        t.tabs.values,
     expenses:       t.tabs.expenses,
     schulden:       t.tabs.debts,
+    bank:           t.tabs.bank,
     portfolio:      t.tabs.portfolio,
     afschrijvingen: t.tabs.depreciation,
     prognose:       t.tabs.forecast,
@@ -217,6 +222,7 @@ export default function App() {
             income:    { ...DEFAULT_DATA.income,     ...parsed.data.income    },
             expenses:  { ...DEFAULT_DATA.expenses,   ...parsed.data.expenses  },
             savings:   { ...DEFAULT_DATA.savings,    ...parsed.data.savings   },
+            bankData:  { ...DEFAULT_DATA.bankData,   ...parsed.data.bankData  },
             schulden:       { ...DEFAULT_DATA.schulden,       ...parsed.data.schulden       },
             portfolio:      { ...DEFAULT_DATA.portfolio,      ...parsed.data.portfolio      },
             afschrijvingen: { ...DEFAULT_DATA.afschrijvingen, ...parsed.data.afschrijvingen },
@@ -470,6 +476,12 @@ export default function App() {
             grossSalary={data.income.grossSalary + data.income.freelanceIncome}
             isPartner={data.personal.filingStatus === 'partner'}
             onChange={schulden => setData(d => ({ ...d, schulden }))}
+          />
+        )}
+        {tab === 'bank' && (
+          <BankRekeningenSection
+            data={data.bankData}
+            onChange={bankData => setData(d => ({ ...d, bankData }))}
           />
         )}
         {tab === 'portfolio' && (

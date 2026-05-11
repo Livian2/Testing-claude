@@ -361,13 +361,15 @@ export function calculateTaxes(data: TaxFormData): TaxResult {
 
   const gainLoss = calcRealisedGain(portfolio.holdings, portfolio.transactions);
 
-  const actualSavingsInterest = waardes.spaarrekeningen.reduce(
-    (s, a) => s + a.saldoJan1 * (a.rentePercentage / 100), 0,
+  const bankData = data.bankData ?? { spaarrekeningen: [], betaalrekeningen: [] };
+
+  const actualSavingsInterest = bankData.spaarrekeningen.reduce(
+    (s, a) => s + a.saldoHuidig * (a.rentePercentage / 100), 0,
   );
 
   const totalSavingsBalance =
-    waardes.spaarrekeningen.reduce((s, a) => s + a.saldoJan1, 0) +
-    waardes.betaalrekeningen.reduce((s, a) => s + a.saldoJan1, 0);
+    bankData.spaarrekeningen.reduce((s, a) => s + a.saldoHuidig, 0) +
+    bankData.betaalrekeningen.reduce((s, a) => s + a.saldoHuidig, 0);
 
   const hypotheekRestschuld = woon.hypotheken.reduce(
     (s, hyp) => s + berekenHypotheek(hyp, personal.taxYear).restschuldBegin, 0,

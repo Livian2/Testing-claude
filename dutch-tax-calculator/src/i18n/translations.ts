@@ -17,6 +17,7 @@ export const translations = {
       debts:        'Schulden',
       expenses:     'Uitgaven',
       savings:      'Sparen',
+      bank:         'Bankrekeningen',
       portfolio:    'Portfolio',
       depreciation: 'Afschrijvingen',
       results:      'Berekening',
@@ -262,6 +263,30 @@ export const translations = {
       incomeGrowth:     'Inkomensstijging/jr',
     },
 
+    // ── Bank accounts ────────────────────────────────────────────────────────
+    bank: {
+      sectionTitle:  'Bankrekeningen — actuele saldi',
+      savings:       'Spaarrekeningen',
+      savingsHint:   'Actueel saldo van uw spaarrekeningen — telt mee voor netto vermogen',
+      savingsDesc:   'Voer het huidige saldo in van al uw spaarrekeningen. Deze worden gebruikt voor het berekenen van uw netto vermogen.',
+      checking:      'Betaalrekeningen',
+      checkingHint:  'Actueel saldo van uw betaalrekeningen — telt mee voor netto vermogen',
+      checkingDesc:  'Voer het huidige saldo in van al uw betaalrekeningen.',
+      accountName:   'Naam rekening',
+      institution:   'Instelling',
+      interestRate:  'Rente (%)',
+      currentBalance:'Huidig saldo',
+      addSavings:    'Spaarrekening toevoegen',
+      addChecking:   'Betaalrekening toevoegen',
+      noSavings:     'Nog geen spaarrekeningen toegevoegd',
+      noChecking:    'Nog geen betaalrekeningen toegevoegd',
+      totalSavings:  'Totaal spaar',
+      totalChecking: 'Totaal betaal',
+      totalAll:      'Totaal bank',
+      noteTitle:     'Let op',
+      noteText:      'De saldi hier zijn uw actuele standen voor netto vermogenberekening. De Waardes 1 jan zijn uitsluitend voor Box 3 belasting.',
+    },
+
     // ── Common ───────────────────────────────────────────────────────────────
     common: {
       perMonth:   '/mnd',
@@ -296,6 +321,7 @@ export const translations = {
       debts:        'Debts',
       expenses:     'Expenses',
       savings:      'Savings',
+      bank:         'Bank accounts',
       portfolio:    'Portfolio',
       depreciation: 'Depreciation',
       results:      'Calculation',
@@ -539,6 +565,30 @@ export const translations = {
       savingsRate:      'Savings rate',
       years:            'Years',
       incomeGrowth:     'Income growth/yr',
+    },
+
+    // ── Bank accounts ────────────────────────────────────────────────────────
+    bank: {
+      sectionTitle:  'Bank accounts — current balances',
+      savings:       'Savings accounts',
+      savingsHint:   'Current balance of your savings accounts — counts toward net worth',
+      savingsDesc:   'Enter the current balance of all your savings accounts. These are used to calculate your net worth.',
+      checking:      'Checking accounts',
+      checkingHint:  'Current balance of your checking accounts — counts toward net worth',
+      checkingDesc:  'Enter the current balance of all your checking/running accounts.',
+      accountName:   'Account name',
+      institution:   'Institution',
+      interestRate:  'Interest rate (%)',
+      currentBalance:'Current balance',
+      addSavings:    'Add savings account',
+      addChecking:   'Add checking account',
+      noSavings:     'No savings accounts added yet',
+      noChecking:    'No checking accounts added yet',
+      totalSavings:  'Total savings',
+      totalChecking: 'Total checking',
+      totalAll:      'Total bank',
+      noteTitle:     'Note',
+      noteText:      'The balances here are your current figures for net worth calculation. The Values Jan 1 tab is exclusively for Box 3 tax purposes.',
     },
 
     // ── Common ───────────────────────────────────────────────────────────────
