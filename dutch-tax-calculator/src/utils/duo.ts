@@ -15,8 +15,10 @@ export const DUO_DRAAGKRACHT_PARTNER_VRIJ = 33_807;
 export function berekenDuoJaarbetaling(
   toetsingsinkomen: number,
   isPartner = false,
+  drempelFactor = 1,
 ): number {
-  const drempel = isPartner ? DUO_DRAAGKRACHT_PARTNER_VRIJ : DUO_DRAAGKRACHT_VRIJ;
+  const drempelBase = isPartner ? DUO_DRAAGKRACHT_PARTNER_VRIJ : DUO_DRAAGKRACHT_VRIJ;
+  const drempel = drempelBase * drempelFactor;
   return Math.max(0, (toetsingsinkomen - drempel) * DUO_DRAAGKRACHT_PCT);
 }
 
@@ -130,7 +132,9 @@ export function simuleerDuo(
     if (jaar === aflossStart) balansOpAflossStart = balans;
 
     // Repayment: payment covers interest first, then principal
-    const jaarbetaling = berekenDuoJaarbetaling(inkomen, isPartner);
+    // Drempel groeit mee met loonindexatie (84% WML, jaarlijks bijgesteld)
+    const drempelFactor = Math.pow(1 + inkomensstijging, jaar - taxYear);
+    const jaarbetaling = berekenDuoJaarbetaling(inkomen, isPartner, drempelFactor);
     const effectief    = Math.min(jaarbetaling, balans + jaarRente);
     renteTotaal   += jaarRente;
     betaaldTotaal += effectief;
