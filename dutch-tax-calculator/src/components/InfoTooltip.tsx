@@ -6,15 +6,31 @@ interface Props {
   size?: number;
 }
 
+interface Pos { above: boolean; left: number; arrowLeft: number }
+
 export default function InfoTooltip({ tip, size = 13 }: Props) {
   const [visible, setVisible] = useState(false);
-  const [above, setAbove] = useState(false);
+  const [pos, setPos] = useState<Pos>({ above: false, left: 0, arrowLeft: 128 });
   const ref = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
     if (!visible || !ref.current) return;
+    const TOOLTIP_W = 256; // w-64
     const rect = ref.current.getBoundingClientRect();
-    setAbove(rect.bottom + 120 > window.innerHeight);
+    const iconCenterX = rect.left + rect.width / 2;
+    const above = rect.bottom + 130 > window.innerHeight;
+
+    // Default: center tooltip on icon
+    let left = -TOOLTIP_W / 2;
+    // Clamp so it stays 8px from edges
+    const minLeft = 8 - rect.left;
+    const maxLeft = window.innerWidth - 8 - TOOLTIP_W - rect.left;
+    left = Math.max(minLeft, Math.min(maxLeft, left));
+
+    // Arrow points at icon center regardless of tooltip shift
+    const arrowLeft = iconCenterX - rect.left - left;
+
+    setPos({ above, left, arrowLeft });
   }, [visible]);
 
   return (
@@ -35,18 +51,17 @@ export default function InfoTooltip({ tip, size = 13 }: Props) {
       />
       {visible && (
         <span
-          className={`absolute z-50 left-1/2 -translate-x-1/2 w-64 bg-slate-800 text-white text-xs rounded-xl px-3 py-2 shadow-xl pointer-events-none leading-relaxed ${
-            above ? 'bottom-full mb-2' : 'top-full mt-2'
+          className={`absolute z-50 w-64 bg-slate-800 text-white text-xs rounded-xl px-3 py-2 shadow-xl pointer-events-none leading-relaxed ${
+            pos.above ? 'bottom-full mb-2' : 'top-full mt-2'
           }`}
+          style={{ left: pos.left }}
         >
           {tip}
-          {/* Arrow */}
           <span
-            className={`absolute left-1/2 -translate-x-1/2 border-4 border-transparent ${
-              above
-                ? 'top-full border-t-slate-800'
-                : 'bottom-full border-b-slate-800'
+            className={`absolute border-4 border-transparent ${
+              pos.above ? 'top-full border-t-slate-800' : 'bottom-full border-b-slate-800'
             }`}
+            style={{ left: pos.arrowLeft }}
           />
         </span>
       )}
