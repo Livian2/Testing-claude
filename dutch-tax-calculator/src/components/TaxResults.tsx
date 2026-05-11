@@ -264,6 +264,13 @@ export default function TaxResults({ result }: Props) {
               <StatCard label="Spaarsaldo"            value={fmt(box3.breakdown.savings)}  color="green" />
               <StatCard label="Beleggingen (huidig)"  value={fmt(portfolioCurrentValue)}   color="purple" />
               <StatCard label="Schulden"              value={fmt(box3.totalDebts)}         color="orange" />
+              {box3.afschrijvingenGereserveerd > 0 && (
+                <StatCard
+                  label="Reservering vervangingen"
+                  value={`− ${fmt(box3.afschrijvingenGereserveerd)}`}
+                  color="slate"
+                />
+              )}
               <StatCard
                 label="Netto vermogen"
                 value={fmt(currentNetWorth)}

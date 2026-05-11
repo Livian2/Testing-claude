@@ -214,12 +214,18 @@ function CatRow({ cat, rate, taxYear, years, onUpdate, onRemove }: CatRowProps) 
 export default function AfschrijvingenSection({ data, taxYear, onChange }: Props) {
   const rate = data.rentePercentage / 100;
 
-  // Determine year range: 2 years back, up to max replacement year (or taxYear+8)
+  // Determine year range: from earliest purchase year, up to max replacement year (or taxYear+8)
+  const allPurchaseYears = data.categorieen
+    .flatMap(c => c.items)
+    .map(it => { const d = getReplacementDate(it); return d ? d.getFullYear() - it.looptijdJaren : 0; })
+    .filter(y => y > 0);
   const allReplYears = data.categorieen
     .flatMap(c => c.items)
     .map(it => getReplacementDate(it)?.getFullYear() ?? 0)
     .filter(y => y > 0);
-  const minYear = taxYear - 2;
+  const minYear = allPurchaseYears.length > 0
+    ? Math.min(...allPurchaseYears)
+    : taxYear - 2;
   const maxYear = allReplYears.length > 0
     ? Math.max(taxYear + 8, Math.max(...allReplYears))
     : taxYear + 8;

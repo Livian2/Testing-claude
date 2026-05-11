@@ -350,11 +350,14 @@ export function calculateTaxes(data: TaxFormData): TaxResult {
     (s, hyp) => s + berekenHypotheek(hyp, personal.taxYear).restschuldBegin, 0,
   );
 
+  const afschrijvingenActueel = totalAfschrijvingenGereserveerd(data.afschrijvingen, personal.taxYear);
+
   const currentNetWorth =
     totalSavingsBalance +
     (portfolioCurrentValue > 0 ? portfolioCurrentValue : portfolioJan1Value) -
     [...schulden.duo, ...schulden.beleggingen].reduce((s, d) => s + d.bedrag, 0) -
-    hypotheekRestschuld;
+    hypotheekRestschuld -
+    afschrijvingenActueel;
 
   return {
     box1, box3, toeslagen, totalTax, netDisposableIncome, totalExpenses,
