@@ -150,7 +150,7 @@ function CatRow({ cat, rate, taxYear, years, onUpdate, onRemove }: CatRowProps) 
             <td className="px-2 py-1.5">
               <div className="flex items-center gap-1">
                 <input
-                  type="number" min={1} max={30}
+                  type="number" min={1}
                   className="w-14 text-xs text-center border border-slate-200 dark:border-slate-600 rounded px-1 py-1 outline-none focus:ring-1 focus:ring-orange-400 bg-white dark:bg-slate-800 dark:text-slate-100"
                   value={item.looptijdJaren || ''}
                   onChange={e => updateItem(item.id, { looptijdJaren: parseInt(e.target.value) || 1 })}

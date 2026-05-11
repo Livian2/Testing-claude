@@ -24,6 +24,7 @@ export default function TaxResults({ result }: Props) {
     box1, box3, toeslagen, totalTax, netDisposableIncome, totalExpenses,
     portfolioGainLoss, portfolioCurrentValue, portfolioJan1Value,
     actualSavingsInterest, currentNetWorth, afschrijvingenActueel,
+    duoJaarbetaling, afschrijvingenJaarDeposit,
   } = result;
 
   const hasToeslagen = toeslagen.total > 0 || toeslagen.hypotheekrenteaftrek > 0;
@@ -261,13 +262,19 @@ export default function TaxResults({ result }: Props) {
         </div>
         <div className="p-6 space-y-1">
           {[
-            { label: t.results.grossIncome,    value:  grossIncome,    sign: '+', color: 'text-green-600' },
-            { label: t.results.box1Tax,        value: -box1.netTax,   sign: '−', color: 'text-red-500' },
-            { label: t.results.box3Tax,        value: -box3.netTax,   sign: '−', color: 'text-red-500' },
-            ...(hasToeslagen
-              ? [{ label: t.results.toeslagen, value: toeslagen.total, sign: '+', color: 'text-teal-600' }]
+            { label: t.results.grossIncome,    value:  grossIncome,          sign: '+', color: 'text-green-600' },
+            { label: t.results.box1Tax,        value: -box1.netTax,          sign: '−', color: 'text-red-500' },
+            { label: t.results.box3Tax,        value: -box3.netTax,          sign: '−', color: 'text-red-500' },
+            ...(toeslagen.total > 0
+              ? [{ label: t.results.toeslagen, value: toeslagen.total,        sign: '+', color: 'text-teal-600' }]
               : []),
-            { label: t.results.totalExpenses,  value: -totalExpenses, sign: '−', color: 'text-orange-500' },
+            { label: t.results.totalExpenses,  value: -totalExpenses,        sign: '−', color: 'text-orange-500' },
+            ...(duoJaarbetaling > 0
+              ? [{ label: 'DUO terugbetaling', value: -duoJaarbetaling,       sign: '−', color: 'text-purple-600' }]
+              : []),
+            ...(afschrijvingenJaarDeposit > 0
+              ? [{ label: 'Sparen voorzieningen', value: -afschrijvingenJaarDeposit, sign: '−', color: 'text-orange-400' }]
+              : []),
           ].map((row, i) => (
             <div key={i} className="flex justify-between items-center py-2 border-b border-slate-100 dark:border-slate-700 last:border-0 text-sm">
               <span className="text-slate-600 dark:text-slate-300">{row.label}</span>

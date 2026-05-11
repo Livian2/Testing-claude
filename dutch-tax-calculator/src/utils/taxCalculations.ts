@@ -3,6 +3,8 @@ import type {
   Holding, Transaction, Position, AssetType,
 } from '../types';
 import { berekenHypotheek } from './hypotheek';
+import { berekenDuoJaarbetaling } from './duo';
+import { jaarDeposit } from './afschrijvingen';
 import { totalAfschrijvingenGereserveerd, gereserveerdTotNu } from './afschrijvingen';
 
 // ─── 2026 Tax Parameters ───────────────────────────────────────────────────
@@ -406,6 +408,18 @@ export function calculateTaxes(data: TaxFormData): TaxResult {
     .flatMap(c => c.items)
     .reduce((sum, item) => sum + gereserveerdTotNu(item, rate, personal.taxYear), 0);
 
+  // Annual sinking fund deposits for the current tax year
+  const afschrijvingenJaarDeposit = data.afschrijvingen.categorieen
+    .flatMap(c => c.items)
+    .reduce((sum, item) => sum + jaarDeposit(item, rate, personal.taxYear), 0);
+
+  // DUO repayment: income-based annual payment (only if there are DUO schulden)
+  const hasDuo = schulden.duo.length > 0;
+  const isPartner = personal.filingStatus === 'partner';
+  const duoJaarbetaling = hasDuo
+    ? berekenDuoJaarbetaling(grossIncome, isPartner)
+    : 0;
+
   const currentNetWorth =
     totalSavingsBalance +
     portfolioCurrentValue -
@@ -416,6 +430,7 @@ export function calculateTaxes(data: TaxFormData): TaxResult {
     box1, box3, toeslagen, totalTax, netDisposableIncome, totalExpenses,
     annualSavings, portfolioCurrentValue, portfolioJan1Value,
     portfolioGainLoss: gainLoss, actualSavingsInterest, currentNetWorth, afschrijvingenActueel,
+    duoJaarbetaling, afschrijvingenJaarDeposit,
   };
 }
 

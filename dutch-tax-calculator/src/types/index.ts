@@ -258,6 +258,8 @@ export interface TaxResult {
   actualSavingsInterest: number;
   currentNetWorth: number;
   afschrijvingenActueel: number;
+  duoJaarbetaling: number;
+  afschrijvingenJaarDeposit: number;
 }
 
 export interface Position {
