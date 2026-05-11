@@ -14,12 +14,13 @@ const BOX1_BRACKETS_2026 = [
   { limit: Infinity, rate: 0.4950 },
 ];
 
-// Algemene heffingskorting 2026: max €3.115, afbouw 6,398% vanaf €29.736 tot €0 bij €78.426
-// Bron: tabel-algemene-heffingskorting-2026 (belastingdienst.nl)
-function calcAlgemeneHeffingskorting(taxableIncome: number): number {
-  if (taxableIncome <= 29736) return 3115;
-  if (taxableIncome <= 78426)
-    return Math.max(0, Math.round(3115 - (taxableIncome - 29736) * 0.06398));
+// Algemene heffingskorting 2026: max €3.115, afbouw 6,40% vanaf €29.739 tot €0 bij €78.426
+// Bron: belastingdienst.nl/algemene_heffingskorting 2026
+// Let op: afbouw is gebaseerd op VERZAMELINKOMEN (box 1+2+3), niet alleen box 1 (geldt sinds 2025)
+function calcAlgemeneHeffingskorting(verzamelinkomen: number): number {
+  if (verzamelinkomen <= 29739) return 3115;
+  if (verzamelinkomen <= 78426)
+    return Math.max(0, Math.round(3115 - (verzamelinkomen - 29739) * 0.0640));
   return 0;
 }
 
@@ -45,7 +46,9 @@ function calcArbeidskorting(employmentIncome: number): number {
 
 // ─── Box 1 ─────────────────────────────────────────────────────────────────
 
-export function calculateBox1(data: TaxFormData): Box1Result {
+// verzamelinkomen is passed in from calculateTaxes (box1 + box3 fictitious return)
+// so the AHK afbouw uses the correct grondslag. Falls back to box1 taxableIncome if omitted.
+export function calculateBox1(data: TaxFormData, verzamelinkomen?: number): Box1Result {
   const { income, woon, personal } = data;
 
   // Sum mortgage interest deduction from all hypotheken
@@ -79,7 +82,9 @@ export function calculateBox1(data: TaxFormData): Box1Result {
     if (remaining <= 0) break;
   }
 
-  const algemeneHeffingskorting = calcAlgemeneHeffingskorting(taxableIncome);
+  // AHK uses verzamelinkomen (box1 + box3), not just box1 taxable income (since 2025)
+  const ahkBase             = verzamelinkomen ?? taxableIncome;
+  const algemeneHeffingskorting = calcAlgemeneHeffingskorting(ahkBase);
   const arbeidskorting          = calcArbeidskorting(income.grossSalary + income.freelanceIncome);
   const netTax                  = Math.max(0, grossTax - algemeneHeffingskorting - arbeidskorting);
   const effectiveRate           = taxableIncome > 0 ? netTax / taxableIncome : 0;
@@ -304,8 +309,23 @@ export function calcRealisedGain(holdings: Holding[], transactions: Transaction[
 // ─── Full calculation ───────────────────────────────────────────────────────
 
 export function calculateTaxes(data: TaxFormData): TaxResult {
-  const box1      = calculateBox1(data);
-  const box3      = calculateBox3(data);
+  // Box 3 must be computed first: the AHK afbouw is based on verzamelinkomen (box1+box3)
+  const box3 = calculateBox3(data);
+
+  // Compute box1 taxable income early so we can form the verzamelinkomen for AHK
+  const { income: _inc, woon: _woon, personal: _pers } = data;
+  let _mortgageDeduction = 0;
+  if (_woon.woningType === 'hypotheek') {
+    for (const hyp of _woon.hypotheken) {
+      if (hyp.leningBedrag > 0) _mortgageDeduction += berekenHypotheek(hyp, _pers.taxYear).jaarRente;
+    }
+  }
+  const _grossInc       = _inc.grossSalary + _inc.freelanceIncome + _inc.rentalIncome + _inc.otherBox1Income;
+  const _box1Taxable    = Math.max(0, _grossInc - _mortgageDeduction - _inc.pensionContributions);
+  // Verzamelinkomen = box1 belastbaar inkomen + box3 fictief rendement (box2 = €0 in this app)
+  const verzamelinkomen = _box1Taxable + Math.max(0, box3.fictitiousReturn);
+
+  const box1      = calculateBox1(data, verzamelinkomen);
   const toeslagen = calculateToeslagen(data, box1, box3);
   const totalTax  = Math.max(0, box1.netTax + box3.netTax);
 
