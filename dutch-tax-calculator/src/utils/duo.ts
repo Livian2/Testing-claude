@@ -4,14 +4,13 @@ import type { SchuldItem } from '../types';
 // Draagkrachtvrije voet: 84% of the statutory minimum wage (wettelijk minimumloon)
 // WML 2026 single (incl. 8% vakantiegeld): ≈ €28,866/jr → 84% ≈ €24,248
 // Partner norm (≈ 143% WML incl. vakantiegeld): ≈ €40,246/jr → 84% ≈ €33,807
-// Both SF15 and SF35 use the same threshold; only the looptijd differs (15 vs 35 yr).
-export const DUO_DRAAGKRACHT_VRIJ         = 24_248;  // threshold below which you pay nothing (single)
-export const DUO_DRAAGKRACHT_PCT          = 0.04;    // 4% of income above threshold
-export const DUO_DRAAGKRACHT_PARTNER_VRIJ = 33_807;  // higher threshold for partners
+export const DUO_DRAAGKRACHT_VRIJ         = 24_248;
+export const DUO_DRAAGKRACHT_PCT          = 0.04;
+export const DUO_DRAAGKRACHT_PARTNER_VRIJ = 33_807;
 
 /**
  * Annual DUO repayment based on (fiscal) income.
- * Returns the gross annual payment amount (includes interest component).
+ * 4% of income above the draagkrachtvrije voet.
  */
 export function berekenDuoJaarbetaling(
   toetsingsinkomen: number,
@@ -21,13 +20,15 @@ export function berekenDuoJaarbetaling(
   return Math.max(0, (toetsingsinkomen - drempel) * DUO_DRAAGKRACHT_PCT);
 }
 
+export type DuoFase = 'voor-start' | 'aangroei' | 'aflossing' | 'kwijtschelding' | 'afgelost';
+
 export interface DuoJaarPunt {
   jaar: number;
-  balans: number;       // remaining debt at start of year
-  betaling: number;     // payment made during year
-  rente: number;        // interest charged during year
-  inkomen: number;      // income used for calculation
-  kwijtgescholden: boolean;
+  balans: number;          // remaining debt at start of year
+  betaling: number;        // payment made during year
+  rente: number;           // interest charged during year
+  inkomen: number;         // income used for calculation
+  fase: DuoFase;
 }
 
 export interface DuoSimulatie {
@@ -36,91 +37,108 @@ export interface DuoSimulatie {
   kwijtscheldingsBedrag: number;
   betaaldTotaal: number;
   renteTotaal: number;
-  afgelosdJaar: number | null; // year fully repaid (null = not within simulation)
+  afgelosdJaar: number | null;
+  balansOpAflossStart: number; // balance at start of repayment (after accrual)
 }
 
 /**
- * Simulate full DUO repayment year-by-year.
+ * Simulate full DUO lifecycle year-by-year.
  *
- * @param schuld        The DUO SchuldItem
- * @param startInkomen  Gross salary in the first simulation year
- * @param inkomensstijging  Annual income growth as a decimal (e.g. 0.02 = 2%)
- * @param startJaar     First year to simulate from (e.g. taxYear)
- * @param isPartner     Use partner draagkrachtvrije voet
+ * Phases:
+ *  1. startJaar → aflossStart      : interest accrues, balance grows, no payment
+ *  2. aflossStart → aflossEind     : income-based repayments (4% above drempel)
+ *  3. jaar >= aflossEind           : kwijtschelding of remaining balance
+ *
+ * @param schuld           DUO SchuldItem; bedrag = balance at schuld.startJaar
+ * @param startInkomen     Gross income in taxYear
+ * @param inkomensstijging Annual income growth (decimal, e.g. 0.02)
+ * @param taxYear          Current tax year (income reference point)
+ * @param isPartner        Use partner draagkrachtvrije voet
  */
 export function simuleerDuo(
   schuld: SchuldItem,
   startInkomen: number,
   inkomensstijging: number,
-  startJaar: number,
+  taxYear: number,
   isPartner = false,
 ): DuoSimulatie {
-  const aflossStart   = schuld.aflossingsStartJaar ?? schuld.startJaar;
-  const aflossEind    = aflossStart + schuld.looptijd;  // write-off after looptijd years
-  const rente         = schuld.rentePercentage / 100;
-  const maxJaren      = Math.max(schuld.looptijd + (aflossStart - startJaar) + 5, 40);
+  const leningStart = schuld.startJaar;
+  const aflossStart = schuld.aflossingsStartJaar ?? schuld.startJaar;
+  const aflossEind  = aflossStart + schuld.looptijd;
+  const rente       = schuld.rentePercentage / 100;
 
-  let balans         = schuld.bedrag;
-  let betaaldTotaal  = 0;
-  let renteTotaal    = 0;
+  // Chart starts from the earliest of taxYear or leningStart
+  const simStart = Math.min(taxYear, leningStart);
+  const maxJaren = aflossEind - simStart + 6;
+
+  let balans = schuld.bedrag;
+  let betaaldTotaal = 0;
+  let renteTotaal = 0;
   let afgelosdJaar: number | null = null;
+  let balansOpAflossStart = schuld.bedrag;
   const punten: DuoJaarPunt[] = [];
 
   for (let i = 0; i <= maxJaren; i++) {
-    const jaar    = startJaar + i;
-    const inkomen = startInkomen * Math.pow(1 + inkomensstijging, i);
+    const jaar   = simStart + i;
+    const inkomen = startInkomen * Math.pow(1 + inkomensstijging, jaar - taxYear);
 
-    if (balans <= 0) {
-      punten.push({ jaar, balans: 0, betaling: 0, rente: 0, inkomen, kwijtgescholden: false });
-      break;
-    }
-
-    // After write-off deadline: accrue final year interest then cancel remaining debt
-    if (jaar >= aflossEind) {
-      const finalRente  = balans * rente;
-      const kwijtBedrag = balans + finalRente;
-      renteTotaal += finalRente;
-      punten.push({ jaar, balans, betaling: 0, rente: finalRente, inkomen, kwijtgescholden: true });
-      punten.push({ jaar: jaar + 1, balans: 0, betaling: 0, rente: 0, inkomen, kwijtgescholden: false });
-      return {
-        punten, eindBalans: 0,
-        kwijtscheldingsBedrag: kwijtBedrag,
-        betaaldTotaal, renteTotaal, afgelosdJaar,
-      };
-    }
-
-    // Before repayment start: balance is unchanged (bedrag IS the balance at aflossStart)
-    if (jaar < aflossStart) {
-      punten.push({ jaar, balans: schuld.bedrag, betaling: 0, rente: 0, inkomen, kwijtgescholden: false });
+    // Before loan / interest starts
+    if (jaar < leningStart) {
+      punten.push({ jaar, balans: 0, betaling: 0, rente: 0, inkomen, fase: 'voor-start' });
       continue;
     }
 
-    // Repayment period
-    const startBalans  = balans;  // record start-of-year balance before any updates
-    const jaarRente    = balans * rente;
-    const jaarbetaling = berekenDuoJaarbetaling(inkomen, isPartner);
-    // Payment covers interest first, then principal
-    const effectief    = Math.min(jaarbetaling, balans + jaarRente);
+    if (balans <= 0) {
+      punten.push({ jaar, balans: 0, betaling: 0, rente: 0, inkomen, fase: 'afgelost' });
+      break;
+    }
 
+    // Kwijtschelding year
+    if (jaar >= aflossEind) {
+      const finalRente = balans * rente;
+      renteTotaal += finalRente;
+      punten.push({ jaar, balans, betaling: 0, rente: finalRente, inkomen, fase: 'kwijtschelding' });
+      punten.push({ jaar: jaar + 1, balans: 0, betaling: 0, rente: 0, inkomen, fase: 'afgelost' });
+      return {
+        punten, eindBalans: 0,
+        kwijtscheldingsBedrag: balans + finalRente,
+        betaaldTotaal, renteTotaal, afgelosdJaar, balansOpAflossStart,
+      };
+    }
+
+    const startBalans = balans;
+    const jaarRente   = balans * rente;
+
+    if (jaar < aflossStart) {
+      // Grace / accrual period: interest adds to balance, no payment
+      renteTotaal += jaarRente;
+      balans += jaarRente;
+      if (jaar + 1 === aflossStart) balansOpAflossStart = balans;
+      punten.push({ jaar, balans: startBalans, betaling: 0, rente: jaarRente, inkomen, fase: 'aangroei' });
+      continue;
+    }
+
+    // Record balance at start of repayment
+    if (jaar === aflossStart) balansOpAflossStart = balans;
+
+    // Repayment: payment covers interest first, then principal
+    const jaarbetaling = berekenDuoJaarbetaling(inkomen, isPartner);
+    const effectief    = Math.min(jaarbetaling, balans + jaarRente);
     renteTotaal   += jaarRente;
     betaaldTotaal += effectief;
     balans         = Math.max(0, balans + jaarRente - effectief);
 
-    punten.push({ jaar, balans: startBalans, betaling: effectief, rente: jaarRente, inkomen, kwijtgescholden: false });
+    punten.push({ jaar, balans: startBalans, betaling: effectief, rente: jaarRente, inkomen, fase: 'aflossing' });
 
     if (balans <= 0) {
       afgelosdJaar = jaar;
-      punten.push({ jaar: jaar + 1, balans: 0, betaling: 0, rente: 0, inkomen, kwijtgescholden: false });
+      punten.push({ jaar: jaar + 1, balans: 0, betaling: 0, rente: 0, inkomen, fase: 'afgelost' });
       break;
     }
   }
 
   return {
-    punten,
-    eindBalans:            balans,
-    kwijtscheldingsBedrag: 0,
-    betaaldTotaal,
-    renteTotaal,
-    afgelosdJaar,
+    punten, eindBalans: balans, kwijtscheldingsBedrag: 0,
+    betaaldTotaal, renteTotaal, afgelosdJaar, balansOpAflossStart,
   };
 }
