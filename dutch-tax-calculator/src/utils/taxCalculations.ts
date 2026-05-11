@@ -101,20 +101,20 @@ const BOX3_EXEMPTION_SINGLE  = 57684;
 const BOX3_EXEMPTION_PARTNER = 115368;
 
 export function calculateBox3(data: TaxFormData): Box3Result {
-  const { waardes, schulden, personal, afschrijvingen } = data;
+  const { schulden, personal, afschrijvingen } = data;
   const bankData = data.bankData ?? { spaarrekeningen: [], betaalrekeningen: [] };
   const isPartner = personal.filingStatus === 'partner';
   const exemption = isPartner ? BOX3_EXEMPTION_PARTNER : BOX3_EXEMPTION_SINGLE;
   const threshold = isPartner ? BOX3_DEBT_THRESHOLD * 2 : BOX3_DEBT_THRESHOLD;
 
-  // Savings = bankData current balances + beleggingen of type 'savings' (from Waardes 1 jan)
+  // Savings = bankData current balances only
   const totalSavings =
     bankData.spaarrekeningen.reduce((s, a) => s + a.saldoHuidig, 0) +
-    bankData.betaalrekeningen.reduce((s, a) => s + a.saldoHuidig, 0) +
-    waardes.beleggingen.filter(b => b.type === 'savings').reduce((s, b) => s + b.waardeJan1, 0);
+    bankData.betaalrekeningen.reduce((s, a) => s + a.saldoHuidig, 0);
 
-  const totalInvestments =
-    waardes.beleggingen.filter(b => b.type !== 'savings').reduce((s, b) => s + b.waardeJan1, 0);
+  // Investments = portfolio current value
+  const positions = computePositions(data.portfolio.holdings, data.portfolio.transactions);
+  const totalInvestments = positions.reduce((s, p) => s + p.currentValue, 0);
 
   const totalAssets = totalSavings + totalInvestments;
 
@@ -330,7 +330,7 @@ export function calculateTaxes(data: TaxFormData): TaxResult {
   const toeslagen = calculateToeslagen(data, box1, box3);
   const totalTax  = Math.max(0, box1.netTax + box3.netTax);
 
-  const { expenses, savings, income, woon, personal, waardes, portfolio, schulden } = data;
+  const { expenses, savings, income, woon, personal, portfolio, schulden } = data;
 
   let maandWoonlast = 0;
   if (woon.woningType === 'hypotheek') {
@@ -358,7 +358,7 @@ export function calculateTaxes(data: TaxFormData): TaxResult {
   const positions = computePositions(portfolio.holdings, portfolio.transactions);
 
   const portfolioCurrentValue = positions.reduce((s, p) => s + p.currentValue, 0);
-  const portfolioJan1Value    = waardes.beleggingen.reduce((s, b) => s + b.waardeJan1, 0);
+  const portfolioJan1Value    = 0;
 
   const gainLoss = calcRealisedGain(portfolio.holdings, portfolio.transactions);
 
