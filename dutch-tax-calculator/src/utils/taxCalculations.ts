@@ -379,7 +379,6 @@ export function calculateTaxes(data: TaxFormData): TaxResult {
 
   const grossIncome =
     income.grossSalary + income.freelanceIncome + income.rentalIncome + income.otherBox1Income;
-  const netDisposableIncome = grossIncome - totalTax + toeslagen.total - totalExpenses;
 
   const positions = computePositions(portfolio.holdings, portfolio.transactions);
 
@@ -419,6 +418,9 @@ export function calculateTaxes(data: TaxFormData): TaxResult {
   const duoJaarbetaling = hasDuo
     ? berekenDuoJaarbetaling(grossIncome, isPartner)
     : 0;
+
+  const netDisposableIncome =
+    grossIncome - totalTax + toeslagen.total - totalExpenses - duoJaarbetaling - afschrijvingenJaarDeposit;
 
   const currentNetWorth =
     totalSavingsBalance +
