@@ -1,4 +1,4 @@
-import { useMemo, useState, useRef, useCallback } from 'react';
+import { useMemo, useState } from 'react';
 import { Home, Plus, Trash2, ChevronDown, ChevronRight, BarChart2 } from 'lucide-react';
 import type { WoonData, HypotheekData, HypotheekType, WoningType } from '../types';
 import { berekenHypotheek } from '../utils/hypotheek';
@@ -34,7 +34,6 @@ function MortgageChart({ hyp, taxYear }: { hyp: HypotheekData; taxYear: number }
   const iH = H - PAD_T - PAD_B;
 
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
-  const wrapRef = useRef<HTMLDivElement>(null);
 
   const chartData = useMemo(() => {
     const pts: { year: number; balance: number; interest: number; principal: number }[] = [];
@@ -47,16 +46,14 @@ function MortgageChart({ hyp, taxYear }: { hyp: HypotheekData; taxYear: number }
     return pts;
   }, [hyp]);
 
-  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    const wrap = wrapRef.current;
-    if (!wrap || chartData.length < 2) return;
-    const rect = wrap.getBoundingClientRect();
-    const relX  = e.clientX - rect.left;
-    const chartX = relX - (rect.width * PAD_L / W);
+  function handleMouseMove(e: React.MouseEvent<HTMLDivElement>) {
+    if (chartData.length < 2) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const chartX = (e.clientX - rect.left) - (rect.width * PAD_L / W);
     const chartW = rect.width * iW / W;
     const idx = Math.round((chartX / chartW) * (chartData.length - 1));
     setHoverIdx(Math.max(0, Math.min(chartData.length - 1, idx)));
-  }, [chartData.length, iW]);
+  }
 
   if (chartData.length < 2) return null;
 
@@ -87,7 +84,7 @@ function MortgageChart({ hyp, taxYear }: { hyp: HypotheekData; taxYear: number }
       <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1 flex items-center gap-1.5">
         <BarChart2 size={12} />Verloop restschuld
       </p>
-      <div ref={wrapRef} className="relative" style={{ cursor: 'crosshair' }}
+      <div className="relative" style={{ cursor: 'crosshair' }}
         onMouseMove={handleMouseMove} onMouseLeave={() => setHoverIdx(null)}>
         <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ maxHeight: 160, display: 'block' }}>
           <defs>

@@ -39,11 +39,8 @@ export default function InfoTooltip({ tip, size = 13 }: Props) {
       className="relative inline-flex items-center"
       onMouseEnter={() => setVisible(true)}
       onMouseLeave={() => setVisible(false)}
-      onFocus={() => setVisible(true)}
-      onBlur={() => setVisible(false)}
-      tabIndex={0}
-      role="button"
-      aria-label="Meer informatie"
+      tabIndex={-1}
+      aria-hidden="true"
     >
       <Info
         size={size}
