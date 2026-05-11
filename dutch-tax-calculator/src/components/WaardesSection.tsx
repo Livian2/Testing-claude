@@ -2,6 +2,7 @@ import { CalendarDays, Plus, Trash2, Landmark, PiggyBank, Wallet } from 'lucide-
 import type { WaardesData, BeleggingRekening, SpaarRekening, BetaalRekening, AssetType } from '../types';
 import CurrencyInput from './CurrencyInput';
 import SectionCard from './SectionCard';
+import InfoTooltip from './InfoTooltip';
 
 interface Props {
   data: WaardesData;
@@ -43,7 +44,7 @@ function BeleggingenSection({ data, onChange }: Props) {
   const total = data.beleggingen.reduce((s, b) => s + b.waardeJan1, 0);
 
   return (
-    <SectionCard title="Beleggingsrekeningen" icon={<Landmark size={20} />} accent="border-purple-400">
+    <SectionCard title={<span className="flex items-center gap-1.5">Beleggingsrekeningen <InfoTooltip tip="Voer de waarde in van uw beleggingsportefeuille op 1 januari. ETF's en aandelen vallen onder de 'beleggingen' categorie (fictief rendement 5,88%)." /></span>} icon={<Landmark size={20} />} accent="border-purple-400">
       <p className="text-xs text-slate-500 mb-4">
         Waarde van uw beleggingen op <strong>1 januari</strong> — dit is de Box 3 grondslag.
         Voer in per broker / rekening.
@@ -87,7 +88,9 @@ function BeleggingenSection({ data, onChange }: Props) {
               </div>
               <div className="col-span-11 sm:col-span-4">
                 <CurrencyInput label="Waarde 1 januari" value={b.waardeJan1}
-                  onChange={v => update(b.id, { waardeJan1: v })} />
+                  onChange={v => update(b.id, { waardeJan1: v })}
+                  tooltip={<InfoTooltip tip="De waarde van deze rekening/portefeuille op exactement 1 januari van het belastingjaar." />}
+                />
               </div>
               <div className="col-span-1 flex items-end justify-center pb-0.5">
                 <button onClick={() => remove(b.id)}
@@ -142,7 +145,7 @@ function SpaarSection({ data, onChange }: Props) {
   const totalRente    = data.spaarrekeningen.reduce((s, a) => s + a.saldoJan1 * (a.rentePercentage / 100), 0);
 
   return (
-    <SectionCard title="Spaarrekeningen" icon={<PiggyBank size={20} />} accent="border-green-400">
+    <SectionCard title={<span className="flex items-center gap-1.5">Spaarrekeningen <InfoTooltip tip="Spaargeld valt in Box 3 onder de 'spaargeld' categorie met een lager fictief rendement (1,03% in 2026)." /></span>} icon={<PiggyBank size={20} />} accent="border-green-400">
       <p className="text-xs text-slate-500 mb-4">
         Saldo op <strong>1 januari</strong>. Fictief rendement 2026: <strong>1,03%</strong> (ongeacht werkelijke rente).
       </p>
@@ -174,7 +177,7 @@ function SpaarSection({ data, onChange }: Props) {
                 />
               </div>
               <div className="col-span-5 sm:col-span-2 flex flex-col gap-1">
-                <label className="text-xs text-slate-500">Rente %</label>
+                <label className="text-xs text-slate-500 flex items-center gap-1">Rente % <InfoTooltip tip="Het jaarlijkse rentepercentage dat u ontvangt op deze spaarrekening. Dit wordt gebruikt voor de daadwerkelijke rente-inkomsten berekening." /></label>
                 <div className="relative">
                   <input type="number" min="0" max="20" step="0.01"
                     className="w-full border border-slate-300 rounded-lg px-2 py-1.5 pr-8 text-sm bg-white outline-none focus:ring-2 focus:ring-green-400"
@@ -190,7 +193,9 @@ function SpaarSection({ data, onChange }: Props) {
               </div>
               <div className="col-span-11 sm:col-span-4">
                 <CurrencyInput label="Saldo 1 januari" value={s.saldoJan1}
-                  onChange={v => update(s.id, { saldoJan1: v })} />
+                  onChange={v => update(s.id, { saldoJan1: v })}
+                  tooltip={<InfoTooltip tip="De waarde van deze rekening/portefeuille op exactement 1 januari van het belastingjaar." />}
+                />
               </div>
               <div className="col-span-1 flex items-end justify-center pb-0.5">
                 <button onClick={() => remove(s.id)}
@@ -238,7 +243,7 @@ function BetaalSection({ data, onChange }: Props) {
   const total = data.betaalrekeningen.reduce((s, b) => s + b.saldoJan1, 0);
 
   return (
-    <SectionCard title="Betaalrekeningen" icon={<Wallet size={20} />} accent="border-sky-400">
+    <SectionCard title={<span className="flex items-center gap-1.5">Betaalrekeningen <InfoTooltip tip="Het saldo op uw betaalrekening op 1 januari telt ook mee voor Box 3. Houd er rekening mee dat dit inclusief evt. buffer is." /></span>} icon={<Wallet size={20} />} accent="border-sky-400">
       <p className="text-xs text-slate-500 mb-4">
         Saldo betaalrekening(en) op <strong>1 januari</strong> — telt mee als spaartegoed in Box 3 (fictief rendement 1,03%).
       </p>
@@ -271,7 +276,9 @@ function BetaalSection({ data, onChange }: Props) {
               </div>
               <div className="col-span-6 sm:col-span-5">
                 <CurrencyInput label="Saldo 1 januari" value={b.saldoJan1}
-                  onChange={v => update(b.id, { saldoJan1: v })} />
+                  onChange={v => update(b.id, { saldoJan1: v })}
+                  tooltip={<InfoTooltip tip="De waarde van deze rekening/portefeuille op exactement 1 januari van het belastingjaar." />}
+                />
               </div>
               <div className="col-span-1 flex items-end justify-center pb-0.5">
                 <button onClick={() => remove(b.id)}
@@ -318,7 +325,7 @@ function Box3Summary({ data }: { data: WaardesData }) {
     <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-5 space-y-3">
       <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
         <CalendarDays size={16} className="text-slate-500" />
-        <span className="text-sm font-semibold text-slate-700">Totaal Box 3 vermogen (1 jan)</span>
+        <span className="text-sm font-semibold text-slate-700 flex items-center gap-1">Totaal Box 3 vermogen (1 jan) <InfoTooltip tip="De Belastingdienst gebruikt de waarde van uw vermogen op 1 januari van het belastingjaar als grondslag voor Box 3. Dit heet de peildatum." /></span>
         <span className="ml-auto text-lg font-bold text-slate-900">{nl.format(grandTotal)}</span>
       </div>
       {/* Bar visualisation */}

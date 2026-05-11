@@ -320,7 +320,7 @@ export default function WoonSection({ data, taxYear, onChange }: Props) {
   return (
     <div className="space-y-4">
       {/* Woningtype */}
-      <SectionCard title="Woonsituatie" icon={<Home size={20} />} accent="border-teal-400">
+      <SectionCard title={<span className="flex items-center gap-1.5">Woonsituatie <InfoTooltip tip="Kies 'Huur' als u een huurwoning heeft. Kies 'Hypotheek' als u een eigen woning bezit met een lening." /></span>} icon={<Home size={20} />} accent="border-teal-400">
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-2">
             {(['huur', 'hypotheek'] as WoningType[]).map(t => (
@@ -340,7 +340,9 @@ export default function WoonSection({ data, taxYear, onChange }: Props) {
           {data.woningType === 'huur' && (
             <div className="space-y-3">
               <CurrencyInput label="Maandhuur" hint="Uw maandelijkse kale huur"
-                value={data.maandhuur} onChange={v => onChange({ ...data, maandhuur: v })} />
+                value={data.maandhuur} onChange={v => onChange({ ...data, maandhuur: v })}
+                tooltip={<InfoTooltip tip="De kale huurprijs per maand zonder servicekosten of gas/water/licht." />}
+              />
               <label className="flex items-center gap-2.5 cursor-pointer select-none py-2 px-3 bg-teal-50 border border-teal-200 rounded-xl">
                 <input
                   type="checkbox"
@@ -348,7 +350,7 @@ export default function WoonSection({ data, taxYear, onChange }: Props) {
                   checked={data.huurtoeslagEnabled !== false}
                   onChange={e => onChange({ ...data, huurtoeslagEnabled: e.target.checked })}
                 />
-                <span className="text-sm text-teal-800 font-medium">Huurtoeslag aanvragen</span>
+                <span className="text-sm text-teal-800 font-medium flex items-center gap-1">Huurtoeslag aanvragen <InfoTooltip tip="Huurtoeslag is een maandelijkse bijdrage van de overheid als uw huur en inkomen niet te hoog zijn. U heeft recht op huurtoeslag als uw huur onder de liberalisatiegrens (€900/mnd) ligt." /></span>
                 <span className="text-xs text-teal-600 ml-1">— wordt automatisch berekend bij lage inkomens</span>
               </label>
             </div>
@@ -431,9 +433,13 @@ export default function WoonSection({ data, taxYear, onChange }: Props) {
       <SectionCard title="Overige woonlasten — per maand" icon={<Home size={20} />} accent="border-orange-400">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <CurrencyInput label="Gas, water & elektra" hint="Maandelijkse energiekosten"
-            value={data.gwe} onChange={v => onChange({ ...data, gwe: v })} />
+            value={data.gwe} onChange={v => onChange({ ...data, gwe: v })}
+            tooltip={<InfoTooltip tip="Uw gemiddelde maandelijkse energiekosten (gas, elektriciteit, water)." />}
+          />
           <CurrencyInput label="VVE bijdrage" hint="Maandelijkse VVE-bijdrage"
-            value={data.vve} onChange={v => onChange({ ...data, vve: v })} />
+            value={data.vve} onChange={v => onChange({ ...data, vve: v })}
+            tooltip={<InfoTooltip tip="Maandelijkse bijdrage aan de Vereniging van Eigenaren. Alleen van toepassing bij een appartement." />}
+          />
           <CurrencyInput label="Overige woonkosten" hint="Onderhoud, gemeentelijke heffingen"
             value={data.overig} onChange={v => onChange({ ...data, overig: v })} />
         </div>

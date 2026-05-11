@@ -7,6 +7,7 @@ import {
   totalVervanging,
   gereserveerdTotNu,
 } from '../utils/afschrijvingen';
+import InfoTooltip from './InfoTooltip';
 
 interface Props {
   data: AfschrijvingenData;
@@ -254,7 +255,7 @@ export default function AfschrijvingenSection({ data, taxYear, onChange }: Props
       {/* Settings bar */}
       <div className="bg-white border border-slate-200 rounded-xl px-4 py-3 flex flex-wrap items-center gap-4">
         <div className="flex items-center gap-2">
-          <label className="text-sm font-medium text-slate-700 whitespace-nowrap">Spaarrente (sinking fund)</label>
+          <label className="text-sm font-medium text-slate-700 whitespace-nowrap flex items-center gap-1">Afschrijvingen <InfoTooltip tip="Reserveer maandelijks een bedrag voor toekomstige vervangingen (auto, witgoed, etc.). Dit bedrag wordt van uw Box 3 vermogen afgetrokken als 'gereserveerd'." /> · Spaarrente (sinking fund) <InfoTooltip tip="Het jaarlijkse rentepercentage waarmee uw reservering groeit. Gebruik het rendement van de rekening waar u de reservering op zet." /></label>
           <div className="flex items-center border border-slate-300 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-orange-400 bg-white">
             <input
               type="number" step="0.1" min="0" max="20"
@@ -267,7 +268,7 @@ export default function AfschrijvingenSection({ data, taxYear, onChange }: Props
         </div>
         <div className="ml-auto flex items-center gap-3">
           <div className="text-right">
-            <p className="text-xs text-slate-500">Maandelijks sparen ({taxYear})</p>
+            <p className="text-xs text-slate-500 flex items-center justify-end gap-1">Maandelijks sparen ({taxYear}) <InfoTooltip tip="Het bedrag dat u dit jaar moet reserveren om op tijd het vervangingsbedrag bij elkaar te hebben, rekening houdend met inflatie en rente-aangroei." /></p>
             <p className="text-base font-bold text-orange-700">{nl2.format(maandBedrag)}</p>
           </div>
           <button
@@ -285,11 +286,11 @@ export default function AfschrijvingenSection({ data, taxYear, onChange }: Props
           <thead>
             <tr className="border-b border-slate-200 bg-slate-50">
               <th className="text-left px-2 py-2 font-medium text-slate-600">Product</th>
-              <th className="text-left px-2 py-2 font-medium text-slate-600">Aankoopprijs</th>
-              <th className="text-left px-2 py-2 font-medium text-slate-600">Aankoopdatum</th>
-              <th className="text-left px-2 py-2 font-medium text-slate-600">Looptijd</th>
+              <th className="text-left px-2 py-2 font-medium text-slate-600"><span className="flex items-center gap-1">Aankoopprijs <InfoTooltip tip="De aanschafprijs van het item dat u wilt vervangen. Dit is de huidige aankoopprijs, niet de oorspronkelijke prijs." /></span></th>
+              <th className="text-left px-2 py-2 font-medium text-slate-600"><span className="flex items-center gap-1">Aankoopdatum <InfoTooltip tip="De datum waarop u het item heeft aangeschaft. Hiermee berekenen we hoever u al in de afschrijvingsperiode zit." /></span></th>
+              <th className="text-left px-2 py-2 font-medium text-slate-600"><span className="flex items-center gap-1">Looptijd <InfoTooltip tip="Het aantal jaren dat u verwacht dit item te gebruiken voordat u het vervangt. Na deze periode begint een nieuwe afschrijvingscyclus." /></span></th>
               <th className="text-left px-2 py-2 font-medium text-slate-600">Vervangingsdatum</th>
-              <th className="text-right px-2 py-2 font-medium text-slate-600">Gereserveerd</th>
+              <th className="text-right px-2 py-2 font-medium text-slate-600"><span className="flex items-center justify-end gap-1">Gereserveerd <InfoTooltip tip="Het bedrag dat u tot nu toe heeft gereserveerd voor vervanging, als percentage van het totaal benodigde bedrag (inflatie gecorrigeerd)." /></span></th>
               {years.map(y => (
                 <th
                   key={y}

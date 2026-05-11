@@ -2,6 +2,7 @@ import { PiggyBank, ShoppingCart } from 'lucide-react';
 import type { ExpensesData, SavingsData } from '../types';
 import CurrencyInput from './CurrencyInput';
 import SectionCard from './SectionCard';
+import InfoTooltip from './InfoTooltip';
 
 interface Props {
   data: ExpensesData;
@@ -10,13 +11,13 @@ interface Props {
   onSavingsChange: (s: SavingsData) => void;
 }
 
-const FIELDS: { key: keyof ExpensesData; label: string }[] = [
-  { key: 'groceries',  label: 'Boodschappen & eten' },
-  { key: 'transport',  label: 'Transport (auto, OV, brandstof)' },
-  { key: 'insurance',  label: 'Verzekeringen' },
-  { key: 'healthcare', label: 'Zorgkosten / eigen risico' },
-  { key: 'education',  label: 'Opleiding & abonnementen' },
-  { key: 'leisure',    label: 'Vrije tijd & entertainment' },
+const FIELDS: { key: keyof ExpensesData; label: string; tip?: string }[] = [
+  { key: 'groceries',  label: 'Boodschappen & eten',          tip: 'Alle uitgaven aan supermarkt, restaurantbezoek, afhaal en andere voeding per maand.' },
+  { key: 'transport',  label: 'Transport (auto, OV, brandstof)', tip: 'Maandelijkse kosten voor auto (brandstof, verzekering, wegenbelasting), openbaar vervoer, fiets of taxi.' },
+  { key: 'insurance',  label: 'Verzekeringen',                  tip: 'Al uw verzekeringspremies: zorgverzekering eigen risico, aansprakelijkheid, inboedel, woonhuis, etc.' },
+  { key: 'healthcare', label: 'Zorgkosten / eigen risico',      tip: 'Zorgkosten die u zelf betaalt boven het vergoede deel, zoals het eigen risico, brillen, tandarts of fysiotherapie.' },
+  { key: 'education',  label: 'Opleiding & abonnementen',       tip: 'Kosten voor cursussen, studieboeken, streamingdiensten, software-abonnementen, kranten, etc.' },
+  { key: 'leisure',    label: 'Vrije tijd & entertainment',     tip: 'Uitgaven aan sport, hobby\'s, vakantie, uit eten gaan, bioscoop en overige recreatie.' },
   { key: 'other',      label: 'Overige kosten' },
 ];
 
@@ -34,7 +35,9 @@ export default function ExpensesSection({ data, onChange, savings, onSavingsChan
       <SectionCard title="Vaste & variabele kosten — per maand" icon={<ShoppingCart size={20} />} accent="border-rose-400">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {FIELDS.map(f => (
-            <CurrencyInput key={f.key} label={f.label} value={data[f.key]} onChange={set(f.key)} />
+            <CurrencyInput key={f.key} label={f.label} value={data[f.key]} onChange={set(f.key)}
+              tooltip={f.tip ? <InfoTooltip tip={f.tip} /> : undefined}
+            />
           ))}
         </div>
         <div className="mt-4 grid grid-cols-2 gap-3">
@@ -60,6 +63,7 @@ export default function ExpensesSection({ data, onChange, savings, onSavingsChan
             value={savings.monthlySavingsContribution}
             onChange={v => onSavingsChange({ ...savings, monthlySavingsContribution: v })}
             suffix="/mnd"
+            tooltip={<InfoTooltip tip="Het bedrag dat u maandelijks overmaakt naar uw spaarrekening. Telt mee als 'sparen' in uw maandbudget." />}
           />
           <CurrencyInput
             label="Maandelijkse beleggingsbijdrage"
@@ -67,6 +71,7 @@ export default function ExpensesSection({ data, onChange, savings, onSavingsChan
             value={savings.maandelijksBeleggen}
             onChange={v => onSavingsChange({ ...savings, maandelijksBeleggen: v })}
             suffix="/mnd"
+            tooltip={<InfoTooltip tip="Het bedrag dat u maandelijks inlegt in uw beleggingsportefeuille (bijv. automatische aankoopplan bij een broker)." />}
           />
         </div>
         <div className="mt-4 grid grid-cols-3 gap-3">

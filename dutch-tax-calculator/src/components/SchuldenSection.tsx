@@ -4,6 +4,7 @@ import type { SchuldenData, SchuldItem, DuoType } from '../types';
 import { simuleerDuo, berekenDuoJaarbetaling, DUO_DRAAGKRACHT_VRIJ, DUO_DRAAGKRACHT_PARTNER_VRIJ, type DuoFase } from '../utils/duo';
 import CurrencyInput from './CurrencyInput';
 import SectionCard from './SectionCard';
+import InfoTooltip from './InfoTooltip';
 
 interface Props {
   data: SchuldenData;
@@ -83,6 +84,7 @@ function SchuldCard({ item, taxYear, onUpdate, onRemove, canRemove, accent, isDu
               hint={isDuo ? 'Schuld bij start rente (startJaar)' : 'Uitstaand saldo op 1 januari'}
               value={item.bedrag}
               onChange={v => onUpdate({ bedrag: v })}
+              tooltip={<InfoTooltip tip="Het uitstaande schuldbedrag op het moment dat de rente begint te lopen (startJaar). Voor DUO is dit het totaal geleende bedrag bij afstuderen." />}
             />
           </div>
 
@@ -93,8 +95,8 @@ function SchuldCard({ item, taxYear, onUpdate, onRemove, canRemove, accent, isDu
                 <label className="text-xs text-slate-500">Stelsel</label>
                 <div className="flex rounded-lg border border-slate-300 overflow-hidden">
                   {([
-                    { value: 'sf15' as DuoType, label: 'SF15', desc: 'Oud stelsel (vóór sept. 2015) · 15 jaar' },
-                    { value: 'sf35' as DuoType, label: 'SF35', desc: 'Nieuw stelsel (vanaf sept. 2015) · 35 jaar' },
+                    { value: 'sf15' as DuoType, label: 'SF15', desc: 'Oud stelsel (vóór sept. 2015) · 15 jaar', tip: 'Studenten die vóór september 2015 zijn begonnen met studeren vallen onder het oude stelsel met een aflossingstermijn van 15 jaar.' },
+                    { value: 'sf35' as DuoType, label: 'SF35', desc: 'Nieuw stelsel (vanaf sept. 2015) · 35 jaar', tip: 'Studenten die vanaf september 2015 zijn begonnen met studeren vallen onder het nieuwe stelsel met een aflossingstermijn van 35 jaar.' },
                   ]).map(opt => (
                     <button
                       key={opt.value}
@@ -109,7 +111,7 @@ function SchuldCard({ item, taxYear, onUpdate, onRemove, canRemove, accent, isDu
                           : 'bg-white text-slate-600 hover:bg-slate-50'
                       }`}
                     >
-                      {opt.label}
+                      <span className="flex items-center justify-center gap-1">{opt.label} <InfoTooltip tip={opt.tip} /></span>
                     </button>
                   ))}
                 </div>
@@ -122,8 +124,8 @@ function SchuldCard({ item, taxYear, onUpdate, onRemove, canRemove, accent, isDu
 
               {/* Lening start — when borrowing began (before interest) */}
               <div className="flex flex-col gap-1">
-                <label className="text-xs text-slate-500">
-                  Start lening <span className="text-slate-400 font-normal">— jaar lening begint</span>
+                <label className="text-xs text-slate-500 flex items-center gap-1">
+                  Start lening <span className="text-slate-400 font-normal">— jaar lening begint</span> <InfoTooltip tip="Het jaar waarin u de lening heeft afgesloten en geld begon te lenen. Vóór de startjaar rente loopt er nog geen rente." />
                 </label>
                 <input
                   type="number" min={1990} max={2100}
@@ -139,8 +141,8 @@ function SchuldCard({ item, taxYear, onUpdate, onRemove, canRemove, accent, isDu
 
               {/* Aflossing start — 15/35-year clock */}
               <div className="flex flex-col gap-1">
-                <label className="text-xs text-slate-500">
-                  Aflossing start <span className="text-slate-400 font-normal">— 15/35-jaar klok</span>
+                <label className="text-xs text-slate-500 flex items-center gap-1">
+                  Aflossing start <span className="text-slate-400 font-normal">— 15/35-jaar klok</span> <InfoTooltip tip="Het jaar waarvanaf de 15- of 35-jaar terugbetalingstermijn begint. Na deze termijn wordt de restschuld kwijtgescholden." />
                 </label>
                 <input
                   type="number" min={1990} max={2100}
@@ -167,7 +169,7 @@ function SchuldCard({ item, taxYear, onUpdate, onRemove, canRemove, accent, isDu
               />
             </div>
             <div className="flex flex-col gap-1">
-              <label className="text-xs text-slate-500">Looptijd (jr)</label>
+              <label className="text-xs text-slate-500 flex items-center gap-1">Looptijd (jr) <InfoTooltip tip="De maximale terugbetalingstermijn: 15 jaar (SF15) of 35 jaar (SF35). Na afloop wordt de resterende schuld kwijtgescholden." /></label>
               <input
                 type="number" min={1} max={50}
                 className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm bg-white outline-none focus:ring-2 focus:ring-red-400"
@@ -187,7 +189,7 @@ function SchuldCard({ item, taxYear, onUpdate, onRemove, canRemove, accent, isDu
               />
             </div>
             <div className="flex flex-col gap-1">
-              <label className="text-xs text-slate-500">Startjaar rente</label>
+              <label className="text-xs text-slate-500 flex items-center gap-1">Startjaar rente <InfoTooltip tip="Het jaar waarvanaf DUO rente in rekening brengt over uw schuld. Meestal het jaar na afstuderen na een rentevrije periode." /></label>
               <input
                 type="number" min={1990} max={2050}
                 className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm bg-white outline-none focus:ring-2 focus:ring-red-400"
@@ -715,7 +717,8 @@ export default function SchuldenSection({ data, taxYear, grossSalary, isPartner,
               <p className="text-base font-bold text-orange-700">{nl2.format(totaalRente)}</p>
             </div>
           </div>
-          <p className="text-xs text-slate-400 mt-3">
+          <p className="text-xs text-slate-400 mt-3 flex items-start gap-1">
+            <InfoTooltip tip="De eerste €3.700 aan schulden per persoon is niet aftrekbaar in Box 3. Alleen het bedrag daarboven verlaagt uw belastbare vermogen." />
             Schulden verlagen uw Box 3 vermogen. De eerste €3.700 per persoon is niet aftrekbaar (drempel).
             Fictief rendement op schulden: <strong>2,62%</strong> (2026).
           </p>
