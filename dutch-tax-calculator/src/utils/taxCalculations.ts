@@ -3,7 +3,7 @@ import type {
   Holding, Transaction, Position, AssetType,
 } from '../types';
 import { berekenHypotheek } from './hypotheek';
-import { totalAfschrijvingenGereserveerd } from './afschrijvingen';
+import { totalAfschrijvingenGereserveerd, gereserveerdTotNu } from './afschrijvingen';
 
 // ─── 2026 Tax Parameters ───────────────────────────────────────────────────
 // Source: Belastingplan 2026 / Belastingdienst (indicatief)
@@ -350,7 +350,11 @@ export function calculateTaxes(data: TaxFormData): TaxResult {
     (s, hyp) => s + berekenHypotheek(hyp, personal.taxYear).restschuldBegin, 0,
   );
 
-  const afschrijvingenActueel = totalAfschrijvingenGereserveerd(data.afschrijvingen, personal.taxYear);
+  // Current-year reserved amount (deposits through taxYear, not taxYear-1)
+  const rate = data.afschrijvingen.rentePercentage / 100;
+  const afschrijvingenActueel = data.afschrijvingen.categorieen
+    .flatMap(c => c.items)
+    .reduce((sum, item) => sum + gereserveerdTotNu(item, rate, personal.taxYear), 0);
 
   const currentNetWorth =
     totalSavingsBalance +
@@ -362,7 +366,7 @@ export function calculateTaxes(data: TaxFormData): TaxResult {
   return {
     box1, box3, toeslagen, totalTax, netDisposableIncome, totalExpenses,
     annualSavings, portfolioCurrentValue, portfolioJan1Value,
-    portfolioGainLoss: gainLoss, actualSavingsInterest, currentNetWorth,
+    portfolioGainLoss: gainLoss, actualSavingsInterest, currentNetWorth, afschrijvingenActueel,
   };
 }
 

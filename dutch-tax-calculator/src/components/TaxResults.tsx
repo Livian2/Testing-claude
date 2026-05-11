@@ -29,7 +29,7 @@ export default function TaxResults({ result }: Props) {
   const {
     box1, box3, toeslagen, totalTax, netDisposableIncome, totalExpenses,
     portfolioGainLoss, portfolioCurrentValue, portfolioJan1Value,
-    actualSavingsInterest, currentNetWorth,
+    actualSavingsInterest, currentNetWorth, afschrijvingenActueel,
   } = result;
 
   const hasToeslagen     = toeslagen.total > 0;
@@ -253,7 +253,7 @@ export default function TaxResults({ result }: Props) {
       </div>
 
       {/* ── Net worth ── */}
-      {currentNetWorth !== 0 && (
+      {true && (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="flex items-center gap-3 px-6 py-4 border-b-2 border-indigo-400 bg-gradient-to-r from-indigo-50 to-white">
             <TrendingUp size={18} className="text-indigo-500" />
@@ -264,10 +264,10 @@ export default function TaxResults({ result }: Props) {
               <StatCard label="Spaarsaldo"            value={fmt(box3.breakdown.savings)}  color="green" />
               <StatCard label="Beleggingen (huidig)"  value={fmt(portfolioCurrentValue)}   color="purple" />
               <StatCard label="Schulden"              value={fmt(box3.totalDebts)}         color="orange" />
-              {box3.afschrijvingenGereserveerd > 0 && (
+              {afschrijvingenActueel > 0 && (
                 <StatCard
                   label="Reservering vervangingen"
-                  value={`− ${fmt(box3.afschrijvingenGereserveerd)}`}
+                  value={`− ${fmt(afschrijvingenActueel)}`}
                   color="slate"
                 />
               )}

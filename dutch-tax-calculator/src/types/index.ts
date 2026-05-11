@@ -232,6 +232,7 @@ export interface TaxResult {
   portfolioGainLoss: number;
   actualSavingsInterest: number;
   currentNetWorth: number;
+  afschrijvingenActueel: number;
 }
 
 export interface Position {
