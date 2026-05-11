@@ -213,7 +213,7 @@ export default function App() {
     <div className="min-h-screen bg-gradient-to-br from-slate-100 to-slate-200">
       {/* Header */}
       <header className="bg-white border-b border-slate-200 sticky top-0 z-20 shadow-sm">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1.5 bg-orange-500 text-white rounded-xl px-3 py-1.5">
               <Flag size={16} />
@@ -273,7 +273,7 @@ export default function App() {
         </div>
 
         {/* Tabs */}
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 flex overflow-x-auto">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 flex overflow-x-auto">
           {/* Home tab — always visible */}
           <button
             onClick={() => setTab('home')}
@@ -311,7 +311,7 @@ export default function App() {
       </header>
 
       {/* Main content */}
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
         {tab === 'home' && (
           <div className="space-y-6">
             <div>
@@ -451,7 +451,7 @@ export default function App() {
         )}
       </main>
 
-      <footer className="max-w-5xl mx-auto px-4 sm:px-6 py-6 text-center text-xs text-slate-400 border-t border-slate-200 mt-4">
+      <footer className="max-w-7xl mx-auto px-4 sm:px-6 py-6 text-center text-xs text-slate-400 border-t border-slate-200 mt-4">
         Indicatieve berekening o.b.v. belastingregels 2026. Raadpleeg altijd een belastingadviseur voor persoonlijk advies.
       </footer>
     </div>

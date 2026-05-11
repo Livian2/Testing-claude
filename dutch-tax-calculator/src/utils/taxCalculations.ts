@@ -3,6 +3,7 @@ import type {
   Holding, Transaction, Position, AssetType,
 } from '../types';
 import { berekenHypotheek } from './hypotheek';
+import { totalAfschrijvingenGereserveerd } from './afschrijvingen';
 
 // ─── 2026 Tax Parameters ───────────────────────────────────────────────────
 // Source: Belastingplan 2026 / Belastingdienst (indicatief)
@@ -92,7 +93,7 @@ const BOX3_EXEMPTION_SINGLE  = 57684;
 const BOX3_EXEMPTION_PARTNER = 115368;
 
 export function calculateBox3(data: TaxFormData): Box3Result {
-  const { waardes, schulden, personal } = data;
+  const { waardes, schulden, personal, afschrijvingen } = data;
   const isPartner = personal.filingStatus === 'partner';
   const exemption = isPartner ? BOX3_EXEMPTION_PARTNER : BOX3_EXEMPTION_SINGLE;
   const threshold = isPartner ? BOX3_DEBT_THRESHOLD * 2 : BOX3_DEBT_THRESHOLD;
@@ -108,15 +109,23 @@ export function calculateBox3(data: TaxFormData): Box3Result {
 
   const totalAssets = totalSavings + totalInvestments;
 
+  // Afschrijvingen gereserveerd: earmarked replacement savings (Box 3 peildatum = Jan 1)
+  const afschrijvingenGereserveerd = Math.min(
+    totalAfschrijvingenGereserveerd(afschrijvingen, personal.taxYear),
+    totalAssets,
+  );
+
   const rawDebts   = [...schulden.duo, ...schulden.beleggingen].reduce((s, d) => s + d.bedrag, 0);
   const totalDebts = Math.max(0, rawDebts - threshold);
 
-  const netWealth     = Math.max(0, totalAssets - totalDebts);
-  const taxableWealth = Math.max(0, netWealth - exemption);
+  // Subtract earmarked reserves from the Box 3 grondslag
+  const adjustedAssets = Math.max(0, totalAssets - afschrijvingenGereserveerd);
+  const netWealth      = Math.max(0, adjustedAssets - totalDebts);
+  const taxableWealth  = Math.max(0, netWealth - exemption);
 
   if (taxableWealth === 0) {
     return {
-      totalAssets, totalDebts, netWealth, exemption, taxableWealth,
+      totalAssets, totalDebts, afschrijvingenGereserveerd, netWealth, exemption, taxableWealth,
       fictitiousReturn: 0, grossTax: 0, heffingskortingBox3: 0, netTax: 0,
       breakdown: {
         savings: totalSavings, investments: totalInvestments, debts: totalDebts,
@@ -125,8 +134,8 @@ export function calculateBox3(data: TaxFormData): Box3Result {
     };
   }
 
-  const savingsShare = totalAssets > 0 ? totalSavings / totalAssets : 0;
-  const investShare  = totalAssets > 0 ? totalInvestments / totalAssets : 0;
+  const savingsShare = adjustedAssets > 0 ? Math.max(0, totalSavings - afschrijvingenGereserveerd) / adjustedAssets : 0;
+  const investShare  = adjustedAssets > 0 ? totalInvestments / adjustedAssets : 0;
 
   const taxableSavings     = taxableWealth * savingsShare;
   const taxableInvestments = taxableWealth * investShare;
@@ -139,7 +148,7 @@ export function calculateBox3(data: TaxFormData): Box3Result {
   const grossTax         = Math.max(0, fictitiousReturn * BOX3_TAX_RATE);
 
   return {
-    totalAssets, totalDebts, netWealth, exemption, taxableWealth,
+    totalAssets, totalDebts, afschrijvingenGereserveerd, netWealth, exemption, taxableWealth,
     fictitiousReturn, grossTax, heffingskortingBox3: 0, netTax: grossTax,
     breakdown: {
       savings: totalSavings, investments: totalInvestments, debts: totalDebts,

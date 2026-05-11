@@ -267,8 +267,8 @@ export default function PortfolioSection({ data, onChange }: Props) {
       });
 
       const [isinMap, tickerMap] = await Promise.all([
-        needsIsinRes.length > 0 ? resolveIsins(needsIsinRes.map(h => h.isin!)) : Promise.resolve({}),
-        needsTickerRes.length > 0 ? resolveBareTickers(needsTickerRes.map(h => h.ticker)) : Promise.resolve({}),
+        needsIsinRes.length > 0 ? resolveIsins(needsIsinRes.map(h => h.isin!)) : Promise.resolve({} as Record<string, string>),
+        needsTickerRes.length > 0 ? resolveBareTickers(needsTickerRes.map(h => h.ticker)) : Promise.resolve({} as Record<string, string>),
       ]);
 
       // Apply resolved tickers. BUG FIX: also replace bare tickers (no ".") when a

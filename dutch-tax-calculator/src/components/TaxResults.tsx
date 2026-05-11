@@ -209,6 +209,14 @@ export default function TaxResults({ result }: Props) {
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             <StatCard label="Totaal vermogen (1 jan)" value={fmt(box3.totalAssets)}   color="purple" />
             <StatCard label="Schulden (na drempel)"   value={fmt(box3.totalDebts)}    color="orange" />
+            {box3.afschrijvingenGereserveerd > 0 && (
+              <StatCard
+                label="Reservering vervangingen"
+                value={`− ${fmt(box3.afschrijvingenGereserveerd)}`}
+                sub="Afgeschreven van grondslag"
+                color="slate"
+              />
+            )}
             <StatCard label="Netto vermogen"          value={fmt(box3.netWealth)}     color="blue" />
             <StatCard label="Heffingvrij vermogen"    value={fmt(box3.exemption)}     color="green" />
             <StatCard label="Belastbaar vermogen"     value={fmt(box3.taxableWealth)} color="slate" />

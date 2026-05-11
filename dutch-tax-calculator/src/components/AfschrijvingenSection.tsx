@@ -1,6 +1,12 @@
 import { useState } from 'react';
 import { Plus, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
 import type { AfschrijvingenData, AfschrijvingCategorie, AfschrijvingItem } from '../types';
+import {
+  getReplacementDate,
+  jaarDeposit,
+  totalVervanging,
+  gereserveerdTotNu,
+} from '../utils/afschrijvingen';
 
 interface Props {
   data: AfschrijvingenData;
@@ -12,94 +18,6 @@ const nl2 = new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR',
 const nl0 = new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
 
 function uid() { return Math.random().toString(36).slice(2); }
-
-function parseDate(s: string): Date | null {
-  if (!s) return null;
-  const parts = s.split('-').map(Number);
-  if (parts.length !== 3 || parts.some(isNaN)) return null;
-  return new Date(parts[0], parts[1] - 1, parts[2]); // local time — avoids UTC/local mismatch
-}
-
-function getReplacementDate(item: AfschrijvingItem): Date | null {
-  const d = parseDate(item.aankoopdatum);
-  if (!d) return null;
-  const r = new Date(d);
-  r.setFullYear(r.getFullYear() + item.looptijdJaren);
-  return r;
-}
-
-// Signed day difference: to - from in whole days
-function daysBetween(from: Date, to: Date): number {
-  return Math.round((to.getTime() - from.getTime()) / (24 * 3600 * 1000));
-}
-
-/**
- * Inflation-indexed annual deposit for calendar year `year`.
- *
- * Mirrors the Excel formula where:
- *   M3 = Jan 1 of (year+1)  — end of the displayed year column
- *   L3 = Jan 1 of  year     — start of the displayed year column
- *   D4 = purchase date, J4 = replacement date
- *   C4 / (F4 * 365) = base daily rate
- *
- * Three cases:
- *   1. First partial year  — M3 within 364 days of purchase
- *   2. Middle full years   — M3 before replacement date
- *   3. Last partial year   — M3 within 364 days past replacement date
- */
-function jaarDeposit(item: AfschrijvingItem, rate: number, year: number): number {
-  const purchase = parseDate(item.aankoopdatum);
-  const replace  = getReplacementDate(item);
-  if (!purchase || !replace || !item.aankoopprijs || !item.looptijdJaren) return 0;
-
-  const M3 = new Date(year + 1, 0, 1); // Jan 1 of year+1
-  const L3 = new Date(year, 0, 1);      // Jan 1 of year
-
-  if (M3 <= purchase) return 0;
-
-  const daysMD   = daysBetween(purchase, M3);   // DAGEN(M3, D4)
-  const daysLM   = daysBetween(L3, M3);          // DAGEN(M3, L3) = days in this year
-  const daysMJ   = daysBetween(replace, M3);     // DAGEN(M3, J4)
-  const baseDaily = item.aankoopprijs / (item.looptijdJaren * 365);
-
-  if (daysMD < 364) {
-    // First partial year: prorated from purchase to year-end
-    return daysMD * baseDaily * (1 + rate);
-  }
-  if (M3 <= replace) {
-    // Middle full years: full year deposit, inflation-indexed by years elapsed since purchase.
-    // Use calendar-year difference (not daysMD/365) to avoid leap-year sensitivity.
-    const yearsElapsed = (year + 1) - purchase.getFullYear();
-    return daysLM * baseDaily * Math.pow(1 + rate, yearsElapsed);
-  }
-  if (daysMJ < 364) {
-    // Last partial year: prorated from year-start to replacement date
-    return (365 - daysMJ) * baseDaily * (1 + rate);
-  }
-  return 0;
-}
-
-// Total of all year deposits from purchase year through replacement year
-function totalVervanging(item: AfschrijvingItem, rate: number): number {
-  const purchase = parseDate(item.aankoopdatum);
-  const replace  = getReplacementDate(item);
-  if (!purchase || !replace) return 0;
-  const startYear = purchase.getFullYear();
-  const endYear   = replace.getFullYear();
-  let total = 0;
-  for (let y = startYear; y <= endYear; y++) total += jaarDeposit(item, rate, y);
-  return total;
-}
-
-// Sum of deposits from purchase year up to and including upToYear
-function gereserveerdTotNu(item: AfschrijvingItem, rate: number, upToYear: number): number {
-  const purchase = parseDate(item.aankoopdatum);
-  if (!purchase) return 0;
-  const startYear = purchase.getFullYear();
-  let total = 0;
-  for (let y = startYear; y <= upToYear; y++) total += jaarDeposit(item, rate, y);
-  return total;
-}
 
 // ─── Category row component ──────────────────────────────────────────────────
 

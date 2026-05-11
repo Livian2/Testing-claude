@@ -195,6 +195,7 @@ export interface Box1Result {
 export interface Box3Result {
   totalAssets: number;
   totalDebts: number;
+  afschrijvingenGereserveerd: number;
   netWealth: number;
   exemption: number;
   taxableWealth: number;

@@ -4,7 +4,6 @@ import { berekenHypotheek } from '../utils/hypotheek';
 import { computePositions } from '../utils/taxCalculations';
 import { simuleerDuo } from '../utils/duo';
 import SectionCard from './SectionCard';
-import CurrencyInput from './CurrencyInput';
 import { TrendingUp } from 'lucide-react';
 
 interface Props {
