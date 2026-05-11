@@ -7,6 +7,42 @@ import { berekenDuoJaarbetaling } from './duo';
 import { jaarDeposit } from './afschrijvingen';
 import { totalAfschrijvingenGereserveerd, gereserveerdTotNu } from './afschrijvingen';
 
+// ─── Eigenwoningforfait (EWF) ──────────────────────────────────────────────
+// 2026: 0% ≤ €12.500; 0,35% up to €1.310.000; 2,35% on excess (villatarief)
+// Bron: Ministerie van Financiën / belastingdienst.nl 2026
+
+const EWF_MIN      = 12500;
+const EWF_CAP      = 1310000;
+const EWF_RATE     = 0.0035;
+const EWF_VILLA    = 0.0235;
+
+export function calcEwf(woz: number): number {
+  if (woz <= EWF_MIN)  return 0;
+  if (woz <= EWF_CAP)  return Math.round(woz * EWF_RATE);
+  return Math.round(EWF_CAP * EWF_RATE + (woz - EWF_CAP) * EWF_VILLA);
+}
+
+// Wet Hillen phase-out: started 2019, 30 years total.
+// In year Y the taxable fraction of (EWF > rente) is (Y-2019)/30.
+function hillenTaxableFraction(taxYear: number): number {
+  return Math.max(0, Math.min(1, (taxYear - 2019) / 30));
+}
+
+// Net eigenwoninginkomen effect on Box 1 taxable income.
+// Returns a signed value: negative = deduction, positive = addition.
+function eigenwoningEffect(woon: import('../types').WoonData, taxYear: number): number {
+  if (woon.woningType !== 'hypotheek') return 0;
+  let totalRente = 0;
+  for (const hyp of woon.hypotheken) {
+    if (hyp.leningBedrag > 0) totalRente += berekenHypotheek(hyp, taxYear).jaarRente;
+  }
+  const ewf = calcEwf(woon.wozWaarde ?? 0);
+  const ewi  = ewf - totalRente; // eigenwoninginkomen
+  if (ewi < 0) return ewi;      // rente > EWF → deduction
+  // EWF > rente → Wet Hillen (partially phased out)
+  return ewi * hillenTaxableFraction(taxYear);
+}
+
 // ─── 2026 Tax Parameters ───────────────────────────────────────────────────
 // Source: Belastingdienst.nl tabellen 2026 (vastgesteld)
 
@@ -53,21 +89,13 @@ function calcArbeidskorting(employmentIncome: number): number {
 export function calculateBox1(data: TaxFormData, verzamelinkomen?: number): Box1Result {
   const { income, woon, personal } = data;
 
-  // Sum mortgage interest deduction from all hypotheken
-  let mortgageInterestDeduction = 0;
-  if (woon.woningType === 'hypotheek') {
-    for (const hyp of woon.hypotheken) {
-      if (hyp.leningBedrag > 0) {
-        const b = berekenHypotheek(hyp, personal.taxYear);
-        mortgageInterestDeduction += b.jaarRente;
-      }
-    }
-  }
+  // Net eigenwoninginkomen: negative = deduction (rente > EWF), positive = addition (Wet Hillen phase-out)
+  const ewEffect = eigenwoningEffect(woon, personal.taxYear);
 
   const totalGrossIncome =
     income.grossSalary + income.freelanceIncome + income.rentalIncome + income.otherBox1Income;
-  const deductions    = mortgageInterestDeduction + income.pensionContributions;
-  const taxableIncome = Math.max(0, totalGrossIncome - deductions);
+  // ewEffect is negative when there's a deduction, so adding it reduces taxable income
+  const taxableIncome = Math.max(0, totalGrossIncome + ewEffect - income.pensionContributions);
 
   let grossTax = 0;
   let remaining = taxableIncome;
@@ -219,14 +247,9 @@ export function calculateToeslagen(data: TaxFormData, box1: Box1Result, box3: Bo
   }
 
   // ── Hypotheekrenteaftrek (HRA) ────────────────────────────────────────────
-  // Exact tax saving = bracket tax on income-without-HRA minus income-with-HRA
-  const mortgageInterest = woon.woningType === 'hypotheek'
-    ? woon.hypotheken.reduce((s, hyp) => {
-        if (hyp.leningBedrag > 0 && hyp.rentePercentage > 0 && hyp.looptijd > 0)
-          return s + berekenHypotheek(hyp, personal.taxYear).jaarRente;
-        return s;
-      }, 0)
-    : 0;
+  // Tax saving = bracketTax(income without eigenwoningEffect) − bracketTax(income with it)
+  // eigenwoningEffect is negative (deduction) when rente > EWF, which is the normal HRA scenario.
+  const ewEffect = eigenwoningEffect(woon, personal.taxYear);
 
   function bracketTax(income: number): number {
     let tax = 0;
@@ -238,7 +261,8 @@ export function calculateToeslagen(data: TaxFormData, box1: Box1Result, box3: Bo
   }
 
   const incomeWithHRA    = box1.taxableIncome;
-  const incomeWithoutHRA = box1.taxableIncome + mortgageInterest;
+  const incomeWithoutHRA = box1.taxableIncome - ewEffect; // remove eigenwoninginkomen effect
+  // HRA only yields a benefit when rente > EWF (ewEffect < 0, incomeWithoutHRA > incomeWithHRA)
   const hypotheekrenteaftrek = Math.max(0, Math.round(bracketTax(incomeWithoutHRA) - bracketTax(incomeWithHRA)));
 
   return {
@@ -341,14 +365,9 @@ export function calculateTaxes(data: TaxFormData): TaxResult {
 
   // Compute box1 taxable income early so we can form the verzamelinkomen for AHK
   const { income: _inc, woon: _woon, personal: _pers } = data;
-  let _mortgageDeduction = 0;
-  if (_woon.woningType === 'hypotheek') {
-    for (const hyp of _woon.hypotheken) {
-      if (hyp.leningBedrag > 0) _mortgageDeduction += berekenHypotheek(hyp, _pers.taxYear).jaarRente;
-    }
-  }
-  const _grossInc       = _inc.grossSalary + _inc.freelanceIncome + _inc.rentalIncome + _inc.otherBox1Income;
-  const _box1Taxable    = Math.max(0, _grossInc - _mortgageDeduction - _inc.pensionContributions);
+  const _ewEffect    = eigenwoningEffect(_woon, _pers.taxYear);
+  const _grossInc    = _inc.grossSalary + _inc.freelanceIncome + _inc.rentalIncome + _inc.otherBox1Income;
+  const _box1Taxable = Math.max(0, _grossInc + _ewEffect - _inc.pensionContributions);
   // Verzamelinkomen = box1 belastbaar inkomen + box3 fictief rendement (box2 = €0 in this app)
   const verzamelinkomen = _box1Taxable + Math.max(0, box3.fictitiousReturn);
 

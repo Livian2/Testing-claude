@@ -27,6 +27,7 @@ const DEFAULT_DATA: TaxFormData = {
         rentevastePeriode: 10, looptijd: 30, startJaar: 2026,
       },
     ],
+    wozWaarde: 0,
     gwe: 0, vve: 0, overig: 0,
   },
   waardes: {

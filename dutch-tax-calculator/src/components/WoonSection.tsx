@@ -394,6 +394,14 @@ export default function WoonSection({ data, taxYear, onChange }: Props) {
 
           {data.woningType === 'hypotheek' && (
             <div className="space-y-3">
+              <CurrencyInput
+                label="WOZ-waarde woning"
+                hint="Waarde volgens WOZ-beschikking"
+                value={data.wozWaarde ?? 0}
+                onChange={v => onChange({ ...data, wozWaarde: v })}
+                tooltip={<InfoTooltip tip="De WOZ-waarde staat op uw WOZ-beschikking (jaarlijks van de gemeente). Wordt gebruikt voor het eigenwoningforfait (EWF): 0,35% van de WOZ-waarde die bij uw inkomen wordt opgeteld. De netto aftrekpost = betaalde rente − EWF." />}
+              />
+
               {data.hypotheken.map(h => (
                 <HypotheekCard
                   key={h.id} hyp={h} taxYear={taxYear}
@@ -415,27 +423,34 @@ export default function WoonSection({ data, taxYear, onChange }: Props) {
                   try { return s + berekenHypotheek(h, taxYear).jaarRente; } catch { return s; }
                 }, 0);
                 if (totaalRente <= 0) return null;
-                // HRA aftrekvoet 2026: max 37,48% (2e schijf Box 1)
+                const woz = data.wozWaarde ?? 0;
+                const ewf = woz > 12500 ? (woz <= 1310000 ? Math.round(woz * 0.0035) : Math.round(1310000 * 0.0035 + (woz - 1310000) * 0.0235)) : 0;
+                const nettoAftrekpost = Math.max(0, totaalRente - ewf);
                 const hraRate = 0.3748;
-                const belastingVoordeel = totaalRente * hraRate;
+                const belastingVoordeel = nettoAftrekpost * hraRate;
                 return (
                   <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl p-4 space-y-2">
                     <p className="text-xs font-semibold text-green-700 dark:text-green-300 uppercase tracking-wide">Hypotheekrenteaftrek (HRA) — {taxYear}</p>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
                       <div>
                         <p className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">Totale jaarrente</p>
                         <p className="font-bold text-slate-800 dark:text-slate-100">{nl.format(totaalRente)}</p>
-                        <p className="text-xs text-slate-400 dark:text-slate-500">aftrekbaar van Box 1 inkomen</p>
+                        <p className="text-xs text-slate-400 dark:text-slate-500">betaald aan hypotheekrentes</p>
                       </div>
                       <div>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">Aftrekvoet (max 2026)</p>
-                        <p className="font-bold text-slate-800 dark:text-slate-100">37,48%</p>
-                        <p className="text-xs text-slate-400 dark:text-slate-500">2e schijf Box 1 tarief</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">Eigenwoningforfait</p>
+                        <p className="font-bold text-orange-600 dark:text-orange-400">− {nl.format(ewf)}</p>
+                        <p className="text-xs text-slate-400 dark:text-slate-500">0,35% × WOZ {woz > 0 ? `(${nl.format(woz)})` : '(vul WOZ in)'}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">Netto aftrekpost</p>
+                        <p className="font-bold text-slate-800 dark:text-slate-100">{nl.format(nettoAftrekpost)}</p>
+                        <p className="text-xs text-slate-400 dark:text-slate-500">verlaagt Box 1 inkomen</p>
                       </div>
                       <div>
                         <p className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">Belastingvoordeel</p>
                         <p className="font-bold text-green-700 dark:text-green-400">{nl.format(belastingVoordeel)}/jaar</p>
-                        <p className="text-xs text-slate-400 dark:text-slate-500">≈ {nl.format(belastingVoordeel / 12)}/mnd</p>
+                        <p className="text-xs text-slate-400 dark:text-slate-500">≈ {nl.format(Math.round(belastingVoordeel / 12))}/mnd</p>
                       </div>
                     </div>
                     {data.hypotheken.length > 1 && (
@@ -455,7 +470,8 @@ export default function WoonSection({ data, taxYear, onChange }: Props) {
                       </div>
                     )}
                     <p className="text-xs text-green-700 dark:text-green-300 border-t border-green-200 dark:border-green-800 pt-2">
-                      De hypotheekrente verlaagt uw belastbaar Box 1 inkomen. Het werkelijke voordeel hangt af van uw marginale tarief — bij een tarief van 35,82% (1e schijf) is het voordeel {nl.format(totaalRente * 0.3582)}/jaar.
+                      Netto aftrekpost = betaalde rente − eigenwoningforfait. Het werkelijke voordeel hangt af van uw marginale tarief (zie Resultaten voor exacte berekening).
+                      {ewf > totaalRente && <span className="block mt-1 text-orange-600 dark:text-orange-400">Let op: uw EWF ({nl.format(ewf)}) is hoger dan uw rente ({nl.format(totaalRente)}). Er is geen HRA-voordeel; het positieve eigenwoninginkomen wordt gedeeltelijk belast (Wet Hillen afbouw).</span>}
                     </p>
                   </div>
                 );

@@ -52,6 +52,7 @@ export interface WoonData {
   woningType: WoningType;
   maandhuur: number;
   hypotheken: HypotheekData[];
+  wozWaarde: number;
   gwe: number;
   vve: number;
   overig: number;
