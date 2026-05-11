@@ -15,8 +15,9 @@ function uid() { return Math.random().toString(36).slice(2); }
 
 function parseDate(s: string): Date | null {
   if (!s) return null;
-  const d = new Date(s);
-  return isNaN(d.getTime()) ? null : d;
+  const parts = s.split('-').map(Number);
+  if (parts.length !== 3 || parts.some(isNaN)) return null;
+  return new Date(parts[0], parts[1] - 1, parts[2]); // local time — avoids UTC/local mismatch
 }
 
 function getReplacementDate(item: AfschrijvingItem): Date | null {
@@ -65,9 +66,10 @@ function jaarDeposit(item: AfschrijvingItem, rate: number, year: number): number
     // First partial year: prorated from purchase to year-end
     return daysMD * baseDaily * (1 + rate);
   }
-  if (M3 < replace) {
-    // Middle full years: full year deposit, inflation-indexed by years elapsed since purchase
-    const yearsElapsed = Math.ceil(daysMD / 365);
+  if (M3 <= replace) {
+    // Middle full years: full year deposit, inflation-indexed by years elapsed since purchase.
+    // Use calendar-year difference (not daysMD/365) to avoid leap-year sensitivity.
+    const yearsElapsed = (year + 1) - purchase.getFullYear();
     return daysLM * baseDaily * Math.pow(1 + rate, yearsElapsed);
   }
   if (daysMJ < 364) {
