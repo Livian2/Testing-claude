@@ -171,150 +171,152 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
     { color: '#3b82f6', label: 'Netto vermogen',         dashed: false },
   ];
 
+  // Area fill polygon: line points + close along bottom
+  const areaPolygon = (vals: number[], baseY: number) => {
+    const pts = vals.map((v, i) => `${xPos(i)},${yPos(v)}`).join(' ');
+    const n = vals.length - 1;
+    return `${pts} ${xPos(n)},${baseY} ${xPos(0)},${baseY}`;
+  };
+
   return (
     <SectionCard title={t.forecast.title} icon={<TrendingUp size={20} />} accent="border-emerald-400">
 
-      {/* ── Compact toolbar: inputs + period + stat chips ── */}
-      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 px-1 py-1 mb-3">
+      {/* ── Control bar ── */}
+      <div className="flex flex-wrap items-center gap-3 bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 mb-4">
 
-        {/* Three % inputs */}
+        {/* Inputs */}
         {([
           { label: t.forecast.investReturn, key: 'rendementBeleggingen' as const, max: 30 },
           { label: t.forecast.savingsRate,  key: 'spaarrente'           as const, max: 20 },
           { label: t.forecast.incomeGrowth, key: 'inkomensstijging'     as const, max: 20 },
         ] as const).map(({ label, key, max }) => (
-          <div key={key} className="flex items-center gap-1.5">
+          <label key={key} className="flex items-center gap-1.5 cursor-pointer">
             <span className="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">{label}</span>
-            <div className="flex items-center border border-slate-300 dark:border-slate-600 rounded-md overflow-hidden focus-within:ring-2 focus-within:ring-emerald-400 bg-white dark:bg-slate-700">
+            <div className="flex items-center border border-slate-300 dark:border-slate-600 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-emerald-400 bg-white dark:bg-slate-700">
               <input
                 type="number" step="0.1" min="0" max={max}
                 value={config[key] ?? 2}
                 onChange={e => onConfigChange({ ...config, [key]: parseFloat(e.target.value) || 0 })}
-                className="w-14 px-2 py-1 text-xs outline-none bg-white dark:bg-slate-700 dark:text-slate-100 text-right"
+                className="w-12 px-2 py-1 text-xs outline-none bg-white dark:bg-slate-700 dark:text-slate-100 text-right"
               />
-              <span className="px-1.5 py-1 bg-slate-100 dark:bg-slate-600 text-slate-400 dark:text-slate-400 text-xs border-l border-slate-300 dark:border-slate-600 select-none">%</span>
+              <span className="px-1.5 py-1 bg-slate-100 dark:bg-slate-600 text-slate-400 text-xs border-l border-slate-300 dark:border-slate-600 select-none">%</span>
             </div>
-          </div>
+          </label>
         ))}
 
-        {/* Period selector */}
+        {/* Divider */}
+        <div className="h-5 w-px bg-slate-300 dark:bg-slate-600 hidden sm:block" />
+
+        {/* Period */}
         <div className="flex items-center gap-1.5">
           <span className="text-xs text-slate-500 dark:text-slate-400">Periode</span>
-          <div className="flex rounded-md border border-slate-300 dark:border-slate-600 overflow-hidden">
+          <div className="flex rounded-lg border border-slate-300 dark:border-slate-600 overflow-hidden">
             {periodOptions.map(opt => (
-              <button
-                key={opt.value}
-                onClick={() => onConfigChange({ ...config, jaren: opt.value })}
+              <button key={opt.value} onClick={() => onConfigChange({ ...config, jaren: opt.value })}
                 className={`px-3 py-1 text-xs font-medium transition-colors cursor-pointer border-0 ${
                   config.jaren === opt.value
                     ? 'bg-emerald-500 text-white'
-                    : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-600'
+                    : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-emerald-50 dark:hover:bg-slate-600'
                 }`}
-              >
-                {opt.label}
-              </button>
+              >{opt.label}</button>
             ))}
           </div>
         </div>
 
-        {/* Spacer */}
+        {/* Spacer + stat chips */}
         <div className="flex-1" />
-
-        {/* Stat chips */}
         <div className="flex items-center gap-2 flex-wrap">
-          <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md px-2.5 py-1">
-            <span className="text-[10px] text-slate-500 dark:text-slate-400 whitespace-nowrap">Nu</span>
-            <span className={`text-xs font-semibold tabular-nums ${now.netWorth >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'}`}>
-              {nl0.format(now.netWorth)}
-            </span>
-          </div>
-          <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md px-2.5 py-1">
-            <span className="text-[10px] text-slate-500 dark:text-slate-400 whitespace-nowrap">+{config.jaren}j</span>
-            <span className={`text-xs font-semibold tabular-nums ${last.netWorth >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'}`}>
-              {nl0.format(last.netWorth)}
-            </span>
-          </div>
-          <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md px-2.5 py-1">
-            <span className="text-[10px] text-slate-500 dark:text-slate-400 whitespace-nowrap">Break-even</span>
-            <span className="text-xs font-semibold tabular-nums text-slate-700 dark:text-slate-200">
-              {breakEvenYear ?? '—'}
-            </span>
-          </div>
+          {[
+            { label: 'Nu',              val: now.netWorth,  colored: true  },
+            { label: `+${config.jaren}j`, val: last.netWorth, colored: true  },
+          ].map(({ label, val, colored }) => (
+            <div key={label} className="flex items-center gap-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1 shadow-sm">
+              <span className="text-[10px] text-slate-400 whitespace-nowrap">{label}</span>
+              <span className={`text-xs font-bold tabular-nums ${colored ? (val >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500') : 'text-slate-700 dark:text-slate-200'}`}>
+                {nl0.format(val)}
+              </span>
+            </div>
+          ))}
+          {breakEvenYear && (
+            <div className="flex items-center gap-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1 shadow-sm">
+              <span className="text-[10px] text-slate-400">Break-even</span>
+              <span className="text-xs font-bold tabular-nums text-amber-600 dark:text-amber-400">{breakEvenYear}</span>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Hint line */}
-      <p className="text-[10px] text-slate-400 dark:text-slate-500 mb-3 px-1">
-        Bijdragen instellen op het tabblad <strong className="font-medium text-slate-500 dark:text-slate-400">Kosten</strong>.
-        Huidig: sparen <strong className="font-medium">{nl0.format(jaarlijksSparen)}/jr</strong> · beleggen <strong className="font-medium">{nl0.format(jaarlijksBeleggen)}/jr</strong>.
+      {/* Hint */}
+      <p className="text-[10px] text-slate-400 dark:text-slate-500 mb-3 -mt-1">
+        Bijdragen instellen via <strong className="text-slate-500 dark:text-slate-400">Kosten</strong> — sparen {nl0.format(jaarlijksSparen)}/jr · beleggen {nl0.format(jaarlijksBeleggen)}/jr
       </p>
 
-      {/* ── Chart + table side by side on xl screens ── */}
-      <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-0 xl:gap-4 items-start">
+      {/* ── Chart + table ── */}
+      <div className="grid grid-cols-1 xl:grid-cols-[1fr_340px] gap-4 items-start">
 
-        {/* Chart column */}
-        <div className="flex flex-col">
+        {/* Chart */}
+        <div className="flex flex-col rounded-xl overflow-hidden border border-slate-700 shadow-lg">
+          <div className="bg-slate-900 dark:bg-slate-950">
+            <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={chartHeight} preserveAspectRatio="none" style={{ display: 'block' }}>
+              <defs>
+                <linearGradient id="fillInvest" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#8b5cf6" stopOpacity="0.25" />
+                  <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0.02" />
+                </linearGradient>
+                <linearGradient id="fillNet" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.2" />
+                  <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.02" />
+                </linearGradient>
+                <linearGradient id="fillSave" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#10b981" stopOpacity="0.15" />
+                  <stop offset="100%" stopColor="#10b981" stopOpacity="0.02" />
+                </linearGradient>
+              </defs>
 
-          {/* SVG chart — dark background */}
-          <div className="bg-slate-900 dark:bg-slate-950 rounded-t-xl overflow-hidden border border-b-0 border-slate-700">
-            <svg
-              viewBox={`0 0 ${W} ${H}`}
-              width="100%"
-              height={chartHeight}
-              preserveAspectRatio="none"
-              style={{ display: 'block' }}
-            >
-              {/* Horizontal grid lines + Y-axis labels */}
+              {/* Grid lines */}
               {ticks.map((tick, i) => (
                 <g key={i}>
-                  <line
-                    x1={padL} y1={yPos(tick)} x2={W - padR} y2={yPos(tick)}
-                    stroke="#1e293b" strokeWidth={1}
-                  />
-                  <text x={padL - 6} y={yPos(tick) + 4} textAnchor="end" fontSize={10} fill="#64748b">
-                    {fmtK(tick)}
-                  </text>
+                  <line x1={padL} y1={yPos(tick)} x2={W - padR} y2={yPos(tick)} stroke="#334155" strokeWidth={0.5} />
+                  <text x={padL - 8} y={yPos(tick) + 4} textAnchor="end" fontSize={10} fill="#94a3b8">{fmtK(tick)}</text>
                 </g>
               ))}
 
               {/* Zero line */}
               {spansZero && (
-                <line
-                  x1={padL} y1={yPos(0)} x2={W - padR} y2={yPos(0)}
-                  stroke="#475569" strokeWidth={1} strokeDasharray="4 3"
-                />
+                <line x1={padL} y1={yPos(0)} x2={W - padR} y2={yPos(0)} stroke="#64748b" strokeWidth={1} strokeDasharray="4 3" />
               )}
 
-              {/* X-axis labels */}
+              {/* X labels */}
               {xLabels.map(({ i, label }) => (
-                <text key={i} x={xPos(i)} y={H - padB + 16} textAnchor="middle" fontSize={10} fill="#64748b">
-                  {label}
-                </text>
+                <text key={i} x={xPos(i)} y={H - 4} textAnchor="middle" fontSize={10} fill="#94a3b8">{label}</text>
               ))}
 
-              {/* X-axis baseline */}
-              <line
-                x1={padL} y1={padT + chartH} x2={W - padR} y2={padT + chartH}
-                stroke="#1e293b" strokeWidth={1}
-              />
+              {/* Left axis */}
+              <line x1={padL} y1={padT} x2={padL} y2={padT + chartH} stroke="#334155" strokeWidth={1} />
 
-              {/* Data series */}
-              <polyline points={line(points.map(p => p.savings))}         fill="none" stroke="#10b981" strokeWidth={2}   strokeLinejoin="round" strokeLinecap="round" />
-              <polyline points={line(points.map(p => p.investments))}     fill="none" stroke="#8b5cf6" strokeWidth={2}   strokeLinejoin="round" strokeLinecap="round" />
-              <polyline points={line(points.map(p => -p.hypotheekDebt))}  fill="none" stroke="#f97316" strokeWidth={1.5} strokeDasharray="6 3" strokeLinejoin="round" strokeLinecap="round" />
-              <polyline points={line(points.map(p => -box3Debt(p)))}      fill="none" stroke="#ef4444" strokeWidth={1.5} strokeDasharray="3 3" strokeLinejoin="round" strokeLinecap="round" />
-              <polyline points={line(points.map(p => p.netWorth))}        fill="none" stroke="#3b82f6" strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />
+              {/* Area fills */}
+              <polygon points={areaPolygon(points.map(p => p.investments), padT + chartH)} fill="url(#fillInvest)" />
+              <polygon points={areaPolygon(points.map(p => p.savings), padT + chartH)} fill="url(#fillSave)" />
+              {spansZero && (
+                <polygon points={areaPolygon(points.map(p => Math.max(p.netWorth, 0)), yPos(0))} fill="url(#fillNet)" />
+              )}
+
+              {/* Lines */}
+              <polyline points={line(points.map(p => p.savings))}        fill="none" stroke="#10b981" strokeWidth={2}   strokeLinejoin="round" strokeLinecap="round" />
+              <polyline points={line(points.map(p => p.investments))}    fill="none" stroke="#8b5cf6" strokeWidth={2}   strokeLinejoin="round" strokeLinecap="round" />
+              <polyline points={line(points.map(p => -p.hypotheekDebt))} fill="none" stroke="#f97316" strokeWidth={1.5} strokeDasharray="6 3" strokeLinejoin="round" strokeLinecap="round" />
+              <polyline points={line(points.map(p => -box3Debt(p)))}     fill="none" stroke="#ef4444" strokeWidth={1.5} strokeDasharray="3 3" strokeLinejoin="round" strokeLinecap="round" />
+              <polyline points={line(points.map(p => p.netWorth))}       fill="none" stroke="#3b82f6" strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />
             </svg>
           </div>
 
-          {/* Legend strip */}
-          <div className="bg-slate-900 dark:bg-slate-950 border-x border-slate-700 px-4 py-2">
+          {/* Legend */}
+          <div className="bg-slate-800 dark:bg-slate-900 border-t border-slate-700 px-4 py-2">
             <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-1">
               {SERIES.map(({ color, label, dashed }) => (
                 <div key={label} className="flex items-center gap-1.5">
-                  <svg width={16} height={10} style={{ flexShrink: 0 }}>
-                    <line x1={0} y1={5} x2={16} y2={5} stroke={color}
-                      strokeWidth={dashed ? 1.5 : 2} strokeDasharray={dashed ? '4 2' : undefined} />
+                  <svg width={18} height={10} style={{ flexShrink: 0 }}>
+                    <line x1={0} y1={5} x2={18} y2={5} stroke={color} strokeWidth={dashed ? 1.5 : 2} strokeDasharray={dashed ? '4 2' : undefined} />
                   </svg>
                   <span className="text-[11px] text-slate-400 whitespace-nowrap">{label}</span>
                 </div>
@@ -322,66 +324,50 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
             </div>
           </div>
 
-          {/* Drag handle */}
-          <div
-            onMouseDown={onMouseDown}
-            className="bg-slate-800 dark:bg-slate-900 border border-t-0 border-slate-700 rounded-b-xl flex items-center justify-center py-1.5 cursor-ns-resize select-none group"
-            title="Sleep om hoogte aan te passen"
-          >
-            <GripHorizontal size={14} className="text-slate-500 group-hover:text-slate-300 transition-colors" />
-            <span className="ml-1.5 text-[10px] text-slate-500 group-hover:text-slate-400 transition-colors">sleep om hoogte aan te passen</span>
+          {/* Resize handle */}
+          <div onMouseDown={onMouseDown}
+            className="bg-slate-800 dark:bg-slate-900 border-t border-slate-700 flex items-center justify-center gap-2 py-1.5 cursor-ns-resize select-none group">
+            <GripHorizontal size={13} className="text-slate-600 group-hover:text-slate-400 transition-colors" />
+            <span className="text-[10px] text-slate-600 group-hover:text-slate-400 transition-colors">hoogte aanpassen</span>
           </div>
         </div>
 
-        {/* ── Scrollable data table ── */}
-        <div className="mt-3 xl:mt-0 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden flex flex-col">
-          {/* Sticky header */}
-          <table className="w-full text-xs">
+        {/* Table */}
+        <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm">
+          {/* Fixed header */}
+          <table className="w-full text-xs table-fixed">
             <thead>
-              <tr className="bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
-                <th className="text-left px-3 py-2 font-semibold text-slate-500 dark:text-slate-400">Jaar</th>
+              <tr className="bg-slate-100 dark:bg-slate-800 border-b-2 border-slate-300 dark:border-slate-600">
+                <th className="text-left px-3 py-2 font-semibold text-slate-500 dark:text-slate-400 w-[52px]">Jaar</th>
                 <th className="text-right px-3 py-2 font-semibold text-emerald-600 dark:text-emerald-400">Spaar</th>
                 <th className="text-right px-3 py-2 font-semibold text-purple-600 dark:text-purple-400">Beleg</th>
-                <th className="text-right px-3 py-2 font-semibold text-orange-500 dark:text-orange-400">Schulden</th>
+                <th className="text-right px-3 py-2 font-semibold text-orange-500 dark:text-orange-400">Schuld</th>
                 <th className="text-right px-3 py-2 font-semibold text-blue-600 dark:text-blue-400">Netto</th>
               </tr>
             </thead>
           </table>
-
           {/* Scrollable body */}
-          <div
-            className="overflow-y-auto"
-            style={{ maxHeight: Math.max(chartHeight, MIN_CHART_H) }}
-          >
-            <table className="w-full text-xs">
+          <div className="overflow-y-auto" style={{ maxHeight: Math.max(chartHeight + 44, 280) }}>
+            <table className="w-full text-xs table-fixed">
               <tbody>
                 {points.map((p, i) => {
                   const isNow = p.year === currentYear;
                   return (
-                    <tr
-                      key={p.year}
-                      className={`border-b last:border-0 transition-colors ${
-                        isNow
-                          ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-100 dark:border-blue-800/30'
-                          : i % 2 === 0
-                            ? 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700/50'
-                            : 'bg-slate-50 dark:bg-slate-900 border-slate-100 dark:border-slate-700/50'
-                      }`}
-                    >
-                      <td
-                        className={`px-3 py-1.5 font-medium ${
-                          isNow ? 'text-blue-700 dark:text-blue-300' : 'text-slate-600 dark:text-slate-300'
-                        }`}
-                      >
+                    <tr key={p.year} className={`border-b last:border-0 ${
+                      isNow
+                        ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-100 dark:border-blue-800/30'
+                        : i % 2 === 0
+                          ? 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700/40'
+                          : 'bg-slate-50/50 dark:bg-slate-900 border-slate-100 dark:border-slate-700/40'
+                    }`}>
+                      <td className={`px-3 py-1.5 font-semibold w-[52px] ${isNow ? 'text-blue-600 dark:text-blue-300' : 'text-slate-500 dark:text-slate-400'}`}>
                         {p.year}
-                        {isNow && <span className="ml-1 text-blue-400 dark:text-blue-500 text-[10px]">nu</span>}
+                        {isNow && <span className="ml-1 text-[9px] bg-blue-500 text-white rounded px-1 py-0.5 align-middle">nu</span>}
                       </td>
-                      <td className="px-3 py-1.5 text-right font-mono text-emerald-600 dark:text-emerald-400 tabular-nums">{fmtK(p.savings)}</td>
-                      <td className="px-3 py-1.5 text-right font-mono text-purple-600 dark:text-purple-400 tabular-nums">{fmtK(p.investments)}</td>
-                      <td className="px-3 py-1.5 text-right font-mono text-orange-500 dark:text-orange-400 tabular-nums">−{fmtK(p.totalDebt)}</td>
-                      <td className={`px-3 py-1.5 text-right font-mono font-semibold tabular-nums ${
-                        p.netWorth >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-red-500 dark:text-red-400'
-                      }`}>
+                      <td className="px-3 py-1.5 text-right font-mono tabular-nums text-emerald-600 dark:text-emerald-400">{fmtK(p.savings)}</td>
+                      <td className="px-3 py-1.5 text-right font-mono tabular-nums text-purple-600 dark:text-purple-400">{fmtK(p.investments)}</td>
+                      <td className="px-3 py-1.5 text-right font-mono tabular-nums text-orange-500 dark:text-orange-400">−{fmtK(p.totalDebt)}</td>
+                      <td className={`px-3 py-1.5 text-right font-mono tabular-nums font-semibold ${p.netWorth >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-red-500 dark:text-red-400'}`}>
                         {fmtK(p.netWorth)}
                       </td>
                     </tr>
