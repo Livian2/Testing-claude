@@ -1,11 +1,11 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useRef, useCallback } from 'react';
 import type { TaxFormData, PrognoseConfig } from '../types';
 import { berekenHypotheek } from '../utils/hypotheek';
 import { computePositions } from '../utils/taxCalculations';
 import { simuleerDuo } from '../utils/duo';
 import { useLanguage } from '../i18n/LanguageContext';
 import SectionCard from './SectionCard';
-import { TrendingUp } from 'lucide-react';
+import { TrendingUp, GripHorizontal } from 'lucide-react';
 
 interface Props {
   data: TaxFormData;
@@ -54,15 +54,35 @@ function niceTickRange(min: number, max: number, tickCount = 6): number[] {
   return ticks.slice(0, tickCount);
 }
 
-// Show every year for ≤10, every 2 for ≤20, every 5 for 30
-function tableRows(points: ProjectionPoint[], jaren: number): ProjectionPoint[] {
-  const step = jaren <= 10 ? 1 : jaren <= 20 ? 2 : 5;
-  return points.filter((_, i) => i % step === 0);
-}
+const MIN_CHART_H = 140;
+const MAX_CHART_H = 600;
 
 export default function NetWorthProjection({ data, config, onConfigChange }: Props) {
   const { t } = useLanguage();
   const currentYear = data.personal.taxYear;
+
+  const [chartHeight, setChartHeight] = useState(260);
+  const dragStartY  = useRef<number | null>(null);
+  const dragStartH  = useRef<number>(260);
+
+  const onMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    dragStartY.current  = e.clientY;
+    dragStartH.current  = chartHeight;
+
+    const onMove = (ev: MouseEvent) => {
+      if (dragStartY.current === null) return;
+      const delta = ev.clientY - dragStartY.current;
+      setChartHeight(Math.min(MAX_CHART_H, Math.max(MIN_CHART_H, dragStartH.current + delta)));
+    };
+    const onUp = () => {
+      dragStartY.current = null;
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }, [chartHeight]);
 
   const jaarlijksSparen   = data.savings.monthlySavingsContribution * 12;
   const jaarlijksBeleggen = data.savings.maandelijksBeleggen * 12;
@@ -108,8 +128,9 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
     return result;
   }, [data, config, currentYear, jaarlijksSparen, jaarlijksBeleggen]);
 
-  // Chart constants
-  const W = 800; const H = 260;
+  // SVG chart dimensions — viewBox height tracks chartHeight
+  const W = 800;
+  const H = chartHeight;
   const padL = 68; const padR = 16; const padT = 16; const padB = 32;
   const chartW = W - padL - padR;
   const chartH = H - padT - padB;
@@ -142,14 +163,12 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
     { value: 30, label: `30 ${t.forecast.years}` },
   ];
 
-  const rows = tableRows(points, config.jaren);
-
   const SERIES = [
-    { color: '#10b981', label: 'Spaarbalans',           dashed: false },
-    { color: '#8b5cf6', label: 'Beleggingen',           dashed: false },
+    { color: '#10b981', label: 'Spaarbalans',            dashed: false },
+    { color: '#8b5cf6', label: 'Beleggingen',            dashed: false },
     { color: '#f97316', label: 'Hypotheekschuld (neg.)', dashed: true  },
-    { color: '#ef4444', label: 'Box 3 schulden (neg.)', dashed: true  },
-    { color: '#3b82f6', label: 'Netto vermogen',        dashed: false },
+    { color: '#ef4444', label: 'Box 3 schulden (neg.)',  dashed: true  },
+    { color: '#3b82f6', label: 'Netto vermogen',         dashed: false },
   ];
 
   return (
@@ -221,92 +240,121 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
       {/* ── Chart + table side by side on wide screens ── */}
       <div className="grid grid-cols-1 xl:grid-cols-[1fr_auto] gap-5 items-start">
 
-        {/* Chart */}
-        <div className="bg-slate-900 dark:bg-slate-950 rounded-xl p-4 border border-slate-700">
-          <svg viewBox={`0 0 ${W} ${H}`} width="100%" height="260" preserveAspectRatio="none"
-            style={{ display: 'block' }}>
-            {/* Grid */}
-            {ticks.map((tick, i) => (
-              <g key={i}>
-                <line x1={padL} y1={yPos(tick)} x2={W - padR} y2={yPos(tick)}
-                  stroke="#334155" strokeWidth={1} />
-                <text x={padL - 6} y={yPos(tick) + 4} textAnchor="end" fontSize={10} fill="#94a3b8">
-                  {fmtK(tick)}
+        {/* Chart + resize handle */}
+        <div className="flex flex-col">
+          <div className="bg-slate-900 dark:bg-slate-950 rounded-t-xl p-4 border border-b-0 border-slate-700">
+            <svg
+              viewBox={`0 0 ${W} ${H}`}
+              width="100%"
+              height={chartHeight}
+              preserveAspectRatio="none"
+              style={{ display: 'block' }}
+            >
+              {/* Grid */}
+              {ticks.map((tick, i) => (
+                <g key={i}>
+                  <line x1={padL} y1={yPos(tick)} x2={W - padR} y2={yPos(tick)}
+                    stroke="#334155" strokeWidth={1} />
+                  <text x={padL - 6} y={yPos(tick) + 4} textAnchor="end" fontSize={10} fill="#94a3b8">
+                    {fmtK(tick)}
+                  </text>
+                </g>
+              ))}
+              {spansZero && (
+                <line x1={padL} y1={yPos(0)} x2={W - padR} y2={yPos(0)}
+                  stroke="#64748b" strokeWidth={1} strokeDasharray="4 3" />
+              )}
+              {xLabels.map(({ i, label }) => (
+                <text key={i} x={xPos(i)} y={H - padB + 16} textAnchor="middle" fontSize={10} fill="#94a3b8">
+                  {label}
                 </text>
-              </g>
-            ))}
-            {spansZero && (
-              <line x1={padL} y1={yPos(0)} x2={W - padR} y2={yPos(0)}
-                stroke="#64748b" strokeWidth={1} strokeDasharray="4 3" />
-            )}
-            {xLabels.map(({ i, label }) => (
-              <text key={i} x={xPos(i)} y={H - padB + 16} textAnchor="middle" fontSize={10} fill="#94a3b8">
-                {label}
-              </text>
-            ))}
-            <line x1={padL} y1={padT + chartH} x2={W - padR} y2={padT + chartH}
-              stroke="#334155" strokeWidth={1} />
+              ))}
+              <line x1={padL} y1={padT + chartH} x2={W - padR} y2={padT + chartH}
+                stroke="#334155" strokeWidth={1} />
 
-            <polyline points={line(points.map(p => p.savings))}         fill="none" stroke="#10b981" strokeWidth={2}   strokeLinejoin="round" strokeLinecap="round" />
-            <polyline points={line(points.map(p => p.investments))}     fill="none" stroke="#8b5cf6" strokeWidth={2}   strokeLinejoin="round" strokeLinecap="round" />
-            <polyline points={line(points.map(p => -p.hypotheekDebt))}  fill="none" stroke="#f97316" strokeWidth={1.5} strokeDasharray="6 3" strokeLinejoin="round" strokeLinecap="round" />
-            <polyline points={line(points.map(p => -box3Debt(p)))}      fill="none" stroke="#ef4444" strokeWidth={1.5} strokeDasharray="3 3" strokeLinejoin="round" strokeLinecap="round" />
-            <polyline points={line(points.map(p => p.netWorth))}        fill="none" stroke="#3b82f6" strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />
-          </svg>
+              <polyline points={line(points.map(p => p.savings))}         fill="none" stroke="#10b981" strokeWidth={2}   strokeLinejoin="round" strokeLinecap="round" />
+              <polyline points={line(points.map(p => p.investments))}     fill="none" stroke="#8b5cf6" strokeWidth={2}   strokeLinejoin="round" strokeLinecap="round" />
+              <polyline points={line(points.map(p => -p.hypotheekDebt))}  fill="none" stroke="#f97316" strokeWidth={1.5} strokeDasharray="6 3" strokeLinejoin="round" strokeLinecap="round" />
+              <polyline points={line(points.map(p => -box3Debt(p)))}      fill="none" stroke="#ef4444" strokeWidth={1.5} strokeDasharray="3 3" strokeLinejoin="round" strokeLinecap="round" />
+              <polyline points={line(points.map(p => p.netWorth))}        fill="none" stroke="#3b82f6" strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />
+            </svg>
+          </div>
 
           {/* Legend */}
-          <div className="flex flex-wrap items-center justify-center gap-4 mt-3">
-            {SERIES.map(({ color, label, dashed }) => (
-              <div key={label} className="flex items-center gap-1.5">
-                <svg width={16} height={10}>
-                  <line x1={0} y1={5} x2={16} y2={5} stroke={color}
-                    strokeWidth={dashed ? 1.5 : 2} strokeDasharray={dashed ? '4 2' : undefined} />
-                </svg>
-                <span className="text-xs text-slate-400">{label}</span>
-              </div>
-            ))}
+          <div className="bg-slate-900 dark:bg-slate-950 rounded-b-0 px-4 pb-3 border-x border-slate-700">
+            <div className="flex flex-wrap items-center justify-center gap-4">
+              {SERIES.map(({ color, label, dashed }) => (
+                <div key={label} className="flex items-center gap-1.5">
+                  <svg width={16} height={10}>
+                    <line x1={0} y1={5} x2={16} y2={5} stroke={color}
+                      strokeWidth={dashed ? 1.5 : 2} strokeDasharray={dashed ? '4 2' : undefined} />
+                  </svg>
+                  <span className="text-xs text-slate-400">{label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Drag handle */}
+          <div
+            onMouseDown={onMouseDown}
+            className="bg-slate-800 dark:bg-slate-900 border border-t-0 border-slate-700 rounded-b-xl flex items-center justify-center py-1.5 cursor-ns-resize select-none group"
+            title="Sleep om hoogte aan te passen"
+          >
+            <GripHorizontal size={14} className="text-slate-500 group-hover:text-slate-300 transition-colors" />
+            <span className="ml-1.5 text-[10px] text-slate-500 group-hover:text-slate-400 transition-colors">sleep om hoogte aan te passen</span>
           </div>
         </div>
 
-        {/* Table */}
-        <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700 xl:w-[520px] shrink-0">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
-                <th className="text-left px-3 py-2 text-xs font-semibold text-slate-600 dark:text-slate-300">Jaar</th>
-                <th className="text-right px-3 py-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400">Spaar</th>
-                <th className="text-right px-3 py-2 text-xs font-semibold text-purple-600 dark:text-purple-400">Beleg</th>
-                <th className="text-right px-3 py-2 text-xs font-semibold text-orange-500">Schulden</th>
-                <th className="text-right px-3 py-2 text-xs font-semibold text-blue-600 dark:text-blue-400">Netto</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((p, i) => {
-                const isNow = p.year === currentYear;
-                return (
-                  <tr key={p.year}
-                    className={`border-b border-slate-100 dark:border-slate-700 last:border-0 transition-colors ${
-                      isNow
-                        ? 'bg-blue-50 dark:bg-blue-900/20'
-                        : i % 2 === 0
-                          ? 'bg-white dark:bg-slate-800'
-                          : 'bg-slate-50 dark:bg-slate-900'
-                    }`}
-                  >
-                    <td className={`px-3 py-1.5 font-medium text-xs ${isNow ? 'text-blue-700 dark:text-blue-300' : 'text-slate-600 dark:text-slate-300'}`}>
-                      {p.year}{isNow && <span className="ml-1 text-blue-400 text-[10px]">nu</span>}
-                    </td>
-                    <td className="px-3 py-1.5 text-right text-xs font-mono text-emerald-600 dark:text-emerald-400">{fmtK(p.savings)}</td>
-                    <td className="px-3 py-1.5 text-right text-xs font-mono text-purple-600 dark:text-purple-400">{fmtK(p.investments)}</td>
-                    <td className="px-3 py-1.5 text-right text-xs font-mono text-orange-500">−{fmtK(p.totalDebt)}</td>
-                    <td className={`px-3 py-1.5 text-right text-xs font-mono font-semibold ${p.netWorth >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-red-500'}`}>
-                      {fmtK(p.netWorth)}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        {/* Scrollable table — all years */}
+        <div className="rounded-xl border border-slate-200 dark:border-slate-700 xl:w-[520px] shrink-0 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="sticky top-0 z-10">
+                <tr className="bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
+                  <th className="text-left px-3 py-2 text-xs font-semibold text-slate-600 dark:text-slate-300">Jaar</th>
+                  <th className="text-right px-3 py-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400">Spaar</th>
+                  <th className="text-right px-3 py-2 text-xs font-semibold text-purple-600 dark:text-purple-400">Beleg</th>
+                  <th className="text-right px-3 py-2 text-xs font-semibold text-orange-500">Schulden</th>
+                  <th className="text-right px-3 py-2 text-xs font-semibold text-blue-600 dark:text-blue-400">Netto</th>
+                </tr>
+              </thead>
+            </table>
+          </div>
+          {/* Scrollable body */}
+          <div
+            className="overflow-y-auto"
+            style={{ maxHeight: Math.max(chartHeight + 44, 260) }}
+          >
+            <table className="w-full text-sm">
+              <tbody>
+                {points.map((p, i) => {
+                  const isNow = p.year === currentYear;
+                  return (
+                    <tr key={p.year}
+                      className={`border-b border-slate-100 dark:border-slate-700 last:border-0 transition-colors ${
+                        isNow
+                          ? 'bg-blue-50 dark:bg-blue-900/20'
+                          : i % 2 === 0
+                            ? 'bg-white dark:bg-slate-800'
+                            : 'bg-slate-50 dark:bg-slate-900'
+                      }`}
+                    >
+                      <td className={`px-3 py-1.5 font-medium text-xs ${isNow ? 'text-blue-700 dark:text-blue-300' : 'text-slate-600 dark:text-slate-300'}`} style={{ width: '60px' }}>
+                        {p.year}{isNow && <span className="ml-1 text-blue-400 text-[10px]">nu</span>}
+                      </td>
+                      <td className="px-3 py-1.5 text-right text-xs font-mono text-emerald-600 dark:text-emerald-400">{fmtK(p.savings)}</td>
+                      <td className="px-3 py-1.5 text-right text-xs font-mono text-purple-600 dark:text-purple-400">{fmtK(p.investments)}</td>
+                      <td className="px-3 py-1.5 text-right text-xs font-mono text-orange-500">−{fmtK(p.totalDebt)}</td>
+                      <td className={`px-3 py-1.5 text-right text-xs font-mono font-semibold ${p.netWorth >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-red-500'}`}>
+                        {fmtK(p.netWorth)}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </SectionCard>
