@@ -610,15 +610,25 @@ export default function PortfolioSection({ data, onChange }: Props) {
                       value={tx.holdingName}
                       holdings={data.holdings}
                       onChange={(name, ticker) => {
-                        updateTx(tx.id, { holdingName: name });
-                        // If Yahoo result selected and no matching holding exists yet, auto-create one
-                        if (ticker && !data.holdings.some(h => h.ticker === ticker || h.name === name)) {
-                          setHoldings([...data.holdings, {
-                            id: uid(), name, type: 'stocks',
-                            quantity: 0, pricePerUnit: 0, broker: tx.broker || '',
-                            ticker, currentPrice: 0,
-                          }]);
-                        }
+                        // Single onChange call to avoid stale-closure race where two separate
+                        // calls both spread `data` and the second overwrites the first's changes.
+                        const updatedTxs = data.transactions.map(t =>
+                          t.id === tx.id ? { ...t, holdingName: name } : t
+                        );
+                        const needsNewHolding = !!ticker && !data.holdings.some(
+                          h => h.ticker === ticker || h.name === name
+                        );
+                        onChange({
+                          ...data,
+                          transactions: updatedTxs,
+                          holdings: needsNewHolding
+                            ? [...data.holdings, {
+                                id: uid(), name, type: 'stocks' as AssetType,
+                                quantity: 0, pricePerUnit: 0, broker: tx.broker || '',
+                                ticker: ticker!, currentPrice: 0,
+                              }]
+                            : data.holdings,
+                        });
                       }}
                     />
                   </div>
