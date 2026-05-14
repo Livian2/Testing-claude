@@ -54,26 +54,63 @@ function niceTickRange(min: number, max: number, tickCount = 6): number[] {
   return ticks.slice(0, tickCount);
 }
 
-const MIN_CHART_H = 140;
-const MAX_CHART_H = 600;
+// Catmull-Rom → cubic bezier smooth path
+function smoothPath(pts: [number, number][]): string {
+  if (pts.length < 2) return '';
+  let d = `M ${pts[0][0].toFixed(2)} ${pts[0][1].toFixed(2)}`;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[Math.max(0, i - 1)];
+    const p1 = pts[i];
+    const p2 = pts[i + 1];
+    const p3 = pts[Math.min(pts.length - 1, i + 2)];
+    const cp1x = p1[0] + (p2[0] - p0[0]) / 6;
+    const cp1y = p1[1] + (p2[1] - p0[1]) / 6;
+    const cp2x = p2[0] - (p3[0] - p1[0]) / 6;
+    const cp2y = p2[1] - (p3[1] - p1[1]) / 6;
+    d += ` C ${cp1x.toFixed(2)} ${cp1y.toFixed(2)}, ${cp2x.toFixed(2)} ${cp2y.toFixed(2)}, ${p2[0].toFixed(2)} ${p2[1].toFixed(2)}`;
+  }
+  return d;
+}
+
+// Close smooth path into a filled area (down to baseY)
+function smoothArea(pts: [number, number][], baseY: number): string {
+  if (pts.length < 2) return '';
+  const path = smoothPath(pts);
+  const last = pts[pts.length - 1];
+  const first = pts[0];
+  return `${path} L ${last[0].toFixed(2)} ${baseY.toFixed(2)} L ${first[0].toFixed(2)} ${baseY.toFixed(2)} Z`;
+}
+
+const MIN_CHART_H = 180;
+const MAX_CHART_H = 640;
+
+const SERIES = [
+  { key: 'netWorth',    color: '#3b82f6', label: 'Netto vermogen',        dashed: false, width: 2.5, fill: true  },
+  { key: 'investments', color: '#a78bfa', label: 'Beleggingen',           dashed: false, width: 2,   fill: true  },
+  { key: 'savings',     color: '#34d399', label: 'Spaarbalans',           dashed: false, width: 1.5, fill: false },
+  { key: 'hyp',         color: '#fb923c', label: 'Hypotheekschuld (neg.)', dashed: true,  width: 1.5, fill: false },
+  { key: 'box3',        color: '#f87171', label: 'Box 3 schulden (neg.)', dashed: true,  width: 1.5, fill: false },
+] as const;
+
+type SeriesKey = typeof SERIES[number]['key'];
 
 export default function NetWorthProjection({ data, config, onConfigChange }: Props) {
   const { t } = useLanguage();
   const currentYear = data.personal.taxYear;
 
-  const [chartHeight, setChartHeight] = useState(260);
-  const dragStartY  = useRef<number | null>(null);
-  const dragStartH  = useRef<number>(260);
+  const [chartHeight, setChartHeight] = useState(320);
+  const [hoverIdx, setHoverIdx]       = useState<number | null>(null);
+  const svgRef                        = useRef<SVGSVGElement>(null);
+  const dragStartY                    = useRef<number | null>(null);
+  const dragStartH                    = useRef<number>(320);
 
-  const onMouseDown = useCallback((e: React.MouseEvent) => {
+  const onResizeDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
-    dragStartY.current  = e.clientY;
-    dragStartH.current  = chartHeight;
-
+    dragStartY.current = e.clientY;
+    dragStartH.current = chartHeight;
     const onMove = (ev: MouseEvent) => {
       if (dragStartY.current === null) return;
-      const delta = ev.clientY - dragStartY.current;
-      setChartHeight(Math.min(MAX_CHART_H, Math.max(MIN_CHART_H, dragStartH.current + delta)));
+      setChartHeight(Math.min(MAX_CHART_H, Math.max(MIN_CHART_H, dragStartH.current + ev.clientY - dragStartY.current)));
     };
     const onUp = () => {
       dragStartY.current = null;
@@ -91,16 +128,13 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
     const initSavings =
       data.waardes.spaarrekeningen.reduce((s, r) => s + r.saldoJan1, 0) +
       data.waardes.betaalrekeningen.reduce((s, r) => s + r.saldoJan1, 0);
-
     const positions = computePositions(data.portfolio.holdings, data.portfolio.transactions);
     const portfolioValue = positions.reduce((s, p) => s + p.currentValue, 0);
     const jan1Investments = data.waardes.beleggingen.reduce((s, r) => s + r.waardeJan1, 0);
     const initInvestments = portfolioValue > 0 ? portfolioValue : jan1Investments;
-
     const startInkomen = data.income.grossSalary + data.income.freelanceIncome;
     const inkomensstijging = (config.inkomensstijging ?? 2) / 100;
     const isPartner = data.personal.filingStatus === 'partner';
-
     const duoBalanceByYear = new Map<number, number>();
     for (const duo of data.schulden.duo) {
       const sim = simuleerDuo(duo, startInkomen, inkomensstijging, currentYear, isPartner);
@@ -108,15 +142,14 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
         duoBalanceByYear.set(punt.jaar, (duoBalanceByYear.get(punt.jaar) ?? 0) + punt.balans);
       }
     }
-
     const result: ProjectionPoint[] = [];
     for (let i = 0; i <= config.jaren; i++) {
       const year = currentYear + i;
       const savings     = i === 0 ? initSavings     : result[i-1].savings     * (1 + config.spaarrente / 100) + jaarlijksSparen;
       const investments = i === 0 ? initInvestments : result[i-1].investments * (1 + config.rendementBeleggingen / 100) + jaarlijksBeleggen;
       const hypotheekDebt = data.woon.hypotheken.reduce((s, h) => s + berekenHypotheek(h, year).restschuldBegin, 0);
-      const duoDebt       = duoBalanceByYear.get(year) ?? 0;
-      const overigeDebt   = data.schulden.beleggingen.reduce((s, schuld) => {
+      const duoDebt     = duoBalanceByYear.get(year) ?? 0;
+      const overigeDebt = data.schulden.beleggingen.reduce((s, schuld) => {
         const elapsed = year - schuld.startJaar;
         if (elapsed < 0) return s + schuld.bedrag;
         if (elapsed >= schuld.looptijd) return s;
@@ -128,63 +161,68 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
     return result;
   }, [data, config, currentYear, jaarlijksSparen, jaarlijksBeleggen]);
 
-  // SVG chart dimensions — viewBox height tracks chartHeight
-  const W = 800;
-  const H = chartHeight;
-  const padL = 68; const padR = 16; const padT = 16; const padB = 32;
+  // ── Chart geometry ──────────────────────────────────────────────────────────
+  const W = 1000; const H = chartHeight;
+  const padL = 72; const padR = 24; const padT = 24; const padB = 36;
   const chartW = W - padL - padR;
   const chartH = H - padT - padB;
 
   const box3Debt = (p: ProjectionPoint) => p.duoDebt + p.overigeDebt;
   const allValues = points.flatMap(p => [p.savings, p.investments, -p.hypotheekDebt, -box3Debt(p), p.netWorth]);
-  const dataMin = Math.min(...allValues);
+  const dataMin = Math.min(...allValues, 0);
   const dataMax = Math.max(...allValues);
-  const valuePad = (dataMax - dataMin) * 0.05 || 1;
+  const valuePad = (dataMax - dataMin) * 0.08 || 10000;
   const yMin = dataMin - valuePad;
   const yMax = dataMax + valuePad;
 
-  const xPos  = (i: number) => padL + (i / config.jaren) * chartW;
-  const yPos  = (v: number) => padT + chartH - ((v - yMin) / (yMax - yMin)) * chartH;
-  const line  = (vals: number[]) => vals.map((v, i) => `${xPos(i)},${yPos(v)}`).join(' ');
+  const xPos = (i: number) => padL + (i / config.jaren) * chartW;
+  const yPos = (v: number) => padT + chartH - ((v - yMin) / (yMax - yMin)) * chartH;
 
-  const ticks = niceTickRange(yMin, yMax, 6);
+  const seriesPts = (vals: number[]): [number, number][] => vals.map((v, i) => [xPos(i), yPos(v)]);
+
+  const ptsMap: Record<SeriesKey, [number, number][]> = {
+    netWorth:    seriesPts(points.map(p => p.netWorth)),
+    investments: seriesPts(points.map(p => p.investments)),
+    savings:     seriesPts(points.map(p => p.savings)),
+    hyp:         seriesPts(points.map(p => -p.hypotheekDebt)),
+    box3:        seriesPts(points.map(p => -box3Debt(p))),
+  };
+
+  const ticks    = niceTickRange(yMin, yMax, 6);
   const spansZero = yMin < 0 && yMax > 0;
+  const y0       = yPos(0);
   const xLabels: { i: number; label: string }[] = [];
-  for (let i = 0; i <= config.jaren; i += 5) xLabels.push({ i, label: String(currentYear + i) });
-  if (config.jaren % 5 !== 0) xLabels.push({ i: config.jaren, label: String(currentYear + config.jaren) });
+  for (let i = 0; i <= config.jaren; i += Math.ceil(config.jaren / 6)) xLabels.push({ i, label: String(currentYear + i) });
+  if (xLabels[xLabels.length - 1]?.i !== config.jaren)
+    xLabels.push({ i: config.jaren, label: String(currentYear + config.jaren) });
 
   const now  = points[0];
   const last = points[points.length - 1];
   const breakEvenYear = now.netWorth < 0 ? (points.find(p => p.netWorth >= 0)?.year ?? null) : null;
 
-  const periodOptions = [
-    { value: 10, label: `10 ${t.forecast.years}` },
-    { value: 20, label: `20 ${t.forecast.years}` },
-    { value: 30, label: `30 ${t.forecast.years}` },
-  ];
+  const periodOptions = [10, 20, 30];
 
-  const SERIES = [
-    { color: '#10b981', label: 'Spaarbalans',            dashed: false },
-    { color: '#8b5cf6', label: 'Beleggingen',            dashed: false },
-    { color: '#f97316', label: 'Hypotheekschuld (neg.)', dashed: true  },
-    { color: '#ef4444', label: 'Box 3 schulden (neg.)',  dashed: true  },
-    { color: '#3b82f6', label: 'Netto vermogen',         dashed: false },
-  ];
+  // ── SVG hover handling ──────────────────────────────────────────────────────
+  const onSvgMouseMove = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
+    if (!svgRef.current) return;
+    const rect = svgRef.current.getBoundingClientRect();
+    const svgX = ((e.clientX - rect.left) / rect.width) * W;
+    const chartRelX = (svgX - padL) / chartW;
+    const idx = Math.max(0, Math.min(points.length - 1, Math.round(chartRelX * config.jaren)));
+    setHoverIdx(idx);
+  }, [W, padL, chartW, points.length, config.jaren]);
 
-  // Area fill polygon: line points + close along bottom
-  const areaPolygon = (vals: number[], baseY: number) => {
-    const pts = vals.map((v, i) => `${xPos(i)},${yPos(v)}`).join(' ');
-    const n = vals.length - 1;
-    return `${pts} ${xPos(n)},${baseY} ${xPos(0)},${baseY}`;
-  };
+  const hp = hoverIdx !== null ? points[hoverIdx] : null;
+  const hoverX = hoverIdx !== null ? xPos(hoverIdx) : null;
+
+  // ── Gradient baseY (bottom of positive area) ────────────────────────────────
+  const baseY = spansZero ? y0 : padT + chartH;
 
   return (
-    <SectionCard title={t.forecast.title} icon={<TrendingUp size={20} />} accent="border-emerald-400">
+    <SectionCard title={t.forecast.title} icon={<TrendingUp size={20} />} accent="border-blue-500">
 
       {/* ── Control bar ── */}
       <div className="flex flex-wrap items-center gap-3 bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 mb-4">
-
-        {/* Inputs */}
         {([
           { label: t.forecast.investReturn, key: 'rendementBeleggingen' as const, max: 30 },
           { label: t.forecast.savingsRate,  key: 'spaarrente'           as const, max: 20 },
@@ -192,9 +230,8 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
         ] as const).map(({ label, key, max }) => (
           <label key={key} className="flex items-center gap-1.5 cursor-pointer">
             <span className="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">{label}</span>
-            <div className="flex items-center border border-slate-300 dark:border-slate-600 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-emerald-400 bg-white dark:bg-slate-700">
-              <input
-                type="number" step="0.1" min="0" max={max}
+            <div className="flex items-center border border-slate-300 dark:border-slate-600 rounded-lg overflow-hidden bg-white dark:bg-slate-700 focus-within:ring-2 focus-within:ring-blue-400">
+              <input type="number" step="0.1" min="0" max={max}
                 value={config[key] ?? 2}
                 onChange={e => onConfigChange({ ...config, [key]: parseFloat(e.target.value) || 0 })}
                 className="w-12 px-2 py-1 text-xs outline-none bg-white dark:bg-slate-700 dark:text-slate-100 text-right"
@@ -203,120 +240,184 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
             </div>
           </label>
         ))}
-
-        {/* Divider */}
         <div className="h-5 w-px bg-slate-300 dark:bg-slate-600 hidden sm:block" />
-
-        {/* Period */}
         <div className="flex items-center gap-1.5">
           <span className="text-xs text-slate-500 dark:text-slate-400">Periode</span>
           <div className="flex rounded-lg border border-slate-300 dark:border-slate-600 overflow-hidden">
-            {periodOptions.map(opt => (
-              <button key={opt.value} onClick={() => onConfigChange({ ...config, jaren: opt.value })}
+            {periodOptions.map(n => (
+              <button key={n} onClick={() => onConfigChange({ ...config, jaren: n })}
                 className={`px-3 py-1 text-xs font-medium transition-colors cursor-pointer border-0 ${
-                  config.jaren === opt.value
-                    ? 'bg-emerald-500 text-white'
-                    : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-emerald-50 dark:hover:bg-slate-600'
+                  config.jaren === n
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-slate-600'
                 }`}
-              >{opt.label}</button>
+              >{n}j</button>
             ))}
           </div>
         </div>
-
-        {/* Spacer + stat chips */}
         <div className="flex-1" />
-        <div className="flex items-center gap-2 flex-wrap">
-          {[
-            { label: 'Nu',              val: now.netWorth,  colored: true  },
-            { label: `+${config.jaren}j`, val: last.netWorth, colored: true  },
-          ].map(({ label, val, colored }) => (
-            <div key={label} className="flex items-center gap-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1 shadow-sm">
-              <span className="text-[10px] text-slate-400 whitespace-nowrap">{label}</span>
-              <span className={`text-xs font-bold tabular-nums ${colored ? (val >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500') : 'text-slate-700 dark:text-slate-200'}`}>
-                {nl0.format(val)}
-              </span>
-            </div>
-          ))}
-          {breakEvenYear && (
-            <div className="flex items-center gap-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1 shadow-sm">
-              <span className="text-[10px] text-slate-400">Break-even</span>
-              <span className="text-xs font-bold tabular-nums text-amber-600 dark:text-amber-400">{breakEvenYear}</span>
-            </div>
-          )}
-        </div>
+        {/* Stat chips */}
+        {[
+          { label: 'Nu',       val: now.netWorth,  extra: '' },
+          { label: `+${config.jaren}j`, val: last.netWorth, extra: '' },
+        ].map(({ label, val }) => (
+          <div key={label} className="flex items-center gap-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1 shadow-sm">
+            <span className="text-[10px] text-slate-400">{label}</span>
+            <span className={`text-xs font-bold tabular-nums ${val >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'}`}>{nl0.format(val)}</span>
+          </div>
+        ))}
+        {breakEvenYear && (
+          <div className="flex items-center gap-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1 shadow-sm">
+            <span className="text-[10px] text-slate-400">Break-even</span>
+            <span className="text-xs font-bold tabular-nums text-amber-600 dark:text-amber-400">{breakEvenYear}</span>
+          </div>
+        )}
       </div>
-
-      {/* Hint */}
-      <p className="text-[10px] text-slate-400 dark:text-slate-500 mb-3 -mt-1">
-        Bijdragen instellen via <strong className="text-slate-500 dark:text-slate-400">Kosten</strong> — sparen {nl0.format(jaarlijksSparen)}/jr · beleggen {nl0.format(jaarlijksBeleggen)}/jr
+      <p className="text-[10px] text-slate-400 dark:text-slate-500 -mt-1 mb-4">
+        Bijdragen via <strong className="text-slate-500 dark:text-slate-400">Kosten</strong> — sparen {nl0.format(jaarlijksSparen)}/jr · beleggen {nl0.format(jaarlijksBeleggen)}/jr
       </p>
 
       {/* ── Chart + table ── */}
-      <div className="grid grid-cols-1 xl:grid-cols-[1fr_340px] gap-4 items-start">
+      <div className="grid grid-cols-1 xl:grid-cols-[1fr_300px] gap-4 items-start">
 
         {/* Chart */}
-        <div className="flex flex-col rounded-xl overflow-hidden border border-slate-700 shadow-lg">
-          <div className="bg-slate-900 dark:bg-slate-950">
-            <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={chartHeight} preserveAspectRatio="none" style={{ display: 'block' }}>
+        <div className="flex flex-col rounded-xl overflow-hidden border border-slate-800 shadow-2xl">
+
+          {/* SVG */}
+          <div className="relative bg-[#080e1a]" style={{ userSelect: 'none' }}>
+            <svg ref={svgRef}
+              viewBox={`0 0 ${W} ${H}`} width="100%" height={chartHeight}
+              preserveAspectRatio="none" style={{ display: 'block' }}
+              onMouseMove={onSvgMouseMove}
+              onMouseLeave={() => setHoverIdx(null)}
+            >
               <defs>
-                <linearGradient id="fillInvest" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#8b5cf6" stopOpacity="0.25" />
-                  <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0.02" />
-                </linearGradient>
-                <linearGradient id="fillNet" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.2" />
+                {/* Area fills — userSpaceOnUse so gradient tracks actual data coordinates */}
+                <linearGradient id="gNet" x1="0" y1={padT} x2="0" y2={padT + chartH} gradientUnits="userSpaceOnUse">
+                  <stop offset="0%"   stopColor="#3b82f6" stopOpacity="0.45" />
                   <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.02" />
                 </linearGradient>
-                <linearGradient id="fillSave" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#10b981" stopOpacity="0.15" />
-                  <stop offset="100%" stopColor="#10b981" stopOpacity="0.02" />
+                <linearGradient id="gInvest" x1="0" y1={padT} x2="0" y2={padT + chartH} gradientUnits="userSpaceOnUse">
+                  <stop offset="0%"   stopColor="#a78bfa" stopOpacity="0.3" />
+                  <stop offset="100%" stopColor="#a78bfa" stopOpacity="0.02" />
                 </linearGradient>
+                {/* Chart clipping */}
+                <clipPath id="chartClip">
+                  <rect x={padL} y={padT} width={chartW} height={chartH} />
+                </clipPath>
               </defs>
 
-              {/* Grid lines */}
+              {/* ── Background subtle dot grid ── */}
               {ticks.map((tick, i) => (
                 <g key={i}>
-                  <line x1={padL} y1={yPos(tick)} x2={W - padR} y2={yPos(tick)} stroke="#334155" strokeWidth={0.5} />
-                  <text x={padL - 8} y={yPos(tick) + 4} textAnchor="end" fontSize={10} fill="#94a3b8">{fmtK(tick)}</text>
+                  <line x1={padL} y1={yPos(tick)} x2={W - padR} y2={yPos(tick)}
+                    stroke="rgba(255,255,255,0.05)" strokeWidth={1} />
+                  <text x={padL - 10} y={yPos(tick) + 4} textAnchor="end" fontSize={11} fill="rgba(255,255,255,0.35)" fontFamily="system-ui, sans-serif">
+                    {fmtK(tick)}
+                  </text>
                 </g>
               ))}
 
+              {/* Left axis line */}
+              <line x1={padL} y1={padT} x2={padL} y2={padT + chartH} stroke="rgba(255,255,255,0.08)" strokeWidth={1} />
+
               {/* Zero line */}
               {spansZero && (
-                <line x1={padL} y1={yPos(0)} x2={W - padR} y2={yPos(0)} stroke="#64748b" strokeWidth={1} strokeDasharray="4 3" />
+                <line x1={padL} y1={y0} x2={W - padR} y2={y0}
+                  stroke="rgba(255,255,255,0.2)" strokeWidth={1} strokeDasharray="6 4" />
               )}
 
               {/* X labels */}
               {xLabels.map(({ i, label }) => (
-                <text key={i} x={xPos(i)} y={H - 4} textAnchor="middle" fontSize={10} fill="#94a3b8">{label}</text>
+                <text key={i} x={xPos(i)} y={H - 8} textAnchor="middle" fontSize={11} fill="rgba(255,255,255,0.3)" fontFamily="system-ui, sans-serif">
+                  {label}
+                </text>
               ))}
 
-              {/* Left axis */}
-              <line x1={padL} y1={padT} x2={padL} y2={padT + chartH} stroke="#334155" strokeWidth={1} />
+              {/* ── Area fills (clipped) ── */}
+              <g clipPath="url(#chartClip)">
+                {/* Net worth fill — only positive area */}
+                <path d={smoothArea(ptsMap.investments, baseY)} fill="url(#gInvest)" />
+                <path d={smoothArea(ptsMap.netWorth.map(([x, y]) => [x, Math.min(y, y0 + 1)] as [number, number]), baseY)} fill="url(#gNet)" />
+              </g>
 
-              {/* Area fills */}
-              <polygon points={areaPolygon(points.map(p => p.investments), padT + chartH)} fill="url(#fillInvest)" />
-              <polygon points={areaPolygon(points.map(p => p.savings), padT + chartH)} fill="url(#fillSave)" />
-              {spansZero && (
-                <polygon points={areaPolygon(points.map(p => Math.max(p.netWorth, 0)), yPos(0))} fill="url(#fillNet)" />
+              {/* ── Lines ── */}
+              <g clipPath="url(#chartClip)">
+                {/* Back series first */}
+                <path d={smoothPath(ptsMap.savings)}     fill="none" stroke="#34d399" strokeWidth={1.5} strokeLinecap="round" />
+                <path d={smoothPath(ptsMap.hyp)}         fill="none" stroke="#fb923c" strokeWidth={1.5} strokeDasharray="6 3" strokeLinecap="round" />
+                <path d={smoothPath(ptsMap.box3)}        fill="none" stroke="#f87171" strokeWidth={1.5} strokeDasharray="3 3" strokeLinecap="round" />
+                <path d={smoothPath(ptsMap.investments)} fill="none" stroke="#a78bfa" strokeWidth={2}   strokeLinecap="round" />
+                {/* Net worth — main line, on top */}
+                <path d={smoothPath(ptsMap.netWorth)}    fill="none" stroke="#3b82f6" strokeWidth={3}   strokeLinecap="round" />
+              </g>
+
+              {/* ── Hover crosshair ── */}
+              {hoverIdx !== null && hoverX !== null && hp !== null && (
+                <g>
+                  {/* Vertical rule */}
+                  <line x1={hoverX} y1={padT} x2={hoverX} y2={padT + chartH}
+                    stroke="rgba(255,255,255,0.2)" strokeWidth={1} strokeDasharray="4 3" />
+                  {/* Dots on each series */}
+                  {([
+                    { pts: ptsMap.netWorth,    color: '#3b82f6', r: 5 },
+                    { pts: ptsMap.investments, color: '#a78bfa', r: 4 },
+                    { pts: ptsMap.savings,     color: '#34d399', r: 3 },
+                    { pts: ptsMap.hyp,         color: '#fb923c', r: 3 },
+                    { pts: ptsMap.box3,        color: '#f87171', r: 3 },
+                  ] as const).map(({ pts, color, r }, i) => {
+                    const pt = pts[hoverIdx];
+                    if (!pt) return null;
+                    return (
+                      <g key={i}>
+                        <circle cx={pt[0]} cy={pt[1]} r={r + 2} fill={color} fillOpacity={0.2} />
+                        <circle cx={pt[0]} cy={pt[1]} r={r} fill={color} />
+                      </g>
+                    );
+                  })}
+
+                  {/* Tooltip — position left of cursor if near right edge */}
+                  {(() => {
+                    const tipW = 180; const tipH = 148;
+                    const flip = hoverX > W - padR - tipW - 20;
+                    const tx = flip ? hoverX - tipW - 14 : hoverX + 14;
+                    const ty = Math.max(padT + 4, Math.min(padT + chartH - tipH - 4, yPos(hp.netWorth) - tipH / 2));
+                    return (
+                      <g transform={`translate(${tx},${ty})`}>
+                        <rect width={tipW} height={tipH} rx={8} ry={8} fill="#0f172a" stroke="rgba(255,255,255,0.12)" strokeWidth={1} />
+                        {/* Year header */}
+                        <text x={12} y={20} fontSize={13} fontWeight="bold" fill="white" fontFamily="system-ui, sans-serif">{hp.year}</text>
+                        {/* Rows */}
+                        {[
+                          { label: 'Netto',     val: hp.netWorth,         color: '#60a5fa' },
+                          { label: 'Beleg',     val: hp.investments,      color: '#c4b5fd' },
+                          { label: 'Spaar',     val: hp.savings,          color: '#6ee7b7' },
+                          { label: 'Hypotheek', val: -hp.hypotheekDebt,   color: '#fdba74' },
+                          { label: 'Box3 sch.', val: -(hp.duoDebt + hp.overigeDebt), color: '#fca5a5' },
+                        ].map(({ label, val, color }, ri) => (
+                          <g key={ri} transform={`translate(0,${32 + ri * 22})`}>
+                            <rect x={12} y={4} width={8} height={8} rx={2} fill={color} />
+                            <text x={26} y={13} fontSize={11} fill="rgba(255,255,255,0.6)" fontFamily="system-ui, sans-serif">{label}</text>
+                            <text x={tipW - 10} y={13} textAnchor="end" fontSize={11} fontWeight="600"
+                              fill={val >= 0 ? color : '#f87171'} fontFamily="system-ui, mono, sans-serif">{fmtK(val)}</text>
+                          </g>
+                        ))}
+                      </g>
+                    );
+                  })()}
+                </g>
               )}
-
-              {/* Lines */}
-              <polyline points={line(points.map(p => p.savings))}        fill="none" stroke="#10b981" strokeWidth={2}   strokeLinejoin="round" strokeLinecap="round" />
-              <polyline points={line(points.map(p => p.investments))}    fill="none" stroke="#8b5cf6" strokeWidth={2}   strokeLinejoin="round" strokeLinecap="round" />
-              <polyline points={line(points.map(p => -p.hypotheekDebt))} fill="none" stroke="#f97316" strokeWidth={1.5} strokeDasharray="6 3" strokeLinejoin="round" strokeLinecap="round" />
-              <polyline points={line(points.map(p => -box3Debt(p)))}     fill="none" stroke="#ef4444" strokeWidth={1.5} strokeDasharray="3 3" strokeLinejoin="round" strokeLinecap="round" />
-              <polyline points={line(points.map(p => p.netWorth))}       fill="none" stroke="#3b82f6" strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />
             </svg>
           </div>
 
           {/* Legend */}
-          <div className="bg-slate-800 dark:bg-slate-900 border-t border-slate-700 px-4 py-2">
-            <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-1">
+          <div className="bg-[#0d1526] border-t border-slate-800 px-4 py-2.5">
+            <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-1.5">
               {SERIES.map(({ color, label, dashed }) => (
                 <div key={label} className="flex items-center gap-1.5">
-                  <svg width={18} height={10} style={{ flexShrink: 0 }}>
-                    <line x1={0} y1={5} x2={18} y2={5} stroke={color} strokeWidth={dashed ? 1.5 : 2} strokeDasharray={dashed ? '4 2' : undefined} />
+                  <svg width={20} height={12} style={{ flexShrink: 0 }}>
+                    <line x1={0} y1={6} x2={20} y2={6} stroke={color} strokeWidth={dashed ? 1.5 : 2}
+                      strokeDasharray={dashed ? '5 2' : undefined} />
                   </svg>
                   <span className="text-[11px] text-slate-400 whitespace-nowrap">{label}</span>
                 </div>
@@ -325,48 +426,57 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
           </div>
 
           {/* Resize handle */}
-          <div onMouseDown={onMouseDown}
-            className="bg-slate-800 dark:bg-slate-900 border-t border-slate-700 flex items-center justify-center gap-2 py-1.5 cursor-ns-resize select-none group">
+          <div onMouseDown={onResizeDown}
+            className="bg-[#0d1526] border-t border-slate-800 flex items-center justify-center gap-2 py-1.5 cursor-ns-resize select-none group">
             <GripHorizontal size={13} className="text-slate-600 group-hover:text-slate-400 transition-colors" />
             <span className="text-[10px] text-slate-600 group-hover:text-slate-400 transition-colors">hoogte aanpassen</span>
           </div>
         </div>
 
-        {/* Table */}
+        {/* ── Table ── */}
         <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm">
-          {/* Fixed header */}
           <table className="w-full text-xs table-fixed">
             <thead>
               <tr className="bg-slate-100 dark:bg-slate-800 border-b-2 border-slate-300 dark:border-slate-600">
                 <th className="text-left px-3 py-2 font-semibold text-slate-500 dark:text-slate-400 w-[52px]">Jaar</th>
-                <th className="text-right px-3 py-2 font-semibold text-emerald-600 dark:text-emerald-400">Spaar</th>
-                <th className="text-right px-3 py-2 font-semibold text-purple-600 dark:text-purple-400">Beleg</th>
-                <th className="text-right px-3 py-2 font-semibold text-orange-500 dark:text-orange-400">Schuld</th>
+                <th className="text-right px-2 py-2 font-semibold text-emerald-600 dark:text-emerald-400">Spaar</th>
+                <th className="text-right px-2 py-2 font-semibold text-violet-500 dark:text-violet-400">Beleg</th>
+                <th className="text-right px-2 py-2 font-semibold text-orange-500 dark:text-orange-400">Schuld</th>
                 <th className="text-right px-3 py-2 font-semibold text-blue-600 dark:text-blue-400">Netto</th>
               </tr>
             </thead>
           </table>
-          {/* Scrollable body */}
-          <div className="overflow-y-auto" style={{ maxHeight: Math.max(chartHeight + 44, 280) }}>
+          <div className="overflow-y-auto" style={{ maxHeight: Math.max(chartHeight + 44, 300) }}>
             <table className="w-full text-xs table-fixed">
               <tbody>
                 {points.map((p, i) => {
-                  const isNow = p.year === currentYear;
+                  const isNow     = p.year === currentYear;
+                  const isHovered = i === hoverIdx;
                   return (
-                    <tr key={p.year} className={`border-b last:border-0 ${
-                      isNow
-                        ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-100 dark:border-blue-800/30'
-                        : i % 2 === 0
-                          ? 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700/40'
-                          : 'bg-slate-50/50 dark:bg-slate-900 border-slate-100 dark:border-slate-700/40'
-                    }`}>
-                      <td className={`px-3 py-1.5 font-semibold w-[52px] ${isNow ? 'text-blue-600 dark:text-blue-300' : 'text-slate-500 dark:text-slate-400'}`}>
+                    <tr key={p.year}
+                      onMouseEnter={() => setHoverIdx(i)}
+                      onMouseLeave={() => setHoverIdx(null)}
+                      className={`border-b last:border-0 cursor-default transition-colors ${
+                        isHovered
+                          ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-100 dark:border-blue-800/30'
+                          : isNow
+                            ? 'bg-amber-50 dark:bg-amber-900/10 border-amber-100 dark:border-amber-800/20'
+                            : i % 2 === 0
+                              ? 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700/40'
+                              : 'bg-slate-50/50 dark:bg-slate-900 border-slate-100 dark:border-slate-700/40'
+                      }`}
+                    >
+                      <td className={`px-3 py-1.5 font-semibold w-[52px] ${
+                        isHovered ? 'text-blue-600 dark:text-blue-300'
+                        : isNow   ? 'text-amber-600 dark:text-amber-400'
+                        :           'text-slate-500 dark:text-slate-400'
+                      }`}>
                         {p.year}
-                        {isNow && <span className="ml-1 text-[9px] bg-blue-500 text-white rounded px-1 py-0.5 align-middle">nu</span>}
+                        {isNow && <span className="ml-1 text-[9px] bg-amber-500 text-white rounded px-1 py-0.5 align-middle">nu</span>}
                       </td>
-                      <td className="px-3 py-1.5 text-right font-mono tabular-nums text-emerald-600 dark:text-emerald-400">{fmtK(p.savings)}</td>
-                      <td className="px-3 py-1.5 text-right font-mono tabular-nums text-purple-600 dark:text-purple-400">{fmtK(p.investments)}</td>
-                      <td className="px-3 py-1.5 text-right font-mono tabular-nums text-orange-500 dark:text-orange-400">−{fmtK(p.totalDebt)}</td>
+                      <td className="px-2 py-1.5 text-right font-mono tabular-nums text-emerald-600 dark:text-emerald-400">{fmtK(p.savings)}</td>
+                      <td className="px-2 py-1.5 text-right font-mono tabular-nums text-violet-500 dark:text-violet-400">{fmtK(p.investments)}</td>
+                      <td className="px-2 py-1.5 text-right font-mono tabular-nums text-orange-500 dark:text-orange-400">−{fmtK(p.totalDebt)}</td>
                       <td className={`px-3 py-1.5 text-right font-mono tabular-nums font-semibold ${p.netWorth >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-red-500 dark:text-red-400'}`}>
                         {fmtK(p.netWorth)}
                       </td>
