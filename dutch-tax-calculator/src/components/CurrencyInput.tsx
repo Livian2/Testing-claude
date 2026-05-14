@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 
 interface Props {
   label: string;
@@ -22,27 +22,25 @@ function formatNL(n: number, decimals = false): string {
 }
 
 function parseNL(s: string): number {
-  // Strip everything except digits and comma (decimal separator in nl-NL)
   const cleaned = s.replace(/\./g, '').replace(',', '.').replace(/[^\d.]/g, '');
   return parseFloat(cleaned) || 0;
 }
 
 export default function CurrencyInput({
-  label, value, onChange, hint, prefix = '€', suffix, min = 0, decimals = false, tooltip,
+  label, value, onChange, hint, prefix = '€', suffix, decimals = false, tooltip,
 }: Props) {
-  const [display, setDisplay] = useState(formatNL(value, decimals));
-  const focused = useRef(false);
+  // null = not editing; string = current edit buffer
+  const [editStr, setEditStr] = useState<string | null>(null);
 
-  // Sync display when value changes externally (e.g. reset)
-  useEffect(() => {
-    if (!focused.current) {
-      setDisplay(formatNL(value, decimals));
-    }
-  }, [value, decimals]);
+  const display = editStr !== null ? editStr : formatNL(value, decimals);
 
   return (
     <div className="flex flex-col gap-1">
-      <label className="text-sm font-medium text-slate-700 dark:text-slate-200 flex items-center gap-1">{label}{tooltip}</label>
+      {label && (
+        <label className="text-sm font-medium text-slate-700 dark:text-slate-200 flex items-center gap-1">
+          {label}{tooltip}
+        </label>
+      )}
       {hint && <p className="text-xs text-slate-500 dark:text-slate-400">{hint}</p>}
       <div className="flex items-center border border-slate-300 dark:border-slate-600 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-orange-400 focus-within:border-orange-400 bg-white dark:bg-slate-700">
         {prefix && (
@@ -55,21 +53,13 @@ export default function CurrencyInput({
           inputMode="numeric"
           value={display}
           placeholder="0"
-          min={min}
-          onFocus={() => {
-            focused.current = true;
-            // Show raw number while editing
-            setDisplay(value === 0 ? '' : String(value));
-          }}
+          onFocus={() => setEditStr(value === 0 ? '' : String(value))}
           onChange={e => {
             const raw = e.target.value.replace(/[^\d,]/g, '');
-            setDisplay(raw);
+            setEditStr(raw);
             onChange(parseNL(raw));
           }}
-          onBlur={() => {
-            focused.current = false;
-            setDisplay(formatNL(value, decimals));
-          }}
+          onBlur={() => setEditStr(null)}
           className="flex-1 px-3 py-2 text-sm outline-none bg-white dark:bg-slate-700 dark:text-slate-100 min-w-0"
         />
         {suffix && (
