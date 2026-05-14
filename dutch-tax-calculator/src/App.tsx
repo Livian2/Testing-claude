@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
-import { Flag, RefreshCw, Users, Download, Upload, Home, Moon, Sun, HelpCircle, Sparkles, BookOpen } from 'lucide-react';
+import { Flag, RefreshCw, Users, Download, Upload, Home, Moon, Sun, HelpCircle, Sparkles, BookOpen, TrendingDown } from 'lucide-react';
 import WelcomeModal from './components/WelcomeModal';
 import AboutPage    from './components/AboutPage';
 import type { TaxFormData, FilingStatus, PrognoseConfig } from './types';
@@ -15,6 +15,7 @@ import TaxResults from './components/TaxResults';
 import NetWorthProjection from './components/NetWorthProjection';
 import AfschrijvingenSection from './components/AfschrijvingenSection';
 import BankRekeningenSection from './components/BankRekeningenSection';
+import MarginaleDrukChart from './components/MarginaleDrukChart';
 import './index.css';
 
 const DEFAULT_DATA: TaxFormData = {
@@ -55,7 +56,7 @@ const DEFAULT_DATA: TaxFormData = {
   },
 };
 
-const APP_VERSION         = 'v1.6.0';
+const APP_VERSION         = 'v1.7.0';
 
 const STORAGE_KEY         = 'nl-belasting-data-v1';
 const PROGNOSE_STORAGE_KEY = 'nl-belasting-prognose-v1';
@@ -105,7 +106,7 @@ function loadSavedData(): TaxFormData {
   }
 }
 
-type Tab = 'income' | 'woon' | 'waardes' | 'expenses' | 'schulden' | 'bank' | 'portfolio' | 'afschrijvingen' | 'prognose' | 'results';
+type Tab = 'income' | 'woon' | 'waardes' | 'expenses' | 'schulden' | 'bank' | 'portfolio' | 'afschrijvingen' | 'prognose' | 'results' | 'marginale';
 type AnyTab = Tab | 'home';
 
 interface TabMeta { id: Tab; label: string; emoji: string; description: string }
@@ -121,6 +122,7 @@ const ALL_TABS: TabMeta[] = [
   { id: 'afschrijvingen', label: 'Afschrijvingen',  emoji: '🔄', description: 'Sinking fund calculator: hoeveel spaar je per jaar voor vervangingen?' },
   { id: 'prognose',       label: 'Prognose',        emoji: '🔮', description: 'Vermogensprognose over 10/20/30 jaar: sparen, beleggen, schulden, netto vermogen.' },
   { id: 'results',        label: 'Berekening',      emoji: '🧮', description: 'Live belastingberekening: Box 1, Box 3, toeslagen en beschikbaar inkomen.' },
+  { id: 'marginale',      label: 'Marginale Druk',  emoji: '📊', description: 'Effectief marginaal tarief: hoeveel houd je over van iedere extra verdiende euro?' },
 ];
 
 const DEFAULT_ENABLED_TABS = new Set<Tab>(ALL_TABS.map(t => t.id));
@@ -266,7 +268,7 @@ export default function App() {
   const setPersonal = (patch: Partial<TaxFormData['personal']>) =>
     setData(d => ({ ...d, personal: { ...d.personal, ...patch } }));
 
-  const showSidePanel = tab !== 'home' && tab !== 'results' && tab !== 'prognose';
+  const showSidePanel = tab !== 'home' && tab !== 'results' && tab !== 'prognose' && tab !== 'marginale';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200 dark:from-slate-950 dark:via-slate-900 dark:to-slate-900">
@@ -622,6 +624,7 @@ export default function App() {
             onConfigChange={setPrognose}
           />
         )}
+        {tab === 'marginale' && <MarginaleDrukChart data={data} />}
       </main>
 
       <footer className="px-4 sm:px-6 py-6 text-center text-xs text-slate-400 dark:text-slate-500 border-t border-slate-200 dark:border-slate-700 mt-4">

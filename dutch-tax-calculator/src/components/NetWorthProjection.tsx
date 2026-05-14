@@ -101,6 +101,8 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
 
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
   const svgRef                  = useRef<SVGSVGElement>(null);
+  const [swr, setSwr]           = useState<number>(4);
+  const [aowLeeftijd, setAowLeeftijd] = useState<number>(67);
 
   const jaarlijksSparen   = data.savings.monthlySavingsContribution * 12;
   const jaarlijksBeleggen = data.savings.maandelijksBeleggen * 12;
@@ -159,6 +161,40 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
     return result;
   }, [data, config, currentYear, jaarlijksSparen, jaarlijksBeleggen]);
 
+  // ── FIRE calculations ──────────────────────────────────────────────────────
+  const annualExpenses = useMemo(() => {
+    const e = data.expenses;
+    return (e.groceries + e.transport + e.insurance + e.healthcare + e.education + e.leisure + e.other) * 12;
+  }, [data.expenses]);
+
+  const isPartnerFire = data.personal.filingStatus === 'partner';
+  const heffingsvrijdom = isPartnerFire ? 114_000 : 57_000;
+
+  const fireNumber = useMemo(() => {
+    const swrDecimal = swr / 100;
+    const bruteFireNumber = annualExpenses / swrDecimal;
+    const taxableWealth = Math.max(0, bruteFireNumber - heffingsvrijdom);
+    const box3TaxDrag = taxableWealth * 0.0588 * 0.36;
+    return (annualExpenses + box3TaxDrag) / swrDecimal;
+  }, [annualExpenses, swr, heffingsvrijdom]);
+
+  const bruteFireNumber = useMemo(() => annualExpenses / (swr / 100), [annualExpenses, swr]);
+
+  const fireYear = useMemo(() => {
+    const hit = points.find(p => p.netWorth >= fireNumber);
+    return hit ? hit.year : null;
+  }, [points, fireNumber]);
+
+  const currentAge = data.personal.age;
+  const aowGapYears = fireYear !== null ? Math.max(0, aowLeeftijd - (currentAge + (fireYear - currentYear))) : null;
+  const overbruggingskapitaal = aowGapYears !== null ? aowGapYears * annualExpenses : null;
+
+  const fireProgress = useMemo(() => {
+    const nw = points[0]?.netWorth ?? 0;
+    if (fireNumber <= 0) return 100;
+    return Math.min(100, Math.max(0, (nw / fireNumber) * 100));
+  }, [points, fireNumber]);
+
   // ── Chart geometry — fixed viewBox, scales proportionally via aspect-ratio ──
   const W = 1000; const H = 440;
   const padL = 72; const padR = 24; const padT = 24; const padB = 36;
@@ -167,7 +203,7 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
 
   const hasWoz   = points[0]?.wozWaarde > 0;
   const box3Debt = (p: ProjectionPoint) => p.duoDebt + p.overigeDebt;
-  const allValues = points.flatMap(p => [p.savings, p.investments, p.wozWaarde, -p.hypotheekDebt, -box3Debt(p), p.netWorth]);
+  const allValues = points.flatMap(p => [p.savings, p.investments, p.wozWaarde, -p.hypotheekDebt, -box3Debt(p), p.netWorth]).concat(fireNumber > 0 ? [fireNumber] : []);
   const dataMin = Math.min(...allValues, 0);
   const dataMax = Math.max(...allValues);
   const valuePad = (dataMax - dataMin) * 0.08 || 10000;
@@ -277,6 +313,105 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
         Bijdragen via <strong className="text-slate-500 dark:text-slate-400">Kosten</strong> — sparen {nl0.format(jaarlijksSparen)}/jr · beleggen {nl0.format(jaarlijksBeleggen)}/jr
       </p>
 
+      {/* ── FIRE section ── */}
+      <div className="bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 mb-4 space-y-3">
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+          <span className="text-xs font-semibold text-amber-600 dark:text-amber-400 tracking-wide uppercase">FIRE</span>
+
+          {/* SWR slider */}
+          <label className="flex items-center gap-2">
+            <span className="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">SWR</span>
+            <div className="flex rounded-lg border border-slate-300 dark:border-slate-600 overflow-hidden">
+              {([3, 3.5, 4] as const).map(v => (
+                <button key={v} onClick={() => setSwr(v)}
+                  className={`px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer border-0 ${
+                    swr === v
+                      ? 'bg-amber-500 text-white'
+                      : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-amber-50 dark:hover:bg-slate-600'
+                  }`}
+                >{v}%</button>
+              ))}
+            </div>
+          </label>
+
+          {/* AOW leeftijd */}
+          <label className="flex items-center gap-1.5">
+            <span className="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">AOW-leeftijd</span>
+            <div className="flex items-center border border-slate-300 dark:border-slate-600 rounded-lg overflow-hidden bg-white dark:bg-slate-700 focus-within:ring-2 focus-within:ring-amber-400">
+              <input type="number" min="60" max="75" step="1"
+                value={aowLeeftijd}
+                onChange={e => setAowLeeftijd(parseInt(e.target.value) || 67)}
+                className="w-12 px-2 py-1 text-xs outline-none bg-white dark:bg-slate-700 dark:text-slate-100 text-right"
+              />
+              <span className="px-1.5 py-1 bg-slate-100 dark:bg-slate-600 text-slate-400 text-xs border-l border-slate-300 dark:border-slate-600 select-none">jr</span>
+            </div>
+          </label>
+
+          {/* FIRE numbers */}
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1">
+              <span className="text-[10px] text-slate-400">Bruto FIRE</span>
+              <span className="text-xs font-bold tabular-nums text-amber-600 dark:text-amber-400">{nl0.format(bruteFireNumber)}</span>
+            </div>
+            <div className="flex items-center gap-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1">
+              <span className="text-[10px] text-slate-400">Netto (Box 3)</span>
+              <span className="text-xs font-bold tabular-nums text-amber-500 dark:text-amber-300">{nl0.format(fireNumber)}</span>
+            </div>
+            <div className="flex items-center gap-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1">
+              <span className="text-[10px] text-slate-400">Jaaruitgaven</span>
+              <span className="text-xs font-bold tabular-nums text-slate-600 dark:text-slate-300">{nl0.format(annualExpenses)}</span>
+            </div>
+            {fireYear !== null ? (
+              <div className="flex items-center gap-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1">
+                <span className="text-[10px] text-slate-400">FI-jaar</span>
+                <span className="text-xs font-bold tabular-nums text-emerald-600 dark:text-emerald-400">{fireYear}</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1">
+                <span className="text-[10px] text-slate-400">FI-jaar</span>
+                <span className="text-xs font-bold tabular-nums text-slate-400">Buiten prognoseperiode</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* FIRE progress bar */}
+        <div className="space-y-1">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] text-slate-500 dark:text-slate-400">FIRE voortgang</span>
+            <span className="text-[11px] font-semibold text-amber-600 dark:text-amber-400">{fireProgress.toFixed(1)}%</span>
+          </div>
+          <div className="h-2 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all duration-500"
+              style={{
+                width: `${fireProgress}%`,
+                background: fireProgress >= 100
+                  ? 'linear-gradient(90deg, #10b981, #059669)'
+                  : 'linear-gradient(90deg, #f59e0b, #d97706)',
+              }}
+            />
+          </div>
+        </div>
+
+        {/* AOW gap */}
+        {fireYear !== null && aowGapYears !== null && overbruggingskapitaal !== null && (
+          <p className="text-[11px] text-slate-500 dark:text-slate-400">
+            Als je FI bent in <strong className="text-amber-600 dark:text-amber-400">{fireYear}</strong>, heb je nog{' '}
+            <strong className="text-slate-700 dark:text-slate-200">{aowGapYears} jaar</strong> tot AOW (leeftijd {aowLeeftijd}).
+            {aowGapYears > 0 && (
+              <> Overbruggingskapitaal: <strong className="text-amber-600 dark:text-amber-400">{nl0.format(overbruggingskapitaal)}</strong>.</>
+            )}
+            {aowGapYears === 0 && <> Je bereikt AOW rond hetzelfde jaar als FI.</>}
+          </p>
+        )}
+        {fireYear === null && (
+          <p className="text-[11px] text-slate-500 dark:text-slate-400">
+            FI-datum valt buiten de prognoseperiode. Vergroot je bijdragen of verleng de periode om de FIRE-datum te zien.
+          </p>
+        )}
+      </div>
+
       {/* ── Chart + table ── */}
       <div className="grid grid-cols-1 xl:grid-cols-[1fr_300px] gap-4 items-start">
 
@@ -325,6 +460,17 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
               {spansZero && (
                 <line x1={padL} y1={y0} x2={W - padR} y2={y0}
                   stroke="rgba(255,255,255,0.2)" strokeWidth={1} strokeDasharray="6 4" />
+              )}
+
+              {/* FIRE target line */}
+              {fireNumber > 0 && (
+                <g>
+                  <line x1={padL} y1={yPos(fireNumber)} x2={W - padR} y2={yPos(fireNumber)}
+                    stroke="#f59e0b" strokeWidth={1.5} strokeDasharray="8 4" />
+                  <text x={padL + 6} y={yPos(fireNumber) - 5} fontSize={10} fill="#f59e0b" fillOpacity={0.85} fontFamily="system-ui, sans-serif" fontWeight="600">
+                    FIRE {fmtK(fireNumber)}
+                  </text>
+                </g>
               )}
 
               {/* X labels */}
@@ -425,6 +571,14 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
                   <span className="text-[11px] text-slate-400 whitespace-nowrap">{label}</span>
                 </div>
               ))}
+              {fireNumber > 0 && (
+                <div className="flex items-center gap-1.5">
+                  <svg width={20} height={12} style={{ flexShrink: 0 }}>
+                    <line x1={0} y1={6} x2={20} y2={6} stroke="#f59e0b" strokeWidth={1.5} strokeDasharray="8 4" />
+                  </svg>
+                  <span className="text-[11px] text-slate-400 whitespace-nowrap">FIRE target</span>
+                </div>
+              )}
             </div>
           </div>
         </div>
