@@ -174,75 +174,89 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
   return (
     <SectionCard title={t.forecast.title} icon={<TrendingUp size={20} />} accent="border-emerald-400">
 
-      {/* ── Config + summary ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-4 mb-5">
-        {/* Inputs */}
-        <div className="bg-slate-50 dark:bg-slate-900 rounded-xl p-4 border border-slate-200 dark:border-slate-700 space-y-3">
-          <p className="text-xs text-slate-500 dark:text-slate-400">
-            Bijdragen instellen op het tabblad <strong>Kosten</strong>.
-            Huidig: sparen <strong>{nl0.format(jaarlijksSparen)}/jr</strong> · beleggen <strong>{nl0.format(jaarlijksBeleggen)}/jr</strong>.
-          </p>
-          <div className="grid grid-cols-3 gap-3">
-            {[
-              { label: t.forecast.investReturn, key: 'rendementBeleggingen' as const, max: 30 },
-              { label: t.forecast.savingsRate,  key: 'spaarrente'           as const, max: 20 },
-              { label: t.forecast.incomeGrowth, key: 'inkomensstijging'     as const, max: 20 },
-            ].map(({ label, key, max }) => (
-              <div key={key} className="flex flex-col gap-1">
-                <label className="text-xs font-medium text-slate-600 dark:text-slate-300">{label}</label>
-                <div className="flex items-center border border-slate-300 dark:border-slate-600 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-orange-400 bg-white dark:bg-slate-700">
-                  <input
-                    type="number" step="0.1" min="0" max={max}
-                    value={config[key] ?? 2}
-                    onChange={e => onConfigChange({ ...config, [key]: parseFloat(e.target.value) || 0 })}
-                    className="flex-1 px-3 py-1.5 text-sm outline-none bg-white dark:bg-slate-700 dark:text-slate-100 min-w-0"
-                  />
-                  <span className="px-2 py-1.5 bg-slate-100 dark:bg-slate-600 text-slate-500 dark:text-slate-300 text-sm border-l border-slate-300 dark:border-slate-600 select-none">%</span>
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-medium text-slate-600 dark:text-slate-300 mr-1">Periode:</span>
-            <div className="flex rounded-lg border border-slate-300 dark:border-slate-600 overflow-hidden">
-              {periodOptions.map(opt => (
-                <button key={opt.value} onClick={() => onConfigChange({ ...config, jaren: opt.value })}
-                  className={`px-4 py-1 text-xs font-medium transition-colors cursor-pointer border-0 ${
-                    config.jaren === opt.value
-                      ? 'bg-emerald-500 text-white'
-                      : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-600'
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
+      {/* ── Compact toolbar: inputs + period + stat chips ── */}
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 px-1 py-1 mb-3">
+
+        {/* Three % inputs */}
+        {([
+          { label: t.forecast.investReturn, key: 'rendementBeleggingen' as const, max: 30 },
+          { label: t.forecast.savingsRate,  key: 'spaarrente'           as const, max: 20 },
+          { label: t.forecast.incomeGrowth, key: 'inkomensstijging'     as const, max: 20 },
+        ] as const).map(({ label, key, max }) => (
+          <div key={key} className="flex items-center gap-1.5">
+            <span className="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">{label}</span>
+            <div className="flex items-center border border-slate-300 dark:border-slate-600 rounded-md overflow-hidden focus-within:ring-2 focus-within:ring-emerald-400 bg-white dark:bg-slate-700">
+              <input
+                type="number" step="0.1" min="0" max={max}
+                value={config[key] ?? 2}
+                onChange={e => onConfigChange({ ...config, [key]: parseFloat(e.target.value) || 0 })}
+                className="w-14 px-2 py-1 text-xs outline-none bg-white dark:bg-slate-700 dark:text-slate-100 text-right"
+              />
+              <span className="px-1.5 py-1 bg-slate-100 dark:bg-slate-600 text-slate-400 dark:text-slate-400 text-xs border-l border-slate-300 dark:border-slate-600 select-none">%</span>
             </div>
+          </div>
+        ))}
+
+        {/* Period selector */}
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs text-slate-500 dark:text-slate-400">Periode</span>
+          <div className="flex rounded-md border border-slate-300 dark:border-slate-600 overflow-hidden">
+            {periodOptions.map(opt => (
+              <button
+                key={opt.value}
+                onClick={() => onConfigChange({ ...config, jaren: opt.value })}
+                className={`px-3 py-1 text-xs font-medium transition-colors cursor-pointer border-0 ${
+                  config.jaren === opt.value
+                    ? 'bg-emerald-500 text-white'
+                    : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-600'
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
           </div>
         </div>
 
-        {/* Summary cards */}
-        <div className="grid grid-cols-3 lg:grid-cols-1 gap-3">
-          <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3">
-            <p className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">Vermogen nu</p>
-            <p className={`text-base font-bold ${now.netWorth >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>{nl0.format(now.netWorth)}</p>
+        {/* Spacer */}
+        <div className="flex-1" />
+
+        {/* Stat chips */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md px-2.5 py-1">
+            <span className="text-[10px] text-slate-500 dark:text-slate-400 whitespace-nowrap">Nu</span>
+            <span className={`text-xs font-semibold tabular-nums ${now.netWorth >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'}`}>
+              {nl0.format(now.netWorth)}
+            </span>
           </div>
-          <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3">
-            <p className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">Over {config.jaren} jaar</p>
-            <p className={`text-base font-bold ${last.netWorth >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>{nl0.format(last.netWorth)}</p>
+          <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md px-2.5 py-1">
+            <span className="text-[10px] text-slate-500 dark:text-slate-400 whitespace-nowrap">+{config.jaren}j</span>
+            <span className={`text-xs font-semibold tabular-nums ${last.netWorth >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'}`}>
+              {nl0.format(last.netWorth)}
+            </span>
           </div>
-          <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3">
-            <p className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">Break-even</p>
-            <p className="text-base font-bold text-slate-800 dark:text-slate-100">{breakEvenYear ?? '—'}</p>
+          <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md px-2.5 py-1">
+            <span className="text-[10px] text-slate-500 dark:text-slate-400 whitespace-nowrap">Break-even</span>
+            <span className="text-xs font-semibold tabular-nums text-slate-700 dark:text-slate-200">
+              {breakEvenYear ?? '—'}
+            </span>
           </div>
         </div>
       </div>
 
-      {/* ── Chart + table side by side on wide screens ── */}
-      <div className="grid grid-cols-1 xl:grid-cols-[1fr_auto] gap-5 items-start">
+      {/* Hint line */}
+      <p className="text-[10px] text-slate-400 dark:text-slate-500 mb-3 px-1">
+        Bijdragen instellen op het tabblad <strong className="font-medium text-slate-500 dark:text-slate-400">Kosten</strong>.
+        Huidig: sparen <strong className="font-medium">{nl0.format(jaarlijksSparen)}/jr</strong> · beleggen <strong className="font-medium">{nl0.format(jaarlijksBeleggen)}/jr</strong>.
+      </p>
 
-        {/* Chart + resize handle */}
+      {/* ── Chart + table side by side on xl screens ── */}
+      <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-0 xl:gap-4 items-start">
+
+        {/* Chart column */}
         <div className="flex flex-col">
-          <div className="bg-slate-900 dark:bg-slate-950 rounded-t-xl p-4 border border-b-0 border-slate-700">
+
+          {/* SVG chart — dark background */}
+          <div className="bg-slate-900 dark:bg-slate-950 rounded-t-xl overflow-hidden border border-b-0 border-slate-700">
             <svg
               viewBox={`0 0 ${W} ${H}`}
               width="100%"
@@ -250,28 +264,41 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
               preserveAspectRatio="none"
               style={{ display: 'block' }}
             >
-              {/* Grid */}
+              {/* Horizontal grid lines + Y-axis labels */}
               {ticks.map((tick, i) => (
                 <g key={i}>
-                  <line x1={padL} y1={yPos(tick)} x2={W - padR} y2={yPos(tick)}
-                    stroke="#334155" strokeWidth={1} />
-                  <text x={padL - 6} y={yPos(tick) + 4} textAnchor="end" fontSize={10} fill="#94a3b8">
+                  <line
+                    x1={padL} y1={yPos(tick)} x2={W - padR} y2={yPos(tick)}
+                    stroke="#1e293b" strokeWidth={1}
+                  />
+                  <text x={padL - 6} y={yPos(tick) + 4} textAnchor="end" fontSize={10} fill="#64748b">
                     {fmtK(tick)}
                   </text>
                 </g>
               ))}
+
+              {/* Zero line */}
               {spansZero && (
-                <line x1={padL} y1={yPos(0)} x2={W - padR} y2={yPos(0)}
-                  stroke="#64748b" strokeWidth={1} strokeDasharray="4 3" />
+                <line
+                  x1={padL} y1={yPos(0)} x2={W - padR} y2={yPos(0)}
+                  stroke="#475569" strokeWidth={1} strokeDasharray="4 3"
+                />
               )}
+
+              {/* X-axis labels */}
               {xLabels.map(({ i, label }) => (
-                <text key={i} x={xPos(i)} y={H - padB + 16} textAnchor="middle" fontSize={10} fill="#94a3b8">
+                <text key={i} x={xPos(i)} y={H - padB + 16} textAnchor="middle" fontSize={10} fill="#64748b">
                   {label}
                 </text>
               ))}
-              <line x1={padL} y1={padT + chartH} x2={W - padR} y2={padT + chartH}
-                stroke="#334155" strokeWidth={1} />
 
+              {/* X-axis baseline */}
+              <line
+                x1={padL} y1={padT + chartH} x2={W - padR} y2={padT + chartH}
+                stroke="#1e293b" strokeWidth={1}
+              />
+
+              {/* Data series */}
               <polyline points={line(points.map(p => p.savings))}         fill="none" stroke="#10b981" strokeWidth={2}   strokeLinejoin="round" strokeLinecap="round" />
               <polyline points={line(points.map(p => p.investments))}     fill="none" stroke="#8b5cf6" strokeWidth={2}   strokeLinejoin="round" strokeLinecap="round" />
               <polyline points={line(points.map(p => -p.hypotheekDebt))}  fill="none" stroke="#f97316" strokeWidth={1.5} strokeDasharray="6 3" strokeLinejoin="round" strokeLinecap="round" />
@@ -280,16 +307,16 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
             </svg>
           </div>
 
-          {/* Legend */}
-          <div className="bg-slate-900 dark:bg-slate-950 rounded-b-0 px-4 pb-3 border-x border-slate-700">
-            <div className="flex flex-wrap items-center justify-center gap-4">
+          {/* Legend strip */}
+          <div className="bg-slate-900 dark:bg-slate-950 border-x border-slate-700 px-4 py-2">
+            <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-1">
               {SERIES.map(({ color, label, dashed }) => (
                 <div key={label} className="flex items-center gap-1.5">
-                  <svg width={16} height={10}>
+                  <svg width={16} height={10} style={{ flexShrink: 0 }}>
                     <line x1={0} y1={5} x2={16} y2={5} stroke={color}
                       strokeWidth={dashed ? 1.5 : 2} strokeDasharray={dashed ? '4 2' : undefined} />
                   </svg>
-                  <span className="text-xs text-slate-400">{label}</span>
+                  <span className="text-[11px] text-slate-400 whitespace-nowrap">{label}</span>
                 </div>
               ))}
             </div>
@@ -306,47 +333,55 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
           </div>
         </div>
 
-        {/* Scrollable table — all years */}
-        <div className="rounded-xl border border-slate-200 dark:border-slate-700 xl:w-[520px] shrink-0 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="sticky top-0 z-10">
-                <tr className="bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
-                  <th className="text-left px-3 py-2 text-xs font-semibold text-slate-600 dark:text-slate-300">Jaar</th>
-                  <th className="text-right px-3 py-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400">Spaar</th>
-                  <th className="text-right px-3 py-2 text-xs font-semibold text-purple-600 dark:text-purple-400">Beleg</th>
-                  <th className="text-right px-3 py-2 text-xs font-semibold text-orange-500">Schulden</th>
-                  <th className="text-right px-3 py-2 text-xs font-semibold text-blue-600 dark:text-blue-400">Netto</th>
-                </tr>
-              </thead>
-            </table>
-          </div>
+        {/* ── Scrollable data table ── */}
+        <div className="mt-3 xl:mt-0 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden flex flex-col">
+          {/* Sticky header */}
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
+                <th className="text-left px-3 py-2 font-semibold text-slate-500 dark:text-slate-400">Jaar</th>
+                <th className="text-right px-3 py-2 font-semibold text-emerald-600 dark:text-emerald-400">Spaar</th>
+                <th className="text-right px-3 py-2 font-semibold text-purple-600 dark:text-purple-400">Beleg</th>
+                <th className="text-right px-3 py-2 font-semibold text-orange-500 dark:text-orange-400">Schulden</th>
+                <th className="text-right px-3 py-2 font-semibold text-blue-600 dark:text-blue-400">Netto</th>
+              </tr>
+            </thead>
+          </table>
+
           {/* Scrollable body */}
           <div
             className="overflow-y-auto"
-            style={{ maxHeight: Math.max(chartHeight + 44, 260) }}
+            style={{ maxHeight: Math.max(chartHeight, MIN_CHART_H) }}
           >
-            <table className="w-full text-sm">
+            <table className="w-full text-xs">
               <tbody>
                 {points.map((p, i) => {
                   const isNow = p.year === currentYear;
                   return (
-                    <tr key={p.year}
-                      className={`border-b border-slate-100 dark:border-slate-700 last:border-0 transition-colors ${
+                    <tr
+                      key={p.year}
+                      className={`border-b last:border-0 transition-colors ${
                         isNow
-                          ? 'bg-blue-50 dark:bg-blue-900/20'
+                          ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-100 dark:border-blue-800/30'
                           : i % 2 === 0
-                            ? 'bg-white dark:bg-slate-800'
-                            : 'bg-slate-50 dark:bg-slate-900'
+                            ? 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700/50'
+                            : 'bg-slate-50 dark:bg-slate-900 border-slate-100 dark:border-slate-700/50'
                       }`}
                     >
-                      <td className={`px-3 py-1.5 font-medium text-xs ${isNow ? 'text-blue-700 dark:text-blue-300' : 'text-slate-600 dark:text-slate-300'}`} style={{ width: '60px' }}>
-                        {p.year}{isNow && <span className="ml-1 text-blue-400 text-[10px]">nu</span>}
+                      <td
+                        className={`px-3 py-1.5 font-medium ${
+                          isNow ? 'text-blue-700 dark:text-blue-300' : 'text-slate-600 dark:text-slate-300'
+                        }`}
+                      >
+                        {p.year}
+                        {isNow && <span className="ml-1 text-blue-400 dark:text-blue-500 text-[10px]">nu</span>}
                       </td>
-                      <td className="px-3 py-1.5 text-right text-xs font-mono text-emerald-600 dark:text-emerald-400">{fmtK(p.savings)}</td>
-                      <td className="px-3 py-1.5 text-right text-xs font-mono text-purple-600 dark:text-purple-400">{fmtK(p.investments)}</td>
-                      <td className="px-3 py-1.5 text-right text-xs font-mono text-orange-500">−{fmtK(p.totalDebt)}</td>
-                      <td className={`px-3 py-1.5 text-right text-xs font-mono font-semibold ${p.netWorth >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-red-500'}`}>
+                      <td className="px-3 py-1.5 text-right font-mono text-emerald-600 dark:text-emerald-400 tabular-nums">{fmtK(p.savings)}</td>
+                      <td className="px-3 py-1.5 text-right font-mono text-purple-600 dark:text-purple-400 tabular-nums">{fmtK(p.investments)}</td>
+                      <td className="px-3 py-1.5 text-right font-mono text-orange-500 dark:text-orange-400 tabular-nums">−{fmtK(p.totalDebt)}</td>
+                      <td className={`px-3 py-1.5 text-right font-mono font-semibold tabular-nums ${
+                        p.netWorth >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-red-500 dark:text-red-400'
+                      }`}>
                         {fmtK(p.netWorth)}
                       </td>
                     </tr>
