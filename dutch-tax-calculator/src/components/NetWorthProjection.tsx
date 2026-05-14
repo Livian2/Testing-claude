@@ -104,6 +104,11 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
   const [swr, setSwr]           = useState<number>(4);
   const [aowLeeftijd, setAowLeeftijd] = useState<number>(67);
 
+  const isPartnerFireState = data.personal.filingStatus === 'partner';
+  const [aowBedragMaand, setAowBedragMaand] = useState<number>(isPartnerFireState ? 985 : 1400);
+  const [pensioenBedragMaand, setPensioenBedragMaand] = useState<number>(0);
+  const [pensioenLeeftijd, setPensioenLeeftijd] = useState<number>(67);
+
   const jaarlijksSparen   = data.savings.monthlySavingsContribution * 12;
   const jaarlijksBeleggen = data.savings.maandelijksBeleggen * 12;
 
@@ -126,6 +131,21 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
     const afschrijvingItems = data.afschrijvingen.categorieen.flatMap(c => c.items);
     const afschrijvingRate  = data.afschrijvingen.rentePercentage / 100;
 
+    // Annual income phases (bruto used as rough proxy for net reduction in withdrawal)
+    const aowJaar = aowBedragMaand * 12;
+    const pensioenJaar = pensioenBedragMaand * 12;
+    const aowCalendarYear = currentYear + Math.max(0, aowLeeftijd - data.personal.age);
+    const pensioenCalendarYear = currentYear + Math.max(0, pensioenLeeftijd - data.personal.age);
+
+    // Compute annual expenses for withdrawal modelling
+    const e = data.expenses;
+    const annualExp = (e.groceries + e.transport + e.insurance + e.healthcare + e.education + e.leisure + e.other) * 12;
+    const swrDecimal = swr / 100;
+    const heffingsvrij = isPartner ? 114_000 : 57_000;
+    const taxableW = Math.max(0, annualExp / swrDecimal - heffingsvrij);
+    const box3Drag = taxableW * 0.0588 * 0.36;
+    const fireNum = (annualExp + box3Drag) / swrDecimal;
+
     const duoBalanceByYear = new Map<number, number>();
     for (const duo of data.schulden.duo) {
       const sim = simuleerDuo(duo, startInkomen, inkomensstijging, currentYear, isPartner);
@@ -133,11 +153,51 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
         duoBalanceByYear.set(punt.jaar, (duoBalanceByYear.get(punt.jaar) ?? 0) + punt.balans);
       }
     }
+
     const result: ProjectionPoint[] = [];
+    let fired = false; // whether FIRE has been reached
+
     for (let i = 0; i <= config.jaren; i++) {
       const year = currentYear + i;
-      const savings     = i === 0 ? initSavings     : result[i-1].savings     * (1 + config.spaarrente / 100) + jaarlijksSparen;
-      const investments = i === 0 ? initInvestments : result[i-1].investments * (1 + config.rendementBeleggingen / 100) + jaarlijksBeleggen;
+
+      // Check if we were already fired at end of previous year
+      const prevNetWorth = i > 0 ? result[i-1].netWorth : (initSavings + initInvestments + wozWaarde);
+      if (!fired && i > 0 && prevNetWorth >= fireNum) {
+        fired = true;
+      }
+
+      let savings: number;
+      let investments: number;
+
+      if (i === 0) {
+        savings = initSavings;
+        investments = initInvestments;
+      } else {
+        const prev = result[i - 1];
+        if (!fired) {
+          // Accumulation phase: grow and add contributions
+          savings     = prev.savings     * (1 + config.spaarrente / 100) + jaarlijksSparen;
+          investments = prev.investments * (1 + config.rendementBeleggingen / 100) + jaarlijksBeleggen;
+        } else {
+          // Withdrawal phase: grow assets but subtract required annual withdrawal
+          const aowIncome = year > aowCalendarYear ? aowJaar : 0;
+          const pensioenIncome = year > pensioenCalendarYear ? pensioenJaar : 0;
+          const requiredWithdrawal = Math.max(0, annualExp - aowIncome - pensioenIncome);
+
+          // First grow, then withdraw — draw from savings first, then investments
+          const grownSavings = prev.savings * (1 + config.spaarrente / 100);
+          const grownInvestments = prev.investments * (1 + config.rendementBeleggingen / 100);
+
+          if (grownSavings >= requiredWithdrawal) {
+            savings = grownSavings - requiredWithdrawal;
+            investments = grownInvestments;
+          } else {
+            savings = 0;
+            investments = Math.max(0, grownInvestments - (requiredWithdrawal - grownSavings));
+          }
+        }
+      }
+
       const hypotheekDebt = data.woon.hypotheken.reduce((s, h) => s + berekenHypotheek(h, year).restschuldBegin, 0);
       const duoDebt     = duoBalanceByYear.get(year) ?? 0;
       const overigeDebt = data.schulden.beleggingen.reduce((s, schuld) => {
@@ -159,7 +219,7 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
       });
     }
     return result;
-  }, [data, config, currentYear, jaarlijksSparen, jaarlijksBeleggen]);
+  }, [data, config, currentYear, jaarlijksSparen, jaarlijksBeleggen, swr, aowBedragMaand, pensioenBedragMaand, aowLeeftijd, pensioenLeeftijd]);
 
   // ── FIRE calculations ──────────────────────────────────────────────────────
   const annualExpenses = useMemo(() => {
@@ -188,6 +248,13 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
   const currentAge = data.personal.age;
   const aowGapYears = fireYear !== null ? Math.max(0, aowLeeftijd - (currentAge + (fireYear - currentYear))) : null;
   const overbruggingskapitaal = aowGapYears !== null ? aowGapYears * annualExpenses : null;
+
+  // AOW & pension phase derived values
+  const aowJaarBedrag = aowBedragMaand * 12;
+  const pensioenJaarBedrag = pensioenBedragMaand * 12;
+  const aowCalendarYear = currentYear + Math.max(0, aowLeeftijd - currentAge);
+  const pensioenCalendarYear = currentYear + Math.max(0, pensioenLeeftijd - currentAge);
+  const nettoOnttrekkingNaAow = Math.max(0, annualExpenses - aowJaarBedrag - pensioenJaarBedrag);
 
   const fireProgress = useMemo(() => {
     const nw = points[0]?.netWorth ?? 0;
@@ -347,6 +414,50 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
             </div>
           </label>
 
+          {/* AOW bedrag per maand */}
+          <label className="flex items-center gap-1.5">
+            <span className="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">
+              AOW bedrag (bruto/mnd)
+              <span className="ml-1 text-[9px] text-slate-400 dark:text-slate-500">(ca. €1.400 alleenst. 2026)</span>
+            </span>
+            <div className="flex items-center border border-slate-300 dark:border-slate-600 rounded-lg overflow-hidden bg-white dark:bg-slate-700 focus-within:ring-2 focus-within:ring-emerald-400">
+              <span className="px-1.5 py-1 bg-slate-100 dark:bg-slate-600 text-slate-400 text-xs border-r border-slate-300 dark:border-slate-600 select-none">€</span>
+              <input type="number" min="0" max="5000" step="10"
+                value={aowBedragMaand}
+                onChange={e => setAowBedragMaand(parseInt(e.target.value) || 0)}
+                className="w-16 px-2 py-1 text-xs outline-none bg-white dark:bg-slate-700 dark:text-slate-100 text-right"
+              />
+            </div>
+          </label>
+
+          {/* Aanvullend pensioen */}
+          <label className="flex items-center gap-1.5">
+            <span className="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">Aanvullend pensioen (bruto/mnd)</span>
+            <div className="flex items-center border border-slate-300 dark:border-slate-600 rounded-lg overflow-hidden bg-white dark:bg-slate-700 focus-within:ring-2 focus-within:ring-indigo-400">
+              <span className="px-1.5 py-1 bg-slate-100 dark:bg-slate-600 text-slate-400 text-xs border-r border-slate-300 dark:border-slate-600 select-none">€</span>
+              <input type="number" min="0" max="10000" step="10"
+                value={pensioenBedragMaand}
+                onChange={e => setPensioenBedragMaand(parseInt(e.target.value) || 0)}
+                className="w-16 px-2 py-1 text-xs outline-none bg-white dark:bg-slate-700 dark:text-slate-100 text-right"
+              />
+            </div>
+          </label>
+
+          {/* Pensioen leeftijd */}
+          {pensioenBedragMaand > 0 && (
+            <label className="flex items-center gap-1.5">
+              <span className="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">Pensioenleeftijd</span>
+              <div className="flex items-center border border-slate-300 dark:border-slate-600 rounded-lg overflow-hidden bg-white dark:bg-slate-700 focus-within:ring-2 focus-within:ring-indigo-400">
+                <input type="number" min="55" max="75" step="1"
+                  value={pensioenLeeftijd}
+                  onChange={e => setPensioenLeeftijd(parseInt(e.target.value) || 67)}
+                  className="w-12 px-2 py-1 text-xs outline-none bg-white dark:bg-slate-700 dark:text-slate-100 text-right"
+                />
+                <span className="px-1.5 py-1 bg-slate-100 dark:bg-slate-600 text-slate-400 text-xs border-l border-slate-300 dark:border-slate-600 select-none">jr</span>
+              </div>
+            </label>
+          )}
+
           {/* FIRE numbers */}
           <div className="flex items-center gap-3 flex-wrap">
             <div className="flex items-center gap-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1">
@@ -360,6 +471,20 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
             <div className="flex items-center gap-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1">
               <span className="text-[10px] text-slate-400">Jaaruitgaven</span>
               <span className="text-xs font-bold tabular-nums text-slate-600 dark:text-slate-300">{nl0.format(annualExpenses)}</span>
+            </div>
+            <div className="flex items-center gap-1.5 bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-800/40 rounded-lg px-2.5 py-1">
+              <span className="text-[10px] text-slate-400">AOW bijdrage</span>
+              <span className="text-xs font-bold tabular-nums text-emerald-600 dark:text-emerald-400">{nl0.format(aowJaarBedrag)}/jr</span>
+            </div>
+            {pensioenJaarBedrag > 0 && (
+              <div className="flex items-center gap-1.5 bg-white dark:bg-slate-900 border border-indigo-200 dark:border-indigo-800/40 rounded-lg px-2.5 py-1">
+                <span className="text-[10px] text-slate-400">Pensioen bijdrage</span>
+                <span className="text-xs font-bold tabular-nums text-indigo-500 dark:text-indigo-400">{nl0.format(pensioenJaarBedrag)}/jr</span>
+              </div>
+            )}
+            <div className="flex items-center gap-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1">
+              <span className="text-[10px] text-slate-400">Netto onttrekking na AOW</span>
+              <span className="text-xs font-bold tabular-nums text-blue-600 dark:text-blue-400">{nl0.format(nettoOnttrekkingNaAow)}/jr</span>
             </div>
             {fireYear !== null ? (
               <div className="flex items-center gap-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1">
@@ -461,6 +586,56 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
                 <line x1={padL} y1={y0} x2={W - padR} y2={y0}
                   stroke="rgba(255,255,255,0.2)" strokeWidth={1} strokeDasharray="6 4" />
               )}
+
+              {/* AOW phase background band */}
+              {(() => {
+                const aowI = aowCalendarYear - currentYear;
+                if (aowI > 0 && aowI <= config.jaren) {
+                  const aowX = xPos(aowI);
+                  return (
+                    <rect x={aowX} y={padT} width={W - padR - aowX} height={chartH}
+                      fill="rgba(16,185,129,0.06)" />
+                  );
+                }
+                return null;
+              })()}
+
+              {/* AOW start vertical dashed line */}
+              {(() => {
+                const aowI = aowCalendarYear - currentYear;
+                if (aowI > 0 && aowI <= config.jaren) {
+                  const aowX = xPos(aowI);
+                  return (
+                    <g>
+                      <line x1={aowX} y1={padT} x2={aowX} y2={padT + chartH}
+                        stroke="#10b981" strokeWidth={1.5} strokeDasharray="6 4" strokeOpacity={0.7} />
+                      <text x={aowX + 4} y={padT + 14} fontSize={9} fill="#10b981" fillOpacity={0.85} fontFamily="system-ui, sans-serif" fontWeight="600">
+                        AOW {aowCalendarYear}
+                      </text>
+                    </g>
+                  );
+                }
+                return null;
+              })()}
+
+              {/* Pensioen start vertical dashed line (if different from AOW) */}
+              {(() => {
+                const penI = pensioenCalendarYear - currentYear;
+                const aowI = aowCalendarYear - currentYear;
+                if (pensioenBedragMaand > 0 && penI > 0 && penI <= config.jaren && penI !== aowI) {
+                  const penX = xPos(penI);
+                  return (
+                    <g>
+                      <line x1={penX} y1={padT} x2={penX} y2={padT + chartH}
+                        stroke="#6366f1" strokeWidth={1.5} strokeDasharray="4 4" strokeOpacity={0.7} />
+                      <text x={penX + 4} y={padT + 26} fontSize={9} fill="#6366f1" fillOpacity={0.85} fontFamily="system-ui, sans-serif" fontWeight="600">
+                        Pensioen {pensioenCalendarYear}
+                      </text>
+                    </g>
+                  );
+                }
+                return null;
+              })()}
 
               {/* FIRE target line */}
               {fireNumber > 0 && (

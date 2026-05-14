@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
-import { Flag, RefreshCw, Users, Download, Upload, Home, Moon, Sun, HelpCircle, Sparkles, BookOpen, TrendingDown } from 'lucide-react';
+import { Flag, RefreshCw, Users, Download, Upload, Home, Moon, Sun, HelpCircle, Sparkles, BookOpen } from 'lucide-react';
 import WelcomeModal from './components/WelcomeModal';
 import AboutPage    from './components/AboutPage';
 import type { TaxFormData, FilingStatus, PrognoseConfig } from './types';
@@ -16,6 +16,7 @@ import NetWorthProjection from './components/NetWorthProjection';
 import AfschrijvingenSection from './components/AfschrijvingenSection';
 import BankRekeningenSection from './components/BankRekeningenSection';
 import MarginaleDrukChart from './components/MarginaleDrukChart';
+import JaarruimteSection from './components/JaarruimteSection';
 import './index.css';
 
 const DEFAULT_DATA: TaxFormData = {
@@ -56,7 +57,7 @@ const DEFAULT_DATA: TaxFormData = {
   },
 };
 
-const APP_VERSION         = 'v1.7.0';
+const APP_VERSION         = 'v1.8.0';
 
 const STORAGE_KEY         = 'nl-belasting-data-v1';
 const PROGNOSE_STORAGE_KEY = 'nl-belasting-prognose-v1';
@@ -106,7 +107,7 @@ function loadSavedData(): TaxFormData {
   }
 }
 
-type Tab = 'income' | 'woon' | 'waardes' | 'expenses' | 'schulden' | 'bank' | 'portfolio' | 'afschrijvingen' | 'prognose' | 'results' | 'marginale';
+type Tab = 'income' | 'woon' | 'waardes' | 'expenses' | 'schulden' | 'bank' | 'portfolio' | 'afschrijvingen' | 'jaarruimte' | 'prognose' | 'results' | 'marginale';
 type AnyTab = Tab | 'home';
 
 interface TabMeta { id: Tab; label: string; emoji: string; description: string }
@@ -120,6 +121,7 @@ const ALL_TABS: TabMeta[] = [
   { id: 'bank',           label: 'Bankrekeningen',  emoji: '🏦', description: 'Actuele saldi van spaar- en betaalrekeningen — tellen mee voor netto vermogen.' },
   { id: 'portfolio',      label: 'Beleggen',        emoji: '📈', description: 'Portefeuille beheer: aankopen, verkopen, live koersen en dividenden.' },
   { id: 'afschrijvingen', label: 'Afschrijvingen',  emoji: '🔄', description: 'Sinking fund calculator: hoeveel spaar je per jaar voor vervangingen?' },
+  { id: 'jaarruimte',    label: 'Jaarruimte',      emoji: '🏛️', description: 'Bereken uw fiscale ruimte voor een lijfrenteverzekering of banksparen.' },
   { id: 'prognose',       label: 'Prognose',        emoji: '🔮', description: 'Vermogensprognose over 10/20/30 jaar: sparen, beleggen, schulden, netto vermogen.' },
   { id: 'results',        label: 'Berekening',      emoji: '🧮', description: 'Live belastingberekening: Box 1, Box 3, toeslagen en beschikbaar inkomen.' },
   { id: 'marginale',      label: 'Marginale Druk',  emoji: '📊', description: 'Effectief marginaal tarief: hoeveel houd je over van iedere extra verdiende euro?' },
@@ -206,8 +208,10 @@ export default function App() {
     bank:           t.tabs.bank,
     portfolio:      t.tabs.portfolio,
     afschrijvingen: t.tabs.depreciation,
+    jaarruimte:     t.tabs.jaarruimte,
     prognose:       t.tabs.forecast,
     results:        t.tabs.results,
+    marginale:      t.tabs.marginale,
   };
 
   const handleExport = () => {
@@ -607,6 +611,7 @@ export default function App() {
                   onChange={afschrijvingen => setData(d => ({ ...d, afschrijvingen }))}
                 />
               )}
+              {tab === 'jaarruimte' && <JaarruimteSection data={data} />}
             </div>
 
             {/* Right: live results panel */}

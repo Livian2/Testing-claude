@@ -225,13 +225,19 @@ export function calculateToeslagen(data: TaxFormData, box1: Box1Result, box3: Bo
   const ZORG_MAX_PARTNER    = 3096;             // 2 × 1548
   const ZORG_LIMIT_SINGLE   = 38441;
   const ZORG_LIMIT_PARTNER  = ZORG_NORM_PARTNER / ZORG_DREMPEL_PCT; // ≈ 76.882
+  // Vermogensgrens zorgtoeslag 2026: grondslag sparen en beleggen (bezittingen − schulden, vóór heffingsvrijdom)
+  const ZORG_VERM_SINGLE    = 140_250;
+  const ZORG_VERM_PARTNER   = 177_363;
 
   let zorgtoeslag = 0;
   const zorgNorm  = isPartner ? ZORG_NORM_PARTNER  : ZORG_NORM_SINGLE;
   const zorgMax   = isPartner ? ZORG_MAX_PARTNER   : ZORG_MAX_SINGLE;
   const zorgLimit = isPartner ? ZORG_LIMIT_PARTNER : ZORG_LIMIT_SINGLE;
+  const zorgVermGrens = isPartner ? ZORG_VERM_PARTNER : ZORG_VERM_SINGLE;
+  // box3.netWealth = rendementsgrondslag (bezittingen − schulden na drempel, vóór heffingsvrijdom)
+  const box3Vermogen = box3.netWealth;
 
-  if (toetsingsinkomen < zorgLimit) {
+  if (toetsingsinkomen < zorgLimit && box3Vermogen <= zorgVermGrens) {
     const raw = zorgNorm - ZORG_DREMPEL_PCT * toetsingsinkomen;
     zorgtoeslag = Math.max(0, Math.min(zorgMax, raw));
   }

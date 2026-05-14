@@ -20,8 +20,10 @@ export const translations = {
       bank:         'Bankrekeningen',
       portfolio:    'Portfolio',
       depreciation: 'Afschrijvingen',
+      jaarruimte:   'Jaarruimte',
       results:      'Berekening',
       forecast:     'Prognose',
+      marginale:    'Marginale Druk',
     },
 
     // ── Personal ────────────────────────────────────────────────────────────
@@ -325,8 +327,10 @@ export const translations = {
       bank:         'Bank accounts',
       portfolio:    'Portfolio',
       depreciation: 'Depreciation',
+      jaarruimte:   'Annual Space',
       results:      'Calculation',
       forecast:     'Forecast',
+      marginale:    'Marginal Pressure',
     },
 
     // ── Personal ────────────────────────────────────────────────────────────
