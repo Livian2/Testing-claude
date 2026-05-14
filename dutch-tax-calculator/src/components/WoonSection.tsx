@@ -298,6 +298,24 @@ function HypotheekCard({
             />
           </div>
 
+          {/* Overgangsrecht checkbox — only relevant for aflossingsvrij */}
+          {hyp.type === 'aflossingsvrijij' && (
+            <label className="flex items-start gap-2.5 cursor-pointer select-none py-2.5 px-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl">
+              <input
+                type="checkbox"
+                className="w-4 h-4 mt-0.5 accent-amber-600 shrink-0"
+                checked={hyp.overgangsrechtVoor2013 ?? true}
+                onChange={e => onUpdate({ overgangsrechtVoor2013: e.target.checked })}
+              />
+              <span className="text-sm text-amber-900 dark:text-amber-300">
+                <span className="font-medium">Valt onder overgangsrecht (vóór 2013)</span>
+                <span className="block text-xs text-amber-700 dark:text-amber-400 mt-0.5">
+                  Schakel uit als deze aflossingsvrije hypotheek na 2013 is afgesloten zonder overgangsrecht — de rente is dan <strong>niet</strong> aftrekbaar in Box 1.
+                </span>
+              </span>
+            </label>
+          )}
+
           {/* Computed results */}
           {berekening && (
             <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 space-y-3">
@@ -420,6 +438,8 @@ export default function WoonSection({ data, taxYear, onChange }: Props) {
               {(() => {
                 const totaalRente = data.hypotheken.reduce((s, h) => {
                   if (h.leningBedrag <= 0) return s;
+                  const deductible = h.type !== 'aflossingsvrijij' || (h.overgangsrechtVoor2013 ?? true);
+                  if (!deductible) return s;
                   try { return s + berekenHypotheek(h, taxYear).jaarRente; } catch { return s; }
                 }, 0);
                 if (totaalRente <= 0) return null;
@@ -457,12 +477,13 @@ export default function WoonSection({ data, taxYear, onChange }: Props) {
                       <div className="border-t border-green-200 dark:border-green-800 pt-2 space-y-1">
                         {data.hypotheken.map(h => {
                           if (h.leningBedrag <= 0) return null;
+                          const deductible = h.type !== 'aflossingsvrijij' || (h.overgangsrechtVoor2013 ?? true);
                           try {
                             const r = berekenHypotheek(h, taxYear).jaarRente;
                             return (
                               <div key={h.id} className="flex justify-between text-xs text-slate-600 dark:text-slate-300">
-                                <span>{h.label}</span>
-                                <span className="font-medium">{nl.format(r)}/jaar</span>
+                                <span>{h.label}{!deductible && <span className="ml-1 text-orange-600 dark:text-orange-400">(niet aftrekbaar)</span>}</span>
+                                <span className={`font-medium ${deductible ? '' : 'line-through text-slate-400'}`}>{nl.format(r)}/jaar</span>
                               </div>
                             );
                           } catch { return null; }

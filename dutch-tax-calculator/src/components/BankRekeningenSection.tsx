@@ -85,6 +85,14 @@ function SpaarSection({ data, onChange }: Props) {
                   onChange={v => update(r.id, { saldoHuidig: v })}
                 />
               </div>
+              <div className="col-span-10 sm:col-span-2 flex flex-col gap-1">
+                <label className="text-xs text-slate-500 dark:text-slate-400">{t.bank.jan1Balance} <InfoTooltip tip="Saldo op 1 januari voor Box 3. Laat leeg om het huidige saldo te gebruiken als schatting." /></label>
+                <CurrencyInput
+                  label=""
+                  value={r.saldoJan1 ?? 0}
+                  onChange={v => update(r.id, { saldoJan1: v > 0 ? v : undefined })}
+                />
+              </div>
               <div className="col-span-2 sm:col-span-1 flex items-end justify-end pb-0.5">
                 <button onClick={() => remove(r.id)} className="text-slate-400 hover:text-red-500 transition-colors">
                   <Trash2 size={16} />
@@ -161,12 +169,20 @@ function BetaalSection({ data, onChange }: Props) {
                   onChange={e => update(r.id, { instelling: e.target.value })}
                 />
               </div>
-              <div className="col-span-4 sm:col-span-3 flex flex-col gap-1">
+              <div className="col-span-4 sm:col-span-2 flex flex-col gap-1">
                 <label className="text-xs text-slate-500 dark:text-slate-400">{t.bank.currentBalance}</label>
                 <CurrencyInput
                   label=""
                   value={r.saldoHuidig}
                   onChange={v => update(r.id, { saldoHuidig: v })}
+                />
+              </div>
+              <div className="col-span-4 sm:col-span-2 flex flex-col gap-1">
+                <label className="text-xs text-slate-500 dark:text-slate-400">{t.bank.jan1Balance} <InfoTooltip tip="Saldo op 1 januari voor Box 3. Laat leeg om het huidige saldo te gebruiken als schatting." /></label>
+                <CurrencyInput
+                  label=""
+                  value={r.saldoJan1 ?? 0}
+                  onChange={v => update(r.id, { saldoJan1: v > 0 ? v : undefined })}
                 />
               </div>
               <div className="col-span-2 sm:col-span-1 flex items-end justify-end pb-0.5">

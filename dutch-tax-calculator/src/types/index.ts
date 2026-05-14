@@ -46,6 +46,7 @@ export interface HypotheekData {
   looptijd: number;           // years total
   startJaar: number;
   extraAflossingMaandelijks?: number;  // extra monthly repayment paid on the 15th
+  overgangsrechtVoor2013?: boolean;    // aflossingsvrij: true = pre-2013 transition rights (rente deductible)
 }
 
 export interface WoonData {
@@ -121,6 +122,7 @@ export interface BankSpaarRekening {
   instelling: string;
   saldoHuidig: number;
   rentePercentage: number;
+  saldoJan1?: number;  // Jan-1 balance for Box 3 (falls back to saldoHuidig when absent)
 }
 
 export interface BankBetaalRekening {
@@ -128,6 +130,7 @@ export interface BankBetaalRekening {
   naam: string;
   instelling: string;
   saldoHuidig: number;
+  saldoJan1?: number;  // Jan-1 balance for Box 3 (falls back to saldoHuidig when absent)
 }
 
 export interface BankData {
@@ -215,6 +218,10 @@ export interface Box1Result {
   netTax: number;
   effectiveRate: number;
   brackets: { rate: number; base: number; tax: number }[];
+  // Income breakdown (for display in results panel)
+  grossIncomeBeforeDeductions: number;
+  ewEffect: number;          // negative = HRA deduction, positive = Hillen addition
+  pensionDeduction: number;
 }
 
 export interface Box3Result {

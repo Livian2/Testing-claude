@@ -30,11 +30,14 @@ function hillenTaxableFraction(taxYear: number): number {
 
 // Net eigenwoninginkomen effect on Box 1 taxable income.
 // Returns a signed value: negative = deduction, positive = addition.
+// Aflossingsvrij hypotheken without overgangsrecht (post-2013) are not deductible.
 function eigenwoningEffect(woon: import('../types').WoonData, taxYear: number): number {
   if (woon.woningType !== 'hypotheek') return 0;
   let totalRente = 0;
   for (const hyp of woon.hypotheken) {
-    if (hyp.leningBedrag > 0) totalRente += berekenHypotheek(hyp, taxYear).jaarRente;
+    if (hyp.leningBedrag <= 0) continue;
+    const deductible = hyp.type !== 'aflossingsvrijij' || (hyp.overgangsrechtVoor2013 ?? true);
+    if (deductible) totalRente += berekenHypotheek(hyp, taxYear).jaarRente;
   }
   const ewf = calcEwf(woon.wozWaarde ?? 0);
   const ewi  = ewf - totalRente; // eigenwoninginkomen
@@ -96,6 +99,7 @@ export function calculateBox1(data: TaxFormData, verzamelinkomen?: number): Box1
     income.grossSalary + income.freelanceIncome + income.rentalIncome + income.otherBox1Income;
   // ewEffect is negative when there's a deduction, so adding it reduces taxable income
   const taxableIncome = Math.max(0, totalGrossIncome + ewEffect - income.pensionContributions);
+  const pensionDeduction = income.pensionContributions;
 
   let grossTax = 0;
   let remaining = taxableIncome;
@@ -119,7 +123,10 @@ export function calculateBox1(data: TaxFormData, verzamelinkomen?: number): Box1
   const netTax                  = Math.max(0, grossTax - algemeneHeffingskorting - arbeidskorting);
   const effectiveRate           = taxableIncome > 0 ? netTax / taxableIncome : 0;
 
-  return { taxableIncome, grossTax, algemeneHeffingskorting, arbeidskorting, netTax, effectiveRate, brackets };
+  return {
+    taxableIncome, grossTax, algemeneHeffingskorting, arbeidskorting, netTax, effectiveRate, brackets,
+    grossIncomeBeforeDeductions: totalGrossIncome, ewEffect, pensionDeduction,
+  };
 }
 
 // ─── Box 3 ─────────────────────────────────────────────────────────────────
@@ -137,10 +144,10 @@ export function calculateBox3(data: TaxFormData): Box3Result {
   const exemption = isPartner ? BOX3_EXEMPTION_PARTNER : BOX3_EXEMPTION_SINGLE;
   const threshold = isPartner ? BOX3_DEBT_THRESHOLD * 2 : BOX3_DEBT_THRESHOLD;
 
-  // Savings = bankData current balances only
+  // Savings = Jan-1 balances for Box 3 peildatum; fall back to current balance when Jan-1 not entered
   const totalSavings =
-    bankData.spaarrekeningen.reduce((s, a) => s + a.saldoHuidig, 0) +
-    bankData.betaalrekeningen.reduce((s, a) => s + a.saldoHuidig, 0);
+    bankData.spaarrekeningen.reduce((s, a) => s + (a.saldoJan1 ?? a.saldoHuidig), 0) +
+    bankData.betaalrekeningen.reduce((s, a) => s + (a.saldoJan1 ?? a.saldoHuidig), 0);
 
   // Investments = portfolio current value
   const positions = computePositions(data.portfolio.holdings, data.portfolio.transactions);
