@@ -213,24 +213,27 @@ export function calculateToeslagen(data: TaxFormData, box1: Box1Result, box3: Bo
   const toetsingsinkomen = box1.taxableIncome + Math.max(0, box3.fictitiousReturn);
 
   // ── Zorgtoeslag 2026 ──────────────────────────────────────────────────────
-  // Max per persoon €1.912/jr; partners ontvangen elk hun eigen toeslag (≈2×).
-  // Lineaire afbouw vanaf drempelinkomen tot inkomensgrens.
-  // 2026 zorgtoeslag: max €129/mnd (€1.548/jr) single, €258/mnd (€3.096/jr) partners
-  // Lineair afgebouwd vanaf het eerste euro inkomen
-  const ZORG_DREMPEL       = 0;
-  const ZORG_MAX_SINGLE    = 1548;   // 129 × 12
-  const ZORG_MAX_PARTNER   = 3096;   // 2 × 1548
-  const ZORG_LIMIT_SINGLE  = 38441;
-  const ZORG_LIMIT_PARTNER = 49000;
+  // Formule belastingdienst: zorgtoeslag = normPremie − drempelpercentage × inkomen
+  // normPremie (gestandaardiseerde premie) is de referentiepremie per persoon (2026: ≈€2.210/jr).
+  // Drempelpercentage 2026: 5,75%. Toeslag is max € 129/mnd (single) en min €0.
+  // Bij laag inkomen (bijv. €6.400) geeft de formule normPremie − 5,75% × 6.400 = €1.842 →
+  // begrensd op het maximum → volledige toeslag. Pas bij inkomen boven ~€11.500 daalt de toeslag.
+  const ZORG_DREMPEL_PCT    = 0.0575;           // drempelpercentage 2026
+  const ZORG_NORM_SINGLE    = 38441 * 0.0575;   // ≈ 2210, afgeleid zodat toeslag = 0 op inkomensgrens
+  const ZORG_NORM_PARTNER   = ZORG_NORM_SINGLE * 2;
+  const ZORG_MAX_SINGLE     = 1548;             // 129 × 12
+  const ZORG_MAX_PARTNER    = 3096;             // 2 × 1548
+  const ZORG_LIMIT_SINGLE   = 38441;
+  const ZORG_LIMIT_PARTNER  = ZORG_NORM_PARTNER / ZORG_DREMPEL_PCT; // ≈ 76.882
 
   let zorgtoeslag = 0;
-  const zorgMax   = isPartner ? ZORG_MAX_PARTNER : ZORG_MAX_SINGLE;
+  const zorgNorm  = isPartner ? ZORG_NORM_PARTNER  : ZORG_NORM_SINGLE;
+  const zorgMax   = isPartner ? ZORG_MAX_PARTNER   : ZORG_MAX_SINGLE;
   const zorgLimit = isPartner ? ZORG_LIMIT_PARTNER : ZORG_LIMIT_SINGLE;
 
   if (toetsingsinkomen < zorgLimit) {
-    const afbouw = Math.max(0, toetsingsinkomen - ZORG_DREMPEL);
-    const rate   = zorgMax / (zorgLimit - ZORG_DREMPEL);
-    zorgtoeslag  = Math.max(0, zorgMax - afbouw * rate);
+    const raw = zorgNorm - ZORG_DREMPEL_PCT * toetsingsinkomen;
+    zorgtoeslag = Math.max(0, Math.min(zorgMax, raw));
   }
 
   // ── Huurtoeslag 2026 ──────────────────────────────────────────────────────
