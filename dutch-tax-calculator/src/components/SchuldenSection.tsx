@@ -314,7 +314,7 @@ function DebtGroup({ title, icon, items, taxYear, accent, buttonColor, isDuo, on
 
 // ── DUO Simulation Chart ─────────────────────────────────────────────────────
 
-const W = 560, H = 130, PAD = { t: 8, r: 12, b: 28, l: 56 };
+const W = 800, H = 280, PAD = { t: 16, r: 16, b: 32, l: 72 };
 
 const FASE_COLOR: Record<DuoFase, string> = {
   'voor-start':    '#94a3b8',
@@ -329,6 +329,24 @@ interface ChartPoint {
   jaar: number;
   balans: number;
   fase: DuoFase;
+}
+
+// Catmull-Rom → cubic bezier smooth path
+function smoothPath(pts: [number, number][]): string {
+  if (pts.length < 2) return '';
+  let d = `M ${pts[0][0].toFixed(2)} ${pts[0][1].toFixed(2)}`;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[Math.max(0, i - 1)];
+    const p1 = pts[i];
+    const p2 = pts[i + 1];
+    const p3 = pts[Math.min(pts.length - 1, i + 2)];
+    const cp1x = p1[0] + (p2[0] - p0[0]) / 6;
+    const cp1y = p1[1] + (p2[1] - p0[1]) / 6;
+    const cp2x = p2[0] - (p3[0] - p1[0]) / 6;
+    const cp2y = p2[1] - (p3[1] - p1[1]) / 6;
+    d += ` C ${cp1x.toFixed(2)} ${cp1y.toFixed(2)}, ${cp2x.toFixed(2)} ${cp2y.toFixed(2)}, ${p2[0].toFixed(2)} ${p2[1].toFixed(2)}`;
+  }
+  return d;
 }
 
 function DuoChart({ points, chartStart, maxBal, taxYear }: {
@@ -357,8 +375,8 @@ function DuoChart({ points, chartStart, maxBal, taxYear }: {
     }
   });
 
-  const toPath = (indices: number[]) =>
-    indices.map((i, j) => `${j === 0 ? 'M' : 'L'}${xS(i).toFixed(1)},${yS(points[i].balans).toFixed(1)}`).join(' ');
+  const segmentToPts = (indices: number[]): [number, number][] =>
+    indices.map(i => [xS(i), yS(points[i].balans)] as [number, number]);
 
   // X-axis ticks every 5 years + first + last
   const xTicks = points.filter((p, i) => {
@@ -368,64 +386,85 @@ function DuoChart({ points, chartStart, maxBal, taxYear }: {
   const taxYearIdx = points.findIndex(p => p.jaar === taxYear);
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ maxHeight: 150 }}>
-      <defs>
-        <clipPath id="chart-clip">
-          <rect x={PAD.l} y={PAD.t} width={iW} height={iH} />
-        </clipPath>
-      </defs>
+    <div className="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#080e1a] shadow-sm">
+      <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H} preserveAspectRatio="none" style={{ display: 'block' }}>
+        <defs>
+          <clipPath id="duo-chart-clip">
+            <rect x={PAD.l} y={PAD.t} width={iW} height={iH} />
+          </clipPath>
+          {/* One gradient per phase color */}
+          {(Object.entries(FASE_COLOR) as [DuoFase, string][]).map(([fase, color]) => (
+            <linearGradient key={fase} id={`duo-grad-${fase}`} x1="0" y1={PAD.t} x2="0" y2={PAD.t + iH} gradientUnits="userSpaceOnUse">
+              <stop offset="0%"   stopColor={color} stopOpacity="0.4" />
+              <stop offset="100%" stopColor={color} stopOpacity="0.02" />
+            </linearGradient>
+          ))}
+        </defs>
 
-      {/* Grid lines */}
-      {[0, 0.25, 0.5, 0.75, 1].map(f => (
-        <g key={f}>
-          <line x1={PAD.l} y1={yS(maxBal * f)} x2={PAD.l + iW} y2={yS(maxBal * f)}
-            stroke="#f1f5f9" strokeWidth={1} />
-          <text x={PAD.l - 4} y={yS(maxBal * f) + 3} textAnchor="end" fontSize={8} fill="#94a3b8">
-            {f === 0 ? '0' : nl.format(Math.round(maxBal * f))}
-          </text>
-        </g>
-      ))}
-
-      {/* Filled area per segment */}
-      {segments.map((seg, si) => {
-        if (seg.indices.length < 2) return null;
-        const linePath = toPath(seg.indices);
-        const lastI = seg.indices[seg.indices.length - 1];
-        const firstI = seg.indices[0];
-        const areaPath = `${linePath} L${xS(lastI).toFixed(1)},${PAD.t + iH} L${xS(firstI).toFixed(1)},${PAD.t + iH} Z`;
-        const color = FASE_COLOR[seg.fase];
-        return (
-          <g key={si} clipPath="url(#chart-clip)">
-            <path d={areaPath} fill={color} fillOpacity={0.12} />
-            <path d={linePath} fill="none" stroke={color} strokeWidth={2} strokeLinejoin="round" />
+        {/* Grid lines */}
+        {[0, 0.25, 0.5, 0.75, 1].map(f => (
+          <g key={f}>
+            <line x1={PAD.l} y1={yS(maxBal * f)} x2={PAD.l + iW} y2={yS(maxBal * f)}
+              className="stroke-slate-200 dark:stroke-white/5" strokeWidth={1} />
+            <text x={PAD.l - 8} y={yS(maxBal * f) + 4} textAnchor="end" fontSize={11}
+              className="fill-slate-500 dark:fill-white/40" fontFamily="system-ui, sans-serif">
+              {f === 0 ? '€ 0' : nl.format(Math.round(maxBal * f))}
+            </text>
           </g>
-        );
-      })}
+        ))}
 
-      {/* Tax year marker */}
-      {taxYearIdx >= 0 && (
-        <>
-          <line
-            x1={xS(taxYearIdx)} y1={PAD.t} x2={xS(taxYearIdx)} y2={PAD.t + iH}
-            stroke="#64748b" strokeWidth={1} strokeDasharray="3 2"
-          />
-          <text x={xS(taxYearIdx) + 3} y={PAD.t + 9} fontSize={8} fill="#64748b">nu</text>
-        </>
-      )}
+        {/* Left axis */}
+        <line x1={PAD.l} y1={PAD.t} x2={PAD.l} y2={PAD.t + iH}
+          className="stroke-slate-300 dark:stroke-white/10" strokeWidth={1} />
 
-      {/* X-axis labels */}
-      {xTicks.map((p, i) => {
-        const idx = points.indexOf(p);
-        return (
-          <text key={i} x={xS(idx)} y={H - PAD.b + 12} textAnchor="middle" fontSize={8} fill="#94a3b8">
-            {p.jaar}
-          </text>
-        );
-      })}
+        {/* Filled area + smooth line per segment */}
+        {segments.map((seg, si) => {
+          if (seg.indices.length < 2) return null;
+          const pts = segmentToPts(seg.indices);
+          const linePath = smoothPath(pts);
+          const lastPt   = pts[pts.length - 1];
+          const firstPt  = pts[0];
+          const areaPath = `${linePath} L ${lastPt[0].toFixed(2)} ${(PAD.t + iH).toFixed(2)} L ${firstPt[0].toFixed(2)} ${(PAD.t + iH).toFixed(2)} Z`;
+          const color    = FASE_COLOR[seg.fase];
+          return (
+            <g key={si} clipPath="url(#duo-chart-clip)">
+              <path d={areaPath}  fill={`url(#duo-grad-${seg.fase})`} />
+              <path d={linePath}  fill="none" stroke={color} strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />
+            </g>
+          );
+        })}
 
-      {/* X-axis line */}
-      <line x1={PAD.l} y1={PAD.t + iH} x2={PAD.l + iW} y2={PAD.t + iH} stroke="#e2e8f0" strokeWidth={1} />
-    </svg>
+        {/* Tax year marker */}
+        {taxYearIdx >= 0 && (
+          <g>
+            <line
+              x1={xS(taxYearIdx)} y1={PAD.t} x2={xS(taxYearIdx)} y2={PAD.t + iH}
+              className="stroke-slate-400 dark:stroke-white/30"
+              strokeWidth={1} strokeDasharray="4 3"
+            />
+            <rect x={xS(taxYearIdx) - 14} y={PAD.t + 2} width={28} height={14} rx={3}
+              className="fill-amber-500" />
+            <text x={xS(taxYearIdx)} y={PAD.t + 12} textAnchor="middle" fontSize={9.5}
+              fontWeight="700" fill="white" fontFamily="system-ui, sans-serif">nu</text>
+          </g>
+        )}
+
+        {/* X-axis labels */}
+        {xTicks.map((p, i) => {
+          const idx = points.indexOf(p);
+          return (
+            <text key={i} x={xS(idx)} y={H - 10} textAnchor="middle" fontSize={11}
+              className="fill-slate-500 dark:fill-white/40" fontFamily="system-ui, sans-serif">
+              {p.jaar}
+            </text>
+          );
+        })}
+
+        {/* X-axis baseline */}
+        <line x1={PAD.l} y1={PAD.t + iH} x2={PAD.l + iW} y2={PAD.t + iH}
+          className="stroke-slate-300 dark:stroke-white/10" strokeWidth={1} />
+      </svg>
+    </div>
   );
 }
 
