@@ -281,6 +281,7 @@ export default function App() {
         <AboutPage
           onClose={() => setShowAbout(false)}
           onGetStarted={() => { setShowAbout(false); setTab('home'); }}
+          onOpenTab={(t) => { setShowAbout(false); setTab(t as Tab); }}
         />
       )}
 
