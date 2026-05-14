@@ -387,7 +387,7 @@ function DuoChart({ points, chartStart, maxBal, taxYear }: {
 
   return (
     <div className="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#080e1a] shadow-sm">
-      <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H} preserveAspectRatio="none" style={{ display: 'block' }}>
+      <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: 'block', height: 'auto' }}>
         <defs>
           <clipPath id="duo-chart-clip">
             <rect x={PAD.l} y={PAD.t} width={iW} height={iH} />

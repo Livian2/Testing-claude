@@ -5,7 +5,7 @@ import { computePositions } from '../utils/taxCalculations';
 import { simuleerDuo } from '../utils/duo';
 import { useLanguage } from '../i18n/LanguageContext';
 import SectionCard from './SectionCard';
-import { TrendingUp, GripHorizontal } from 'lucide-react';
+import { TrendingUp } from 'lucide-react';
 
 interface Props {
   data: TaxFormData;
@@ -81,9 +81,6 @@ function smoothArea(pts: [number, number][], baseY: number): string {
   return `${path} L ${last[0].toFixed(2)} ${baseY.toFixed(2)} L ${first[0].toFixed(2)} ${baseY.toFixed(2)} Z`;
 }
 
-const MIN_CHART_H = 180;
-const MAX_CHART_H = 640;
-
 const SERIES = [
   { key: 'netWorth',    color: '#3b82f6', label: 'Netto vermogen',        dashed: false, width: 2.5, fill: true  },
   { key: 'investments', color: '#a78bfa', label: 'Beleggingen',           dashed: false, width: 2,   fill: true  },
@@ -98,28 +95,8 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
   const { t } = useLanguage();
   const currentYear = data.personal.taxYear;
 
-  const [chartHeight, setChartHeight] = useState(320);
-  const [hoverIdx, setHoverIdx]       = useState<number | null>(null);
-  const svgRef                        = useRef<SVGSVGElement>(null);
-  const dragStartY                    = useRef<number | null>(null);
-  const dragStartH                    = useRef<number>(320);
-
-  const onResizeDown = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    dragStartY.current = e.clientY;
-    dragStartH.current = chartHeight;
-    const onMove = (ev: MouseEvent) => {
-      if (dragStartY.current === null) return;
-      setChartHeight(Math.min(MAX_CHART_H, Math.max(MIN_CHART_H, dragStartH.current + ev.clientY - dragStartY.current)));
-    };
-    const onUp = () => {
-      dragStartY.current = null;
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseup', onUp);
-    };
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
-  }, [chartHeight]);
+  const [hoverIdx, setHoverIdx] = useState<number | null>(null);
+  const svgRef                  = useRef<SVGSVGElement>(null);
 
   const jaarlijksSparen   = data.savings.monthlySavingsContribution * 12;
   const jaarlijksBeleggen = data.savings.maandelijksBeleggen * 12;
@@ -161,8 +138,8 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
     return result;
   }, [data, config, currentYear, jaarlijksSparen, jaarlijksBeleggen]);
 
-  // ── Chart geometry ──────────────────────────────────────────────────────────
-  const W = 1000; const H = chartHeight;
+  // ── Chart geometry — fixed viewBox, scales proportionally via aspect-ratio ──
+  const W = 1000; const H = 440;
   const padL = 72; const padR = 24; const padT = 24; const padB = 36;
   const chartW = W - padL - padR;
   const chartH = H - padT - padB;
@@ -286,8 +263,8 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
           {/* SVG */}
           <div className="relative bg-[#080e1a]" style={{ userSelect: 'none' }}>
             <svg ref={svgRef}
-              viewBox={`0 0 ${W} ${H}`} width="100%" height={chartHeight}
-              preserveAspectRatio="none" style={{ display: 'block' }}
+              viewBox={`0 0 ${W} ${H}`} width="100%"
+              style={{ display: 'block', height: 'auto' }}
               onMouseMove={onSvgMouseMove}
               onMouseLeave={() => setHoverIdx(null)}
             >
@@ -424,13 +401,6 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
               ))}
             </div>
           </div>
-
-          {/* Resize handle */}
-          <div onMouseDown={onResizeDown}
-            className="bg-[#0d1526] border-t border-slate-800 flex items-center justify-center gap-2 py-1.5 cursor-ns-resize select-none group">
-            <GripHorizontal size={13} className="text-slate-600 group-hover:text-slate-400 transition-colors" />
-            <span className="text-[10px] text-slate-600 group-hover:text-slate-400 transition-colors">hoogte aanpassen</span>
-          </div>
         </div>
 
         {/* ── Table ── */}
@@ -446,7 +416,7 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
               </tr>
             </thead>
           </table>
-          <div className="overflow-y-auto" style={{ maxHeight: Math.max(chartHeight + 44, 300) }}>
+          <div className="overflow-y-auto" style={{ maxHeight: 500 }}>
             <table className="w-full text-xs table-fixed">
               <tbody>
                 {points.map((p, i) => {
