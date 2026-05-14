@@ -3,6 +3,7 @@ import type { TaxFormData, PrognoseConfig } from '../types';
 import { berekenHypotheek } from '../utils/hypotheek';
 import { computePositions } from '../utils/taxCalculations';
 import { simuleerDuo } from '../utils/duo';
+import { gereserveerdTotNu } from '../utils/afschrijvingen';
 import { useLanguage } from '../i18n/LanguageContext';
 import SectionCard from './SectionCard';
 import { TrendingUp } from 'lucide-react';
@@ -17,10 +18,12 @@ interface ProjectionPoint {
   year: number;
   savings: number;
   investments: number;
+  wozWaarde: number;
   hypotheekDebt: number;
   duoDebt: number;
   overigeDebt: number;
   totalDebt: number;
+  afschrijvingenReserve: number;
   netWorth: number;
 }
 
@@ -85,6 +88,7 @@ const SERIES = [
   { key: 'netWorth',    color: '#3b82f6', label: 'Netto vermogen',        dashed: false, width: 2.5, fill: true  },
   { key: 'investments', color: '#a78bfa', label: 'Beleggingen',           dashed: false, width: 2,   fill: true  },
   { key: 'savings',     color: '#34d399', label: 'Spaarbalans',           dashed: false, width: 1.5, fill: false },
+  { key: 'woz',         color: '#fbbf24', label: 'Eigen woning (WOZ)',    dashed: true,  width: 1.5, fill: false },
   { key: 'hyp',         color: '#fb923c', label: 'Hypotheekschuld (neg.)', dashed: true,  width: 1.5, fill: false },
   { key: 'box3',        color: '#f87171', label: 'Box 3 schulden (neg.)', dashed: true,  width: 1.5, fill: false },
 ] as const;
@@ -112,6 +116,14 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
     const startInkomen = data.income.grossSalary + data.income.freelanceIncome;
     const inkomensstijging = (config.inkomensstijging ?? 2) / 100;
     const isPartner = data.personal.filingStatus === 'partner';
+
+    // WOZ: only included if the user owns the property; stays constant over years
+    const wozWaarde = data.woon.woningType === 'koop' ? (data.woon.wozWaarde ?? 0) : 0;
+
+    // Pre-collect all afschrijving items for reserve projection
+    const afschrijvingItems = data.afschrijvingen.categorieen.flatMap(c => c.items);
+    const afschrijvingRate  = data.afschrijvingen.rentePercentage / 100;
+
     const duoBalanceByYear = new Map<number, number>();
     for (const duo of data.schulden.duo) {
       const sim = simuleerDuo(duo, startInkomen, inkomensstijging, currentYear, isPartner);
@@ -133,7 +145,16 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
         return s + schuld.bedrag * (1 - elapsed / schuld.looptijd);
       }, 0);
       const totalDebt = hypotheekDebt + duoDebt + overigeDebt;
-      result.push({ year, savings, investments, hypotheekDebt, duoDebt, overigeDebt, totalDebt, netWorth: savings + investments - totalDebt });
+      // Accumulated afschrijvingen reserve earmarked from savings (grows each year)
+      const afschrijvingenReserve = afschrijvingItems.reduce(
+        (sum, item) => sum + gereserveerdTotNu(item, afschrijvingRate, year), 0
+      );
+      result.push({
+        year, savings, investments, wozWaarde,
+        hypotheekDebt, duoDebt, overigeDebt, totalDebt,
+        afschrijvingenReserve,
+        netWorth: savings + investments + wozWaarde - totalDebt - afschrijvingenReserve,
+      });
     }
     return result;
   }, [data, config, currentYear, jaarlijksSparen, jaarlijksBeleggen]);
@@ -144,8 +165,9 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
   const chartW = W - padL - padR;
   const chartH = H - padT - padB;
 
+  const hasWoz   = points[0]?.wozWaarde > 0;
   const box3Debt = (p: ProjectionPoint) => p.duoDebt + p.overigeDebt;
-  const allValues = points.flatMap(p => [p.savings, p.investments, -p.hypotheekDebt, -box3Debt(p), p.netWorth]);
+  const allValues = points.flatMap(p => [p.savings, p.investments, p.wozWaarde, -p.hypotheekDebt, -box3Debt(p), p.netWorth]);
   const dataMin = Math.min(...allValues, 0);
   const dataMax = Math.max(...allValues);
   const valuePad = (dataMax - dataMin) * 0.08 || 10000;
@@ -161,6 +183,7 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
     netWorth:    seriesPts(points.map(p => p.netWorth)),
     investments: seriesPts(points.map(p => p.investments)),
     savings:     seriesPts(points.map(p => p.savings)),
+    woz:         seriesPts(points.map(p => p.wozWaarde)),
     hyp:         seriesPts(points.map(p => -p.hypotheekDebt)),
     box3:        seriesPts(points.map(p => -box3Debt(p))),
   };
@@ -322,6 +345,7 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
               <g clipPath="url(#chartClip)">
                 {/* Back series first */}
                 <path d={smoothPath(ptsMap.savings)}     fill="none" stroke="#34d399" strokeWidth={1.5} strokeLinecap="round" />
+                {hasWoz && <path d={smoothPath(ptsMap.woz)} fill="none" stroke="#fbbf24" strokeWidth={1.5} strokeDasharray="8 4" strokeLinecap="round" />}
                 <path d={smoothPath(ptsMap.hyp)}         fill="none" stroke="#fb923c" strokeWidth={1.5} strokeDasharray="6 3" strokeLinecap="round" />
                 <path d={smoothPath(ptsMap.box3)}        fill="none" stroke="#f87171" strokeWidth={1.5} strokeDasharray="3 3" strokeLinecap="round" />
                 <path d={smoothPath(ptsMap.investments)} fill="none" stroke="#a78bfa" strokeWidth={2}   strokeLinecap="round" />
@@ -337,12 +361,13 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
                     stroke="rgba(255,255,255,0.2)" strokeWidth={1} strokeDasharray="4 3" />
                   {/* Dots on each series */}
                   {([
-                    { pts: ptsMap.netWorth,    color: '#3b82f6', r: 5 },
-                    { pts: ptsMap.investments, color: '#a78bfa', r: 4 },
-                    { pts: ptsMap.savings,     color: '#34d399', r: 3 },
-                    { pts: ptsMap.hyp,         color: '#fb923c', r: 3 },
-                    { pts: ptsMap.box3,        color: '#f87171', r: 3 },
-                  ] as const).map(({ pts, color, r }, i) => {
+                    { pts: ptsMap.netWorth,    color: '#3b82f6', r: 5, show: true },
+                    { pts: ptsMap.investments, color: '#a78bfa', r: 4, show: true },
+                    { pts: ptsMap.savings,     color: '#34d399', r: 3, show: true },
+                    { pts: ptsMap.woz,         color: '#fbbf24', r: 3, show: hasWoz },
+                    { pts: ptsMap.hyp,         color: '#fb923c', r: 3, show: true },
+                    { pts: ptsMap.box3,        color: '#f87171', r: 3, show: true },
+                  ] as const).filter(s => s.show).map(({ pts, color, r }, i) => {
                     const pt = pts[hoverIdx];
                     if (!pt) return null;
                     return (
@@ -355,23 +380,24 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
 
                   {/* Tooltip — position left of cursor if near right edge */}
                   {(() => {
-                    const tipW = 180; const tipH = 148;
+                    const tipRows = [
+                      { label: 'Netto',       val: hp.netWorth,                       color: '#60a5fa', show: true },
+                      { label: 'Beleg',       val: hp.investments,                    color: '#c4b5fd', show: true },
+                      { label: 'Spaar',       val: hp.savings,                        color: '#6ee7b7', show: true },
+                      { label: 'WOZ',         val: hp.wozWaarde,                      color: '#fbbf24', show: hasWoz },
+                      { label: 'Hypotheek',   val: -hp.hypotheekDebt,                 color: '#fdba74', show: true },
+                      { label: 'Box3 sch.',   val: -(hp.duoDebt + hp.overigeDebt),    color: '#fca5a5', show: true },
+                      { label: 'Afschr.res.', val: -hp.afschrijvingenReserve,         color: '#94a3b8', show: hp.afschrijvingenReserve > 0 },
+                    ].filter(r => r.show);
+                    const tipW = 185; const tipH = 28 + tipRows.length * 22;
                     const flip = hoverX > W - padR - tipW - 20;
                     const tx = flip ? hoverX - tipW - 14 : hoverX + 14;
                     const ty = Math.max(padT + 4, Math.min(padT + chartH - tipH - 4, yPos(hp.netWorth) - tipH / 2));
                     return (
                       <g transform={`translate(${tx},${ty})`}>
                         <rect width={tipW} height={tipH} rx={8} ry={8} fill="#0f172a" stroke="rgba(255,255,255,0.12)" strokeWidth={1} />
-                        {/* Year header */}
                         <text x={12} y={20} fontSize={13} fontWeight="bold" fill="white" fontFamily="system-ui, sans-serif">{hp.year}</text>
-                        {/* Rows */}
-                        {[
-                          { label: 'Netto',     val: hp.netWorth,         color: '#60a5fa' },
-                          { label: 'Beleg',     val: hp.investments,      color: '#c4b5fd' },
-                          { label: 'Spaar',     val: hp.savings,          color: '#6ee7b7' },
-                          { label: 'Hypotheek', val: -hp.hypotheekDebt,   color: '#fdba74' },
-                          { label: 'Box3 sch.', val: -(hp.duoDebt + hp.overigeDebt), color: '#fca5a5' },
-                        ].map(({ label, val, color }, ri) => (
+                        {tipRows.map(({ label, val, color }, ri) => (
                           <g key={ri} transform={`translate(0,${32 + ri * 22})`}>
                             <rect x={12} y={4} width={8} height={8} rx={2} fill={color} />
                             <text x={26} y={13} fontSize={11} fill="rgba(255,255,255,0.6)" fontFamily="system-ui, sans-serif">{label}</text>
@@ -390,7 +416,7 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
           {/* Legend */}
           <div className="bg-[#0d1526] border-t border-slate-800 px-4 py-2.5">
             <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-1.5">
-              {SERIES.map(({ color, label, dashed }) => (
+              {SERIES.filter(s => s.key !== 'woz' || hasWoz).map(({ color, label, dashed }) => (
                 <div key={label} className="flex items-center gap-1.5">
                   <svg width={20} height={12} style={{ flexShrink: 0 }}>
                     <line x1={0} y1={6} x2={20} y2={6} stroke={color} strokeWidth={dashed ? 1.5 : 2}
@@ -411,6 +437,7 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
                 <th className="text-left px-3 py-2 font-semibold text-slate-500 dark:text-slate-400 w-[52px]">Jaar</th>
                 <th className="text-right px-2 py-2 font-semibold text-emerald-600 dark:text-emerald-400">Spaar</th>
                 <th className="text-right px-2 py-2 font-semibold text-violet-500 dark:text-violet-400">Beleg</th>
+                {hasWoz && <th className="text-right px-2 py-2 font-semibold text-amber-500 dark:text-amber-400">WOZ</th>}
                 <th className="text-right px-2 py-2 font-semibold text-orange-500 dark:text-orange-400">Schuld</th>
                 <th className="text-right px-3 py-2 font-semibold text-blue-600 dark:text-blue-400">Netto</th>
               </tr>
@@ -446,6 +473,7 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
                       </td>
                       <td className="px-2 py-1.5 text-right font-mono tabular-nums text-emerald-600 dark:text-emerald-400">{fmtK(p.savings)}</td>
                       <td className="px-2 py-1.5 text-right font-mono tabular-nums text-violet-500 dark:text-violet-400">{fmtK(p.investments)}</td>
+                      {hasWoz && <td className="px-2 py-1.5 text-right font-mono tabular-nums text-amber-500 dark:text-amber-400">{fmtK(p.wozWaarde)}</td>}
                       <td className="px-2 py-1.5 text-right font-mono tabular-nums text-orange-500 dark:text-orange-400">−{fmtK(p.totalDebt)}</td>
                       <td className={`px-3 py-1.5 text-right font-mono tabular-nums font-semibold ${p.netWorth >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-red-500 dark:text-red-400'}`}>
                         {fmtK(p.netWorth)}
