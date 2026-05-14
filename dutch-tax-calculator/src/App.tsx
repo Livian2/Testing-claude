@@ -53,6 +53,8 @@ const DEFAULT_DATA: TaxFormData = {
   },
 };
 
+const APP_VERSION         = 'v1.3.0';
+
 const STORAGE_KEY         = 'nl-belasting-data-v1';
 const PROGNOSE_STORAGE_KEY = 'nl-belasting-prognose-v1';
 const TABS_STORAGE_KEY    = 'nl-belasting-tabs-v1';
@@ -263,7 +265,10 @@ export default function App() {
               <span className="text-sm font-bold">NL Belasting</span>
             </div>
             <div className="hidden sm:block">
-              <h1 className="text-base font-semibold text-slate-800 dark:text-slate-100 m-0">{t.appTitle}</h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-base font-semibold text-slate-800 dark:text-slate-100 m-0">{t.appTitle}</h1>
+                <span className="text-xs font-mono text-slate-400 dark:text-slate-500">{APP_VERSION}</span>
+              </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 m-0">{t.appSubtitle}</p>
             </div>
           </div>
