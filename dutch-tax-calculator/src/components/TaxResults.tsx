@@ -40,22 +40,22 @@ export default function TaxResults({ result }: Props) {
           <Calculator size={20} className="text-orange-400" />
           <h2 className="text-base font-semibold text-slate-200">Belastingberekening 2026</h2>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <div>
-            <p className="text-xs text-slate-400 mb-1">{t.results.totalTax}</p>
-            <p className="text-2xl font-bold text-red-400">{fmt(totalTax)}</p>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="min-w-0">
+            <p className="text-xs text-slate-400 mb-1 truncate">{t.results.totalTax}</p>
+            <p className="text-xl lg:text-2xl font-bold text-red-400 break-words">{fmt(totalTax)}</p>
           </div>
-          <div>
-            <p className="text-xs text-slate-400 mb-1">{t.results.box1Tax}</p>
-            <p className="text-2xl font-bold text-orange-400">{fmt(box1.netTax)}</p>
+          <div className="min-w-0">
+            <p className="text-xs text-slate-400 mb-1 truncate">{t.results.box1Tax}</p>
+            <p className="text-xl lg:text-2xl font-bold text-orange-400 break-words">{fmt(box1.netTax)}</p>
           </div>
-          <div>
-            <p className="text-xs text-slate-400 mb-1">{t.results.box3Tax}</p>
-            <p className="text-2xl font-bold text-purple-400">{fmt(box3.netTax)}</p>
+          <div className="min-w-0">
+            <p className="text-xs text-slate-400 mb-1 truncate">{t.results.box3Tax}</p>
+            <p className="text-xl lg:text-2xl font-bold text-purple-400 break-words">{fmt(box3.netTax)}</p>
           </div>
-          <div>
-            <p className="text-xs text-slate-400 mb-1">{t.results.netDisposable}</p>
-            <p className={`text-2xl font-bold ${netDisposableIncome >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+          <div className="min-w-0">
+            <p className="text-xs text-slate-400 mb-1 truncate">{t.results.netDisposable}</p>
+            <p className={`text-xl lg:text-2xl font-bold break-words ${netDisposableIncome >= 0 ? 'text-green-400' : 'text-red-400'}`}>
               {fmt(netDisposableIncome)}
             </p>
           </div>
@@ -84,7 +84,7 @@ export default function TaxResults({ result }: Props) {
               Indicatieve berekening. Controleer uw exacte recht op{' '}
               <a href="https://www.belastingdienst.nl/wps/wcm/connect/nl/toeslagen" target="_blank" rel="noopener noreferrer" className="underline">belastingdienst.nl/toeslagen</a>.
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 gap-3">
               {toeslagen.zorgtoeslag > 0 && (
                 <div className="rounded-xl border border-teal-200 dark:border-teal-800 bg-teal-50 dark:bg-teal-900/20 p-4">
                   <p className="text-xs font-medium text-teal-700 dark:text-teal-300 opacity-75 mb-1">Zorgtoeslag</p>
@@ -126,16 +126,16 @@ export default function TaxResults({ result }: Props) {
         </div>
         <div className="p-6 space-y-4">
           {/* Key numbers */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 gap-3">
             {[
               { label: t.results.taxableIncome, value: fmt(box1.taxableIncome),    color: 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300' },
               { label: t.results.grossTax,      value: fmt(box1.grossTax),         color: 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800 text-orange-700 dark:text-orange-300' },
               { label: t.results.effectiveRate, value: fmtPct(box1.effectiveRate), color: 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200' },
               { label: t.results.netBox1Tax,    value: fmt(box1.netTax),           color: 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-700 dark:text-red-400' },
             ].map(c => (
-              <div key={c.label} className={`rounded-xl border p-4 ${c.color}`}>
-                <p className="text-xs font-medium opacity-75 mb-1">{c.label}</p>
-                <p className="text-xl font-bold">{c.value}</p>
+              <div key={c.label} className={`min-w-0 rounded-xl border p-4 ${c.color}`}>
+                <p className="text-xs font-medium opacity-75 mb-1 truncate">{c.label}</p>
+                <p className="text-lg lg:text-xl font-bold break-words">{c.value}</p>
               </div>
             ))}
           </div>
@@ -161,18 +161,18 @@ export default function TaxResults({ result }: Props) {
           )}
 
           {/* Brackets + kortingen side by side */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4">
             {box1.brackets.length > 0 && (
               <div className="bg-slate-50 dark:bg-slate-900 rounded-xl p-4 border border-slate-100 dark:border-slate-700">
                 <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-3">{t.results.brackets}</p>
                 {box1.brackets.map((b, i) => (
                   <div key={i} className="flex items-center gap-2 py-1.5 border-b border-slate-100 dark:border-slate-700 last:border-0">
-                    <span className="text-xs w-12 text-slate-500 dark:text-slate-400 font-mono shrink-0">{fmtPct(b.rate)}</span>
-                    <div className="flex-1 bg-slate-200 dark:bg-slate-700 rounded h-1.5 overflow-hidden">
+                    <span className="text-xs w-10 text-slate-500 dark:text-slate-400 font-mono shrink-0">{fmtPct(b.rate)}</span>
+                    <div className="flex-1 min-w-0 bg-slate-200 dark:bg-slate-700 rounded h-1.5 overflow-hidden">
                       <div className="h-full bg-blue-400 rounded" style={{ width: `${Math.min(100, (b.base / 80000) * 100)}%` }} />
                     </div>
-                    <span className="text-xs w-20 text-right text-slate-600 dark:text-slate-300 shrink-0">{fmt(b.base)}</span>
-                    <span className="text-xs w-18 text-right font-medium text-blue-700 dark:text-blue-400 shrink-0">{fmt(b.tax)}</span>
+                    <span className="text-xs text-right text-slate-600 dark:text-slate-300 shrink-0">{fmt(b.base)}</span>
+                    <span className="text-xs text-right font-medium text-blue-700 dark:text-blue-400 shrink-0">{fmt(b.tax)}</span>
                   </div>
                 ))}
               </div>
@@ -212,7 +212,7 @@ export default function TaxResults({ result }: Props) {
             </span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 gap-6">
 
             {/* Left: Box 3 tax calculation */}
             <div>
