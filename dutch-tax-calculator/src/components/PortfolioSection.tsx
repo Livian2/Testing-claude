@@ -150,7 +150,7 @@ function FondsSearch({ value, holdings, onChange }: FondsSearchProps) {
     <div ref={wrapperRef} className="relative">
       <input
         ref={inputRef}
-        className="w-full border border-slate-300 rounded-lg px-2 py-1.5 text-sm bg-white outline-none focus:ring-2 focus:ring-blue-400"
+        className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1.5 text-sm bg-white dark:bg-slate-700 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-400"
         placeholder="Zoek fonds…"
         value={query}
         onChange={e => handleInput(e.target.value)}
@@ -163,27 +163,27 @@ function FondsSearch({ value, holdings, onChange }: FondsSearchProps) {
       )}
       {hasDropdown && dropPos && (
         <div
-          className="fixed z-[9999] bg-white border border-slate-200 rounded-xl shadow-xl text-xs overflow-y-auto"
+          className="fixed z-[9999] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-xl shadow-xl text-xs overflow-y-auto"
           style={{ top: dropPos.top, left: dropPos.left, width: dropPos.width, maxHeight: 260 }}
         >
           {existingMatches.length > 0 && (
             <>
-              <div className="px-3 py-1.5 text-slate-400 font-semibold uppercase tracking-wide border-b border-slate-100 sticky top-0 bg-white">Eigen posities</div>
+              <div className="px-3 py-1.5 text-slate-400 font-semibold uppercase tracking-wide border-b border-slate-200 dark:border-slate-600 sticky top-0 bg-white dark:bg-slate-800">Eigen posities</div>
               {existingMatches.map(h => (
                 <button
                   key={h.id}
                   onMouseDown={e => { e.preventDefault(); onChange(h.name, h.ticker); setQuery(h.name); setOpen(false); }}
-                  className="w-full text-left px-3 py-2 hover:bg-blue-50 cursor-pointer border-0 bg-transparent flex items-center justify-between gap-2"
+                  className="w-full text-left px-3 py-2 hover:bg-blue-50 dark:hover:bg-slate-700 cursor-pointer border-0 bg-transparent flex items-center justify-between gap-2"
                 >
-                  <span className="font-medium text-slate-800">{h.name}</span>
-                  {h.ticker && <span className="font-mono text-slate-400">{h.ticker}</span>}
+                  <span className="font-medium text-slate-800 dark:text-slate-100">{h.name}</span>
+                  {h.ticker && <span className="font-mono text-slate-400 dark:text-slate-400">{h.ticker}</span>}
                 </button>
               ))}
             </>
           )}
           {results.length > 0 && (
             <>
-              <div className="px-3 py-1.5 text-slate-400 font-semibold uppercase tracking-wide border-b border-slate-100 border-t border-slate-100 sticky top-0 bg-white">Yahoo Finance</div>
+              <div className="px-3 py-1.5 text-slate-400 font-semibold uppercase tracking-wide border-b border-slate-200 dark:border-slate-600 border-t border-slate-200 dark:border-slate-600 sticky top-0 bg-white dark:bg-slate-800">Yahoo Finance</div>
               {results.map(r => (
                 <button
                   key={r.symbol}
@@ -194,9 +194,9 @@ function FondsSearch({ value, holdings, onChange }: FondsSearchProps) {
                     setQuery(name);
                     setOpen(false);
                   }}
-                  className="w-full text-left px-3 py-2 hover:bg-blue-50 cursor-pointer border-0 bg-transparent flex items-center justify-between gap-2"
+                  className="w-full text-left px-3 py-2 hover:bg-blue-50 dark:hover:bg-slate-700 cursor-pointer border-0 bg-transparent flex items-center justify-between gap-2"
                 >
-                  <span className="text-slate-700 truncate">{r.shortname || r.longname || r.symbol}</span>
+                  <span className="text-slate-700 dark:text-slate-200 truncate">{r.shortname || r.longname || r.symbol}</span>
                   <span className="text-slate-400 font-mono shrink-0 ml-2">{r.symbol}{r.exchDisp ? ` · ${r.exchDisp}` : ''}</span>
                 </button>
               ))}
@@ -370,11 +370,11 @@ export default function PortfolioSection({ data, onChange }: Props) {
     <SectionCard title="Beleggingsportefeuille — Live tracking" icon={<TrendingUp size={20} />} accent="border-purple-400">
       {/* Live total banner — always show when there are holdings with tickers */}
       {(hasTickers || totalCurrentValue > 0 || fetchState === 'loading') && (
-        <div className="mb-4 bg-purple-50 border border-purple-200 rounded-xl px-4 py-3 space-y-2">
+        <div className="mb-4 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-xl px-4 py-3 space-y-2">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs text-slate-500">Actuele portefeuillewaarde</p>
-              <p className="text-xl font-bold text-purple-700">{nl0.format(totalCurrentValue)}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Actuele portefeuillewaarde</p>
+              <p className="text-xl font-bold text-purple-700 dark:text-purple-300">{nl0.format(totalCurrentValue)}</p>
             </div>
             <div className="flex flex-col items-end gap-1.5">
               <button
@@ -394,7 +394,7 @@ export default function PortfolioSection({ data, onChange }: Props) {
           </div>
           {/* FX rates strip */}
           {Object.keys(fxRates).length > 1 && (
-            <div className="flex flex-wrap gap-x-3 gap-y-1 pt-1 border-t border-purple-200">
+            <div className="flex flex-wrap gap-x-3 gap-y-1 pt-1 border-t border-purple-200 dark:border-purple-800">
               {Object.entries(fxRates)
                 .filter(([cur]) => cur !== 'EUR')
                 .map(([cur, rate]) => (
@@ -411,8 +411,8 @@ export default function PortfolioSection({ data, onChange }: Props) {
       {fetchMsg && (
         <div className={`flex items-center gap-2 text-xs px-3 py-2 rounded-lg mb-4 ${
           fetchState === 'ok'
-            ? 'bg-green-50 border border-green-200 text-green-700'
-            : 'bg-red-50 border border-red-200 text-red-700'
+            ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-300'
+            : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300'
         }`}>
           {fetchState === 'ok' ? <CheckCircle2 size={13} /> : <AlertCircle size={13} />}
           {fetchMsg}
@@ -420,11 +420,11 @@ export default function PortfolioSection({ data, onChange }: Props) {
       )}
 
       {/* Inner tabs */}
-      <div className="flex gap-0 border border-slate-200 rounded-xl overflow-hidden mb-5">
+      <div className="flex gap-0 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden mb-5">
         {INNER_TABS.map(t => (
           <button key={t.id} onClick={() => setTab(t.id)}
             className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium transition-colors cursor-pointer border-0 ${
-              tab === t.id ? 'bg-purple-600 text-white' : 'bg-white text-slate-500 hover:bg-slate-50'
+              tab === t.id ? 'bg-purple-600 text-white' : 'bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'
             }`}
           >
             {t.icon}{t.label}
@@ -445,17 +445,17 @@ export default function PortfolioSection({ data, onChange }: Props) {
           </div>
 
           {data.holdings.length === 0 ? (
-            <div className="text-center py-6 text-slate-400 text-sm border-2 border-dashed border-slate-200 rounded-xl mb-3">
+            <div className="text-center py-6 text-slate-400 dark:text-slate-500 text-sm border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl mb-3">
               Nog geen posities toegevoegd
             </div>
           ) : (
             <div className="space-y-2 mb-3">
               {data.holdings.map(h => (
-                <div key={h.id} className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                <div key={h.id} className="p-3 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700">
                   <div className="grid grid-cols-12 gap-2 items-end">
                     <div className="col-span-6 sm:col-span-2 flex flex-col gap-1">
                       <label className="text-xs text-slate-500">Naam</label>
-                      <input className="border border-slate-300 rounded-lg px-2 py-1.5 text-sm bg-white outline-none focus:ring-2 focus:ring-purple-400"
+                      <input className="border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1.5 text-sm bg-white dark:bg-slate-700 dark:text-slate-100 outline-none focus:ring-2 focus:ring-purple-400"
                         placeholder="VWCE" value={h.name}
                         onChange={e => updateHolding(h.id, { name: e.target.value })} />
                     </div>
@@ -466,13 +466,13 @@ export default function PortfolioSection({ data, onChange }: Props) {
                           <span className="ml-1 text-indigo-400">(auto via ISIN)</span>
                         )}
                       </label>
-                      <input className="border border-slate-300 rounded-lg px-2 py-1.5 text-sm bg-white outline-none focus:ring-2 focus:ring-indigo-400 font-mono"
+                      <input className="border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1.5 text-sm bg-white dark:bg-slate-700 dark:text-slate-100 outline-none focus:ring-2 focus:ring-indigo-400 font-mono"
                         placeholder={h.isin ? h.isin : 'VWCE.AS'} value={h.ticker}
                         onChange={e => updateHolding(h.id, { ticker: e.target.value.toUpperCase() })} />
                     </div>
                     <div className="col-span-6 sm:col-span-2 flex flex-col gap-1">
                       <label className="text-xs text-slate-500">Type</label>
-                      <select className="border border-slate-300 rounded-lg px-2 py-1.5 text-sm bg-white outline-none focus:ring-2 focus:ring-purple-400"
+                      <select className="border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1.5 text-sm bg-white dark:bg-slate-700 dark:text-slate-100 outline-none focus:ring-2 focus:ring-purple-400"
                         value={h.type} onChange={e => updateHolding(h.id, { type: e.target.value as AssetType })}>
                         {(Object.keys(ASSET_LABELS) as AssetType[]).map(k => (
                           <option key={k} value={k}>{ASSET_LABELS[k]}</option>
@@ -481,21 +481,21 @@ export default function PortfolioSection({ data, onChange }: Props) {
                     </div>
                     <div className="col-span-5 sm:col-span-2 flex flex-col gap-1">
                       <label className="text-xs text-slate-500">Broker</label>
-                      <input className="border border-slate-300 rounded-lg px-2 py-1.5 text-sm bg-white outline-none focus:ring-2 focus:ring-purple-400"
+                      <input className="border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1.5 text-sm bg-white dark:bg-slate-700 dark:text-slate-100 outline-none focus:ring-2 focus:ring-purple-400"
                         placeholder="DEGIRO" value={h.broker}
                         onChange={e => updateHolding(h.id, { broker: e.target.value })} />
                     </div>
                     <div className="col-span-4 sm:col-span-1 flex flex-col gap-1">
                       <label className="text-xs text-slate-500">Aantal</label>
                       <input type="number" min={0}
-                        className="border border-slate-300 rounded-lg px-2 py-1.5 text-sm bg-white outline-none focus:ring-2 focus:ring-purple-400"
+                        className="border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1.5 text-sm bg-white dark:bg-slate-700 dark:text-slate-100 outline-none focus:ring-2 focus:ring-purple-400"
                         placeholder="0" value={h.quantity || ''}
                         onChange={e => updateHolding(h.id, { quantity: parseFloat(e.target.value) || 0 })} />
                     </div>
                     <div className="col-span-7 sm:col-span-2 flex flex-col gap-1">
                       <label className="text-xs text-slate-500">Aankoopkoers (€)</label>
                       <input type="number" min={0}
-                        className="border border-slate-300 rounded-lg px-2 py-1.5 text-sm bg-white outline-none focus:ring-2 focus:ring-purple-400"
+                        className="border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1.5 text-sm bg-white dark:bg-slate-700 dark:text-slate-100 outline-none focus:ring-2 focus:ring-purple-400"
                         placeholder="0" value={h.pricePerUnit || ''}
                         onChange={e => updateHolding(h.id, { pricePerUnit: parseFloat(e.target.value) || 0 })} />
                     </div>
@@ -587,7 +587,7 @@ export default function PortfolioSection({ data, onChange }: Props) {
                 className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors cursor-pointer ${
                   txType === type
                     ? type === 'buy' ? 'bg-green-600 text-white border-green-600' : 'bg-red-600 text-white border-red-600'
-                    : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'
+                    : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700'
                 }`}
               >
                 {type === 'buy' ? <ArrowUpCircle size={13} /> : <ArrowDownCircle size={13} />}
@@ -597,13 +597,13 @@ export default function PortfolioSection({ data, onChange }: Props) {
           </div>
 
           {data.transactions.filter(t => t.type === txType).length === 0 ? (
-            <div className="text-center py-6 text-slate-400 text-sm border-2 border-dashed border-slate-200 rounded-xl mb-3">
+            <div className="text-center py-6 text-slate-400 dark:text-slate-500 text-sm border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl mb-3">
               Geen {txType === 'buy' ? 'aankopen' : 'verkopen'} ingevoerd
             </div>
           ) : (
             <div className="space-y-2 mb-3">
               {data.transactions.filter(t => t.type === txType).map(tx => (
-                <div key={tx.id} className="grid grid-cols-12 gap-2 items-end p-3 bg-slate-50 rounded-xl border border-slate-200">
+                <div key={tx.id} className="grid grid-cols-12 gap-2 items-end p-3 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700">
                   <div className="col-span-12 sm:col-span-3 flex flex-col gap-1">
                     <label className="text-xs text-slate-500">Fonds</label>
                     <FondsSearch
@@ -624,27 +624,27 @@ export default function PortfolioSection({ data, onChange }: Props) {
                   </div>
                   <div className="col-span-6 sm:col-span-2 flex flex-col gap-1">
                     <label className="text-xs text-slate-500">Broker</label>
-                    <input className="border border-slate-300 rounded-lg px-2 py-1.5 text-sm bg-white outline-none focus:ring-2 focus:ring-blue-400"
+                    <input className="border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1.5 text-sm bg-white dark:bg-slate-700 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-400"
                       placeholder="DEGIRO" value={tx.broker}
                       onChange={e => updateTx(tx.id, { broker: e.target.value })} />
                   </div>
                   <div className="col-span-6 sm:col-span-2 flex flex-col gap-1">
                     <label className="text-xs text-slate-500">Datum</label>
                     <input type="date"
-                      className="border border-slate-300 rounded-lg px-2 py-1.5 text-sm bg-white outline-none focus:ring-2 focus:ring-blue-400"
+                      className="border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1.5 text-sm bg-white dark:bg-slate-700 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-400"
                       value={tx.date} onChange={e => updateTx(tx.id, { date: e.target.value })} />
                   </div>
                   <div className="col-span-5 sm:col-span-2 flex flex-col gap-1">
                     <label className="text-xs text-slate-500">Aantal</label>
                     <input type="number" min={0}
-                      className="border border-slate-300 rounded-lg px-2 py-1.5 text-sm bg-white outline-none focus:ring-2 focus:ring-blue-400"
+                      className="border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1.5 text-sm bg-white dark:bg-slate-700 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-400"
                       placeholder="0" value={tx.quantity || ''}
                       onChange={e => updateTx(tx.id, { quantity: parseFloat(e.target.value) || 0 })} />
                   </div>
                   <div className="col-span-5 sm:col-span-2 flex flex-col gap-1">
                     <label className="text-xs text-slate-500">Koers (€)</label>
                     <input type="number" min={0}
-                      className="border border-slate-300 rounded-lg px-2 py-1.5 text-sm bg-white outline-none focus:ring-2 focus:ring-blue-400"
+                      className="border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1.5 text-sm bg-white dark:bg-slate-700 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-400"
                       placeholder="0" value={tx.pricePerUnit || ''}
                       onChange={e => updateTx(tx.id, { pricePerUnit: parseFloat(e.target.value) || 0 })} />
                   </div>
@@ -691,7 +691,7 @@ export default function PortfolioSection({ data, onChange }: Props) {
       {tab === 'overview' && (
         <div>
           {positions.length === 0 ? (
-            <div className="text-center py-8 text-slate-400 text-sm border-2 border-dashed border-slate-200 rounded-xl">
+            <div className="text-center py-8 text-slate-400 dark:text-slate-500 text-sm border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl">
               Voeg posities of transacties toe om het overzicht te zien
             </div>
           ) : (
@@ -704,23 +704,23 @@ export default function PortfolioSection({ data, onChange }: Props) {
                 }, 0);
                 return (
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-                    <div className="bg-purple-50 border border-purple-200 rounded-xl p-3 text-center">
-                      <p className="text-xs text-slate-500 mb-1">Portefeuillewaarde</p>
-                      <p className="text-base font-bold text-purple-700">{nl0.format(totalCurrentValue)}</p>
+                    <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-xl p-3 text-center">
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Portefeuillewaarde</p>
+                      <p className="text-base font-bold text-purple-700 dark:text-purple-300">{nl0.format(totalCurrentValue)}</p>
                     </div>
-                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-center">
-                      <p className="text-xs text-slate-500 mb-1">Jaarlijks dividend</p>
-                      <p className="text-base font-bold text-amber-700">
+                    <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-3 text-center">
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Jaarlijks dividend</p>
+                      <p className="text-base font-bold text-amber-700 dark:text-amber-300">
                         {totalAnnualDiv > 0 ? nl0.format(totalAnnualDiv) : '—'}
                       </p>
                     </div>
-                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-center">
-                      <p className="text-xs text-slate-500 mb-1">Posities</p>
-                      <p className="text-base font-bold text-slate-700">{positions.length}</p>
+                    <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-center">
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Posities</p>
+                      <p className="text-base font-bold text-slate-700 dark:text-slate-200">{positions.length}</p>
                     </div>
-                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-center">
-                      <p className="text-xs text-slate-500 mb-1">Transacties</p>
-                      <p className="text-base font-bold text-slate-700">{data.transactions.length}</p>
+                    <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-center">
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Transacties</p>
+                      <p className="text-base font-bold text-slate-700 dark:text-slate-200">{data.transactions.length}</p>
                     </div>
                   </div>
                 );
@@ -728,7 +728,7 @@ export default function PortfolioSection({ data, onChange }: Props) {
 
               {/* Pie chart */}
               {pieSlices.length > 1 && (
-                <div className="mb-5 p-4 bg-slate-50 rounded-xl border border-slate-200">
+                <div className="mb-5 p-4 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700">
                   <p className="text-xs font-semibold text-slate-600 mb-3">Allocatie per categorie</p>
                   <PieChart slices={pieSlices} size={160} />
                 </div>
@@ -738,7 +738,7 @@ export default function PortfolioSection({ data, onChange }: Props) {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-slate-200 text-xs text-slate-500">
+                    <tr className="border-b border-slate-200 dark:border-slate-700 text-xs text-slate-500 dark:text-slate-400">
                       <th className="text-left py-2 pr-3 font-medium">Naam</th>
                       <th className="text-left py-2 pr-3 font-medium hidden sm:table-cell">Broker</th>
                       <th className="text-right py-2 pr-3 font-medium">Aantal</th>
@@ -767,9 +767,9 @@ export default function PortfolioSection({ data, onChange }: Props) {
                       const gainAbs = gainPct !== null ? p.quantity * (p.currentPrice - p.avgCost) : null;
 
                       return (
-                        <tr key={i} className="border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors">
+                        <tr key={i} className="border-b border-slate-100 dark:border-slate-700 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors">
                           {/* Naam + ticker */}
-                          <td className="py-2.5 pr-3 font-medium text-slate-800">
+                          <td className="py-2.5 pr-3 font-medium text-slate-800 dark:text-slate-100">
                             <div>{p.name || '—'}</div>
                             {p.ticker && <div className="text-xs text-slate-400 font-mono">{p.ticker}</div>}
                           </td>
@@ -880,11 +880,11 @@ export default function PortfolioSection({ data, onChange }: Props) {
                     })}
                   </tbody>
                   <tfoot>
-                    <tr className="border-t-2 border-slate-200">
-                      <td colSpan={4} className="py-2.5 font-semibold text-slate-700 hidden sm:table-cell">Totaal</td>
-                      <td colSpan={3} className="py-2.5 font-semibold text-slate-700 sm:hidden">Totaal</td>
+                    <tr className="border-t-2 border-slate-200 dark:border-slate-700">
+                      <td colSpan={4} className="py-2.5 font-semibold text-slate-700 dark:text-slate-200 hidden sm:table-cell">Totaal</td>
+                      <td colSpan={3} className="py-2.5 font-semibold text-slate-700 dark:text-slate-200 sm:hidden">Totaal</td>
                       <td colSpan={4} className="py-2.5 text-right">
-                        <span className="font-bold text-slate-900">{nl0.format(totalCurrentValue)}</span>
+                        <span className="font-bold text-slate-900 dark:text-slate-100">{nl0.format(totalCurrentValue)}</span>
                         {lastFetchTime && (
                           <span className="block text-xs text-slate-400 font-normal flex items-center justify-end gap-1">
                             <Clock size={10} />{lastFetchTime}
