@@ -118,7 +118,7 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
     const isPartner = data.personal.filingStatus === 'partner';
 
     // WOZ: only included if the user owns the property; stays constant over years
-    const wozWaarde = data.woon.woningType === 'koop' ? (data.woon.wozWaarde ?? 0) : 0;
+    const wozWaarde = data.woon.woningType === 'hypotheek' ? (data.woon.wozWaarde ?? 0) : 0;
 
     // Pre-collect all afschrijving items for reserve projection
     const afschrijvingItems = data.afschrijvingen.categorieen.flatMap(c => c.items);

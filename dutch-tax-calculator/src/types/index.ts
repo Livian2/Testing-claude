@@ -265,6 +265,8 @@ export interface TaxResult {
   portfolioGainLoss: number;
   actualSavingsInterest: number;
   currentNetWorth: number;
+  wozAsset: number;
+  hypotheekRestschuld: number;
   afschrijvingenActueel: number;
   duoJaarbetaling: number;
   afschrijvingenJaarDeposit: number;

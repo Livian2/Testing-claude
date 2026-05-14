@@ -23,7 +23,7 @@ export default function TaxResults({ result }: Props) {
   const {
     box1, box3, toeslagen, totalTax, netDisposableIncome, totalExpenses,
     portfolioGainLoss, portfolioCurrentValue, portfolioJan1Value,
-    actualSavingsInterest, currentNetWorth, afschrijvingenActueel,
+    actualSavingsInterest, currentNetWorth, wozAsset, hypotheekRestschuld, afschrijvingenActueel,
     duoJaarbetaling, afschrijvingenJaarDeposit,
   } = result;
 
@@ -255,6 +255,12 @@ export default function TaxResults({ result }: Props) {
               <div className="space-y-0">
                 <Row label={t.results.savingsBalance}  value={fmt(box3.breakdown.savings)}    indent />
                 <Row label={t.results.portfolioValue}  value={fmt(portfolioCurrentValue)}     indent />
+                {wozAsset > 0 && (
+                  <Row label="Eigen woning (WOZ)"      value={`+ ${fmt(wozAsset)}`}           indent green />
+                )}
+                {hypotheekRestschuld > 0 && (
+                  <Row label="Hypotheekschuld"         value={`− ${fmt(hypotheekRestschuld)}`} indent red />
+                )}
                 {box3.totalDebts > 0 && (
                   <Row label={t.results.debtsBox3}     value={`− ${fmt(box3.totalDebts)}`}    indent red />
                 )}

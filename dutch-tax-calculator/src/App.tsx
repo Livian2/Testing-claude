@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
-import { Flag, RefreshCw, Users, Download, Upload, Home, Moon, Sun, HelpCircle, Sparkles } from 'lucide-react';
+import { Flag, RefreshCw, Users, Download, Upload, Home, Moon, Sun, HelpCircle, Sparkles, BookOpen } from 'lucide-react';
 import WelcomeModal from './components/WelcomeModal';
+import AboutPage    from './components/AboutPage';
 import type { TaxFormData, FilingStatus, PrognoseConfig } from './types';
 import { calculateTaxes } from './utils/taxCalculations';
 import { useLanguage } from './i18n/LanguageContext';
@@ -54,7 +55,7 @@ const DEFAULT_DATA: TaxFormData = {
   },
 };
 
-const APP_VERSION         = 'v1.5.1';
+const APP_VERSION         = 'v1.6.0';
 
 const STORAGE_KEY         = 'nl-belasting-data-v1';
 const PROGNOSE_STORAGE_KEY = 'nl-belasting-prognose-v1';
@@ -155,6 +156,7 @@ export default function App() {
   const [showWelcome, setShowWelcome] = useState<boolean>(() => {
     try { return localStorage.getItem(WELCOMED_KEY) !== '1'; } catch { return true; }
   });
+  const [showAbout, setShowAbout] = useState<boolean>(false);
   const importRef                 = useRef<HTMLInputElement>(null);
 
   const closeWelcome = () => {
@@ -269,6 +271,12 @@ export default function App() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200 dark:from-slate-950 dark:via-slate-900 dark:to-slate-900">
       {showWelcome && <WelcomeModal onClose={closeWelcome} />}
+      {showAbout && (
+        <AboutPage
+          onClose={() => setShowAbout(false)}
+          onGetStarted={() => { setShowAbout(false); setTab('home'); }}
+        />
+      )}
 
       {/* Header */}
       <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-200/80 dark:border-slate-700/80 sticky top-0 z-20 shadow-sm">
@@ -340,9 +348,18 @@ export default function App() {
             </button>
 
             <button
+              onClick={() => setShowAbout(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-white border-0 cursor-pointer transition-colors"
+              title="Over de app"
+            >
+              <BookOpen size={13} />
+              <span className="hidden sm:inline">Uitleg</span>
+            </button>
+
+            <button
               onClick={() => setShowWelcome(true)}
               className="flex items-center justify-center w-8 h-8 rounded-lg text-slate-500 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors bg-transparent border-0 cursor-pointer"
-              title="Uitleg openen"
+              title="Snelle uitleg openen"
               aria-label="Help"
             >
               <HelpCircle size={16} />

@@ -451,16 +451,20 @@ export function calculateTaxes(data: TaxFormData): TaxResult {
   const netDisposableIncome =
     grossIncome - totalTax + toeslagen.total - totalExpenses - duoJaarbetaling - afschrijvingenJaarDeposit;
 
+  const wozAsset = woon.woningType === 'hypotheek' ? (woon.wozWaarde ?? 0) : 0;
+
   const currentNetWorth =
     totalSavingsBalance +
-    portfolioCurrentValue -
+    portfolioCurrentValue +
+    wozAsset -
     [...schulden.duo, ...schulden.beleggingen].reduce((s, d) => s + d.bedrag, 0) -
-    hypotheekRestschuld;
+    hypotheekRestschuld -
+    afschrijvingenActueel;
 
   return {
     box1, box3, toeslagen, totalTax, netDisposableIncome, totalExpenses,
     annualSavings, portfolioCurrentValue, portfolioJan1Value,
-    portfolioGainLoss: gainLoss, actualSavingsInterest, currentNetWorth, afschrijvingenActueel,
+    portfolioGainLoss: gainLoss, actualSavingsInterest, currentNetWorth, wozAsset, hypotheekRestschuld, afschrijvingenActueel,
     duoJaarbetaling, afschrijvingenJaarDeposit,
   };
 }
