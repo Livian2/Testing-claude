@@ -32,7 +32,7 @@ export default function TaxResults({ result }: Props) {
   const grossIncome  = box1.taxableIncome;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
 
       {/* ── Hero ── */}
       <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-6 text-white shadow-xl">

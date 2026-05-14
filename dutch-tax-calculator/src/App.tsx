@@ -53,7 +53,7 @@ const DEFAULT_DATA: TaxFormData = {
   },
 };
 
-const APP_VERSION         = 'v1.3.0';
+const APP_VERSION         = 'v1.4.0';
 
 const STORAGE_KEY         = 'nl-belasting-data-v1';
 const PROGNOSE_STORAGE_KEY = 'nl-belasting-prognose-v1';
@@ -254,11 +254,13 @@ export default function App() {
   const setPersonal = (patch: Partial<TaxFormData['personal']>) =>
     setData(d => ({ ...d, personal: { ...d.personal, ...patch } }));
 
+  const showSidePanel = tab !== 'home' && tab !== 'results' && tab !== 'prognose';
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-900 dark:to-slate-800">
       {/* Header */}
       <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-20 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
+        <div className="px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1.5 bg-orange-500 text-white rounded-xl px-3 py-1.5">
               <Flag size={16} />
@@ -337,7 +339,7 @@ export default function App() {
         </div>
 
         {/* Tabs */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 flex overflow-x-auto">
+        <div className="px-4 sm:px-6 flex overflow-x-auto">
           {/* Home tab — always visible */}
           <button
             onClick={() => setTab('home')}
@@ -375,7 +377,7 @@ export default function App() {
       </header>
 
       {/* Main content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+      <main className="px-4 sm:px-6 py-6">
         {tab === 'home' && (
           <div className="space-y-6">
             <div>
@@ -383,7 +385,7 @@ export default function App() {
               <p className="text-sm text-slate-500 dark:text-slate-400">Kies hieronder welke tabbladen je wilt gebruiken. Klik op een tabblad om er naartoe te gaan.</p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
               {ALL_TABS.map(tabMeta => {
                 const enabled = enabledTabs.has(tabMeta.id);
                 return (
@@ -434,81 +436,95 @@ export default function App() {
           </div>
         )}
 
-        {tab === 'income' && (
-          <div className="space-y-4">
-            <IncomeSection
-              data={data.income}
-              onChange={income => setData(d => ({ ...d, income }))}
-            />
-            <InfoBox>
-              <strong>Box 1</strong> — 35,82% (t/m €40.021) · 37,48% (€40.021–€77.536) · 49,50% (boven €77.536).
-              Hypotheekrente wordt automatisch meegenomen als aftrekpost vanuit het <em>Wonen</em>-tabblad.
-            </InfoBox>
+        {/* Two-column layout for input tabs on wide screens */}
+        {showSidePanel && (
+          <div className="grid grid-cols-1 xl:grid-cols-[1fr_400px] 2xl:grid-cols-[1fr_460px] gap-6 items-start">
+            {/* Left: tab content */}
+            <div className="min-w-0">
+              {tab === 'income' && (
+                <div className="space-y-4">
+                  <IncomeSection
+                    data={data.income}
+                    onChange={income => setData(d => ({ ...d, income }))}
+                  />
+                  <InfoBox>
+                    <strong>Box 1</strong> — 35,82% (t/m €38.441) · 37,48% (€38.441–€78.426) · 49,50% (boven €78.426).
+                    Hypotheekrente wordt automatisch meegenomen als aftrekpost vanuit het <em>Wonen</em>-tabblad.
+                  </InfoBox>
+                </div>
+              )}
+              {tab === 'woon' && (
+                <WoonSection
+                  data={data.woon}
+                  taxYear={data.personal.taxYear}
+                  onChange={woon => setData(d => ({ ...d, woon }))}
+                />
+              )}
+              {tab === 'waardes' && (
+                <div className="space-y-4">
+                  <WaardesSection
+                    data={data.waardes}
+                    onChange={waardes => setData(d => ({ ...d, waardes }))}
+                  />
+                  <InfoBox>
+                    <strong>Box 3</strong> — peildatum <strong>1 januari {data.personal.taxYear}</strong>.
+                    Fictief rendement 2026: spaargeld <strong>1,03%</strong> · beleggingen <strong>5,88%</strong> · schulden <strong>2,62%</strong>.
+                    Heffingvrij: <strong>€57.684</strong> / <strong>€115.368</strong> (partners).
+                  </InfoBox>
+                </div>
+              )}
+              {tab === 'expenses' && (
+                <ExpensesSection
+                  data={data.expenses}
+                  onChange={expenses => setData(d => ({ ...d, expenses }))}
+                  savings={data.savings}
+                  onSavingsChange={savings => setData(d => ({ ...d, savings }))}
+                />
+              )}
+              {tab === 'schulden' && (
+                <SchuldenSection
+                  data={data.schulden}
+                  taxYear={data.personal.taxYear}
+                  grossSalary={data.income.grossSalary + data.income.freelanceIncome}
+                  isPartner={data.personal.filingStatus === 'partner'}
+                  onChange={schulden => setData(d => ({ ...d, schulden }))}
+                />
+              )}
+              {tab === 'bank' && (
+                <BankRekeningenSection
+                  data={data.bankData}
+                  onChange={bankData => setData(d => ({ ...d, bankData }))}
+                />
+              )}
+              {tab === 'portfolio' && (
+                <div className="space-y-4">
+                  <PortfolioSection
+                    data={data.portfolio}
+                    onChange={portfolio => setData(d => ({ ...d, portfolio }))}
+                  />
+                  <InfoBox>
+                    Vul tickers in (bijv. <code className="bg-blue-100 dark:bg-blue-900/30 px-1 rounded">VWCE.AS</code>) voor live koersen.
+                    Box 3 belastingwaardes (1 jan) invullen op het tabblad <strong>Waardes 1 jan</strong>.
+                  </InfoBox>
+                </div>
+              )}
+              {tab === 'afschrijvingen' && (
+                <AfschrijvingenSection
+                  data={data.afschrijvingen}
+                  taxYear={data.personal.taxYear}
+                  onChange={afschrijvingen => setData(d => ({ ...d, afschrijvingen }))}
+                />
+              )}
+            </div>
+
+            {/* Right: live results panel */}
+            <div className="xl:sticky xl:top-[89px] xl:max-h-[calc(100vh-100px)] xl:overflow-y-auto">
+              <TaxResults result={result} />
+            </div>
           </div>
         )}
-        {tab === 'woon' && (
-          <WoonSection
-            data={data.woon}
-            taxYear={data.personal.taxYear}
-            onChange={woon => setData(d => ({ ...d, woon }))}
-          />
-        )}
-        {tab === 'waardes' && (
-          <div className="space-y-4">
-            <WaardesSection
-              data={data.waardes}
-              onChange={waardes => setData(d => ({ ...d, waardes }))}
-            />
-            <InfoBox>
-              <strong>Box 3</strong> — peildatum <strong>1 januari {data.personal.taxYear}</strong>.
-              Voer de waarden in zoals ze op 1 januari stonden. Fictief rendement 2026:
-              spaargeld <strong>1,03%</strong> · beleggingen <strong>5,88%</strong> · schulden <strong>2,62%</strong>.
-              Heffingvrij vermogen: <strong>€57.684</strong> / <strong>€115.368</strong> (partners).
-            </InfoBox>
-          </div>
-        )}
-        {tab === 'expenses' && (
-          <ExpensesSection
-            data={data.expenses}
-            onChange={expenses => setData(d => ({ ...d, expenses }))}
-            savings={data.savings}
-            onSavingsChange={savings => setData(d => ({ ...d, savings }))}
-          />
-        )}
-        {tab === 'schulden' && (
-          <SchuldenSection
-            data={data.schulden}
-            taxYear={data.personal.taxYear}
-            grossSalary={data.income.grossSalary + data.income.freelanceIncome}
-            isPartner={data.personal.filingStatus === 'partner'}
-            onChange={schulden => setData(d => ({ ...d, schulden }))}
-          />
-        )}
-        {tab === 'bank' && (
-          <BankRekeningenSection
-            data={data.bankData}
-            onChange={bankData => setData(d => ({ ...d, bankData }))}
-          />
-        )}
-        {tab === 'portfolio' && (
-          <div className="space-y-4">
-            <PortfolioSection
-              data={data.portfolio}
-              onChange={portfolio => setData(d => ({ ...d, portfolio }))}
-            />
-            <InfoBox>
-              Vul tickers in (bijv. <code className="bg-blue-100 dark:bg-blue-900/30 px-1 rounded">VWCE.AS</code>) voor live koersen.
-              Box 3 belastingwaardes (1 jan) invullen op het tabblad <strong>Waardes 1 jan</strong>.
-            </InfoBox>
-          </div>
-        )}
-        {tab === 'afschrijvingen' && (
-          <AfschrijvingenSection
-            data={data.afschrijvingen}
-            taxYear={data.personal.taxYear}
-            onChange={afschrijvingen => setData(d => ({ ...d, afschrijvingen }))}
-          />
-        )}
+
+        {tab === 'results' && <TaxResults result={result} />}
         {tab === 'prognose' && (
           <NetWorthProjection
             data={data}
@@ -516,12 +532,9 @@ export default function App() {
             onConfigChange={setPrognose}
           />
         )}
-        {tab === 'results' && (
-          <TaxResults result={result} />
-        )}
       </main>
 
-      <footer className="max-w-7xl mx-auto px-4 sm:px-6 py-6 text-center text-xs text-slate-400 dark:text-slate-500 border-t border-slate-200 dark:border-slate-700 mt-4">
+      <footer className="px-4 sm:px-6 py-6 text-center text-xs text-slate-400 dark:text-slate-500 border-t border-slate-200 dark:border-slate-700 mt-4">
         Indicatieve berekening o.b.v. belastingregels 2026. Raadpleeg altijd een belastingadviseur voor persoonlijk advies.
       </footer>
     </div>
