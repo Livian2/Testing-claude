@@ -22,15 +22,9 @@ import './index.css';
 const DEFAULT_DATA: TaxFormData = {
   personal: { filingStatus: 'single', taxYear: 2026, age: 35 },
   woon: {
-    woningType: 'hypotheek',
+    woningType: 'huur',
     maandhuur: 0,
-    hypotheken: [
-      {
-        id: 'hyp-1', label: 'Hypotheek 1',
-        type: 'annuiteit', leningBedrag: 0, rentePercentage: 0,
-        rentevastePeriode: 10, looptijd: 360, startJaar: 2026,
-      },
-    ],
+    hypotheken: [],
     wozWaarde: 0,
     gwe: 0, vve: 0, overig: 0,
   },
