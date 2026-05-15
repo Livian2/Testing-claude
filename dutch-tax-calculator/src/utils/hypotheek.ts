@@ -16,7 +16,7 @@ export function berekenHypotheek(h: HypotheekData, taxYear: number): HypotheekBe
 
   const r  = rentePercentage / 100;
   const rm = r / 12;
-  const n  = looptijd * 12;
+  const n  = looptijd; // looptijd is opgeslagen in maanden
   const jaarInLening = Math.max(0, taxYear - startJaar);
   const extraMonthly = Math.max(0, h.extraAflossingMaandelijks ?? 0);
 

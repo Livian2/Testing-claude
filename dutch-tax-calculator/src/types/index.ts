@@ -43,7 +43,7 @@ export interface HypotheekData {
   leningBedrag: number;
   rentePercentage: number;
   rentevastePeriode: number;  // years
-  looptijd: number;           // years total
+  looptijd: number;           // total loan duration in MONTHS
   startJaar: number;
   extraAflossingMaandelijks?: number;  // extra monthly repayment paid on the 15th
   overgangsrechtVoor2013?: boolean;    // aflossingsvrij: true = pre-2013 transition rights (rente deductible)
@@ -148,7 +148,7 @@ export interface SchuldItem {
   label: string;
   bedrag: number;             // restschuld / outstanding balance (Box 3 value)
   rentePercentage: number;    // annual interest rate %
-  looptijd: number;           // total loan duration in years
+  looptijd: number;           // total loan duration in MONTHS
   rentevastePeriode: number;  // fixed-rate period in years
   startJaar: number;          // year interest starts accruing
   leningStartJaar?: number;   // year loan was taken out (before interest, DUO only)

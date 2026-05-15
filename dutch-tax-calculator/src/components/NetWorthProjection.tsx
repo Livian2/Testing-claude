@@ -103,6 +103,7 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
   const svgRef                  = useRef<SVGSVGElement>(null);
   const [swr, setSwr]           = useState<number>(4);
   const [leeftijd, setLeeftijd] = useState<number>(data.personal.age || 35);
+  const [gewensteFireLeeftijd, setGewensteFireLeeftijd] = useState<number>(55);
   const [aowLeeftijd, setAowLeeftijd] = useState<number>(67);
 
   const isPartnerFireState = data.personal.filingStatus === 'partner';
@@ -389,11 +390,24 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
 
           {/* Huidige leeftijd */}
           <label className="flex items-center gap-1.5">
-            <span className="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">Leeftijd</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">Huidige leeftijd</span>
             <div className="flex items-center border border-slate-300 dark:border-slate-600 rounded-lg overflow-hidden bg-white dark:bg-slate-700 focus-within:ring-2 focus-within:ring-amber-400">
               <input type="number" min="18" max="80" step="1"
                 value={leeftijd}
                 onChange={e => setLeeftijd(parseInt(e.target.value) || 35)}
+                className="w-12 px-2 py-1 text-xs outline-none bg-white dark:bg-slate-700 dark:text-slate-100 text-right"
+              />
+              <span className="px-1.5 py-1 bg-slate-100 dark:bg-slate-600 text-slate-400 text-xs border-l border-slate-300 dark:border-slate-600 select-none">jr</span>
+            </div>
+          </label>
+
+          {/* Doel FIRE leeftijd */}
+          <label className="flex items-center gap-1.5">
+            <span className="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">Doel FIRE-leeftijd</span>
+            <div className="flex items-center border border-slate-300 dark:border-slate-600 rounded-lg overflow-hidden bg-white dark:bg-slate-700 focus-within:ring-2 focus-within:ring-amber-400">
+              <input type="number" min={leeftijd} max="80" step="1"
+                value={gewensteFireLeeftijd}
+                onChange={e => setGewensteFireLeeftijd(parseInt(e.target.value) || 55)}
                 className="w-12 px-2 py-1 text-xs outline-none bg-white dark:bg-slate-700 dark:text-slate-100 text-right"
               />
               <span className="px-1.5 py-1 bg-slate-100 dark:bg-slate-600 text-slate-400 text-xs border-l border-slate-300 dark:border-slate-600 select-none">jr</span>
@@ -516,6 +530,78 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
             )}
           </div>
         </div>
+
+        {/* ── Leeftijd-mijlpalen ── */}
+        {(() => {
+          const actualFiAge = fireYear !== null ? leeftijd + (fireYear - currentYear) : null;
+          const yearsToTarget = Math.max(0, gewensteFireLeeftijd - leeftijd);
+          const yearsToAow    = Math.max(0, aowLeeftijd - leeftijd);
+          const targetVsActual = actualFiAge !== null ? actualFiAge - gewensteFireLeeftijd : null;
+          const targetReached = actualFiAge !== null && actualFiAge <= gewensteFireLeeftijd;
+          const targetFireYear = currentYear + yearsToTarget;
+          return (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              {/* Nu */}
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2.5">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px] uppercase tracking-wider text-slate-400">Nu</span>
+                  <span className="text-[10px] text-slate-400">{currentYear}</span>
+                </div>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-2xl font-bold tabular-nums text-slate-700 dark:text-slate-200">{leeftijd}</span>
+                  <span className="text-[11px] text-slate-400">jaar</span>
+                </div>
+                <div className="text-[10px] text-slate-400 mt-0.5">Huidige leeftijd</div>
+              </div>
+
+              {/* Doel FIRE */}
+              <div className={`bg-white dark:bg-slate-900 border rounded-lg px-3 py-2.5 ${
+                targetReached
+                  ? 'border-emerald-300 dark:border-emerald-700/50'
+                  : 'border-amber-300 dark:border-amber-700/50'
+              }`}>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px] uppercase tracking-wider text-amber-600 dark:text-amber-400">Doel FIRE</span>
+                  <span className="text-[10px] text-slate-400">{targetFireYear}</span>
+                </div>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-2xl font-bold tabular-nums text-amber-600 dark:text-amber-400">{gewensteFireLeeftijd}</span>
+                  <span className="text-[11px] text-slate-400">jaar</span>
+                  <span className="ml-auto text-[11px] font-medium text-slate-500 dark:text-slate-400">over {yearsToTarget}j</span>
+                </div>
+                <div className="text-[10px] mt-0.5">
+                  {actualFiAge === null ? (
+                    <span className="text-slate-400">Prognose: niet bereikt binnen periode</span>
+                  ) : targetVsActual! <= 0 ? (
+                    <span className="text-emerald-600 dark:text-emerald-400">
+                      ✓ Haalbaar — prognose: leeftijd {actualFiAge} ({-targetVsActual!}j eerder)
+                    </span>
+                  ) : (
+                    <span className="text-orange-500 dark:text-orange-400">
+                      Prognose: leeftijd {actualFiAge} ({targetVsActual}j later dan doel)
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* AOW */}
+              <div className="bg-white dark:bg-slate-900 border border-emerald-300 dark:border-emerald-700/50 rounded-lg px-3 py-2.5">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px] uppercase tracking-wider text-emerald-600 dark:text-emerald-400">AOW</span>
+                  <span className="text-[10px] text-slate-400">{aowCalendarYear}</span>
+                </div>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-2xl font-bold tabular-nums text-emerald-600 dark:text-emerald-400">{aowLeeftijd}</span>
+                  <span className="text-[11px] text-slate-400">jaar</span>
+                  <span className="ml-auto text-[11px] font-medium text-slate-500 dark:text-slate-400">over {yearsToAow}j</span>
+                </div>
+                <div className="text-[10px] text-slate-400 mt-0.5">
+                  +€{aowJaarBedrag.toLocaleString('nl-NL')}/jr vanaf {aowCalendarYear}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* FIRE progress bar */}
         <div className="space-y-1">

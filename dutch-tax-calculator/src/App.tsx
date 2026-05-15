@@ -28,7 +28,7 @@ const DEFAULT_DATA: TaxFormData = {
       {
         id: 'hyp-1', label: 'Hypotheek 1',
         type: 'annuiteit', leningBedrag: 0, rentePercentage: 0,
-        rentevastePeriode: 10, looptijd: 30, startJaar: 2026,
+        rentevastePeriode: 10, looptijd: 360, startJaar: 2026,
       },
     ],
     wozWaarde: 0,
@@ -92,7 +92,10 @@ function loadSavedData(): TaxFormData {
       ...saved,
       personal:  { ...DEFAULT_DATA.personal,  ...saved.personal  },
       woon:      { ...DEFAULT_DATA.woon,       ...saved.woon,
-                   hypotheken: saved.woon?.hypotheken ?? DEFAULT_DATA.woon.hypotheken },
+                   // Migrate hypotheek.looptijd from years (legacy, ≤40) to months
+                   hypotheken: (saved.woon?.hypotheken ?? DEFAULT_DATA.woon.hypotheken).map(h =>
+                     h.looptijd > 0 && h.looptijd <= 40 ? { ...h, looptijd: h.looptijd * 12 } : h
+                   ) },
       waardes:   { ...DEFAULT_DATA.waardes,    ...saved.waardes   },
       income:    { ...DEFAULT_DATA.income,     ...saved.income    },
       expenses:  { ...DEFAULT_DATA.expenses,   ...saved.expenses  },

@@ -22,7 +22,7 @@ const nl2 = new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR',
 
 const DEFAULT_HYP: Omit<HypotheekData, 'id' | 'label'> = {
   type: 'annuiteit', leningBedrag: 0, rentePercentage: 0,
-  rentevastePeriode: 10, looptijd: 30, startJaar: new Date().getFullYear(),
+  rentevastePeriode: 10, looptijd: 360, startJaar: new Date().getFullYear(),
 };
 
 // ── Amortisation SVG chart ──────────────────────────────────────────────────
@@ -38,7 +38,8 @@ function MortgageChart({ hyp, taxYear }: { hyp: HypotheekData; taxYear: number }
   const chartData = useMemo(() => {
     const pts: { year: number; balance: number; interest: number; principal: number }[] = [];
     if (hyp.leningBedrag <= 0 || hyp.looptijd <= 0) return pts;
-    for (let yr = 0; yr <= hyp.looptijd; yr++) {
+    const looptijdJaren = Math.ceil(hyp.looptijd / 12);
+    for (let yr = 0; yr <= looptijdJaren; yr++) {
       const absYear = hyp.startJaar + yr;
       const b = berekenHypotheek(hyp, absYear);
       pts.push({ year: absYear, balance: b.restschuldBegin, interest: b.jaarRente, principal: b.jaarAflossing });
@@ -270,15 +271,20 @@ function HypotheekCard({
               </div>
             </div>
             <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-slate-700 dark:text-slate-200 flex items-center gap-1">Looptijd lening <InfoTooltip tip="De totale duur van de hypotheek in jaren. Standaard is 30 jaar." /></label>
+              <label className="text-sm font-medium text-slate-700 dark:text-slate-200 flex items-center gap-1">Looptijd lening <InfoTooltip tip="De totale duur van de hypotheek in maanden. Standaard is 360 maanden (30 jaar)." /></label>
               <div className="relative">
-                <input type="number" min="1" max="40" step="1" value={hyp.looptijd || ''}
+                <input type="number" min="1" max="480" step="1" value={hyp.looptijd || ''}
                   onChange={e => onUpdate({ looptijd: parseInt(e.target.value) || 0 })}
-                  placeholder="30"
-                  className="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 pr-12 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white dark:bg-slate-700 dark:text-slate-100"
+                  placeholder="360"
+                  className="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 pr-14 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white dark:bg-slate-700 dark:text-slate-100"
                 />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 text-sm">jaar</span>
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 text-sm">mnd</span>
               </div>
+              {hyp.looptijd > 0 && (
+                <span className="text-[10px] text-slate-400 dark:text-slate-500">
+                  ≈ {(hyp.looptijd / 12).toFixed(hyp.looptijd % 12 === 0 ? 0 : 1)} jaar
+                </span>
+              )}
             </div>
             <div className="flex flex-col gap-1">
               <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Startjaar hypotheek</label>
@@ -425,7 +431,7 @@ export default function WoonSection({ data, taxYear, onChange }: Props) {
                   key={h.id} hyp={h} taxYear={taxYear}
                   onUpdate={p => updateHyp(h.id, p)}
                   onRemove={() => removeHyp(h.id)}
-                  canRemove={data.hypotheken.length > 1}
+                  canRemove={true}
                 />
               ))}
               <button onClick={addHypotheek}
