@@ -102,6 +102,7 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
   const svgRef                  = useRef<SVGSVGElement>(null);
   const [swr, setSwr]           = useState<number>(4);
+  const [leeftijd, setLeeftijd] = useState<number>(data.personal.age || 35);
   const [aowLeeftijd, setAowLeeftijd] = useState<number>(67);
 
   const isPartnerFireState = data.personal.filingStatus === 'partner';
@@ -134,8 +135,8 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
     // Annual income phases (bruto used as rough proxy for net reduction in withdrawal)
     const aowJaar = aowBedragMaand * 12;
     const pensioenJaar = pensioenBedragMaand * 12;
-    const aowCalendarYear = currentYear + Math.max(0, aowLeeftijd - data.personal.age);
-    const pensioenCalendarYear = currentYear + Math.max(0, pensioenLeeftijd - data.personal.age);
+    const aowCalendarYear = currentYear + Math.max(0, aowLeeftijd - leeftijd);
+    const pensioenCalendarYear = currentYear + Math.max(0, pensioenLeeftijd - leeftijd);
 
     // Compute annual expenses for withdrawal modelling
     const e = data.expenses;
@@ -160,9 +161,9 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
     for (let i = 0; i <= config.jaren; i++) {
       const year = currentYear + i;
 
-      // Check if we were already fired at end of previous year
-      const prevNetWorth = i > 0 ? result[i-1].netWorth : (initSavings + initInvestments + wozWaarde);
-      if (!fired && i > 0 && prevNetWorth >= fireNum) {
+      // FIRE uses only liquid (investable) assets — WOZ is excluded
+      const prevLiquid = i > 0 ? result[i-1].savings + result[i-1].investments : (initSavings + initInvestments);
+      if (!fired && i > 0 && prevLiquid >= fireNum) {
         fired = true;
       }
 
@@ -219,7 +220,7 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
       });
     }
     return result;
-  }, [data, config, currentYear, jaarlijksSparen, jaarlijksBeleggen, swr, aowBedragMaand, pensioenBedragMaand, aowLeeftijd, pensioenLeeftijd]);
+  }, [data, config, currentYear, jaarlijksSparen, jaarlijksBeleggen, swr, leeftijd, aowBedragMaand, pensioenBedragMaand, aowLeeftijd, pensioenLeeftijd]);
 
   // ── FIRE calculations ──────────────────────────────────────────────────────
   const annualExpenses = useMemo(() => {
@@ -240,26 +241,27 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
 
   const bruteFireNumber = useMemo(() => annualExpenses / (swr / 100), [annualExpenses, swr]);
 
+  // FIRE year: first year where liquid assets (excl. WOZ) reach the fire number
   const fireYear = useMemo(() => {
-    const hit = points.find(p => p.netWorth >= fireNumber);
+    const hit = points.find(p => (p.savings + p.investments) >= fireNumber);
     return hit ? hit.year : null;
   }, [points, fireNumber]);
 
-  const currentAge = data.personal.age;
-  const aowGapYears = fireYear !== null ? Math.max(0, aowLeeftijd - (currentAge + (fireYear - currentYear))) : null;
+  const aowGapYears = fireYear !== null ? Math.max(0, aowLeeftijd - (leeftijd + (fireYear - currentYear))) : null;
   const overbruggingskapitaal = aowGapYears !== null ? aowGapYears * annualExpenses : null;
 
   // AOW & pension phase derived values
   const aowJaarBedrag = aowBedragMaand * 12;
   const pensioenJaarBedrag = pensioenBedragMaand * 12;
-  const aowCalendarYear = currentYear + Math.max(0, aowLeeftijd - currentAge);
-  const pensioenCalendarYear = currentYear + Math.max(0, pensioenLeeftijd - currentAge);
+  const aowCalendarYear = currentYear + Math.max(0, aowLeeftijd - leeftijd);
+  const pensioenCalendarYear = currentYear + Math.max(0, pensioenLeeftijd - leeftijd);
   const nettoOnttrekkingNaAow = Math.max(0, annualExpenses - aowJaarBedrag - pensioenJaarBedrag);
 
+  // FIRE progress uses liquid assets only (savings + investments, no WOZ)
   const fireProgress = useMemo(() => {
-    const nw = points[0]?.netWorth ?? 0;
+    const liquid = (points[0]?.savings ?? 0) + (points[0]?.investments ?? 0);
     if (fireNumber <= 0) return 100;
-    return Math.min(100, Math.max(0, (nw / fireNumber) * 100));
+    return Math.min(100, Math.max(0, (liquid / fireNumber) * 100));
   }, [points, fireNumber]);
 
   // ── Chart geometry — fixed viewBox, scales proportionally via aspect-ratio ──
@@ -385,6 +387,19 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
         <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
           <span className="text-xs font-semibold text-amber-600 dark:text-amber-400 tracking-wide uppercase">FIRE</span>
 
+          {/* Huidige leeftijd */}
+          <label className="flex items-center gap-1.5">
+            <span className="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">Leeftijd</span>
+            <div className="flex items-center border border-slate-300 dark:border-slate-600 rounded-lg overflow-hidden bg-white dark:bg-slate-700 focus-within:ring-2 focus-within:ring-amber-400">
+              <input type="number" min="18" max="80" step="1"
+                value={leeftijd}
+                onChange={e => setLeeftijd(parseInt(e.target.value) || 35)}
+                className="w-12 px-2 py-1 text-xs outline-none bg-white dark:bg-slate-700 dark:text-slate-100 text-right"
+              />
+              <span className="px-1.5 py-1 bg-slate-100 dark:bg-slate-600 text-slate-400 text-xs border-l border-slate-300 dark:border-slate-600 select-none">jr</span>
+            </div>
+          </label>
+
           {/* SWR slider */}
           <label className="flex items-center gap-2">
             <span className="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">SWR</span>
@@ -487,9 +502,11 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
               <span className="text-xs font-bold tabular-nums text-blue-600 dark:text-blue-400">{nl0.format(nettoOnttrekkingNaAow)}/jr</span>
             </div>
             {fireYear !== null ? (
-              <div className="flex items-center gap-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1">
+              <div className="flex items-center gap-1.5 bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-800/40 rounded-lg px-2.5 py-1">
                 <span className="text-[10px] text-slate-400">FI-jaar</span>
-                <span className="text-xs font-bold tabular-nums text-emerald-600 dark:text-emerald-400">{fireYear}</span>
+                <span className="text-xs font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
+                  {fireYear} <span className="font-normal text-slate-400">(leeftijd {leeftijd + (fireYear - currentYear)})</span>
+                </span>
               </div>
             ) : (
               <div className="flex items-center gap-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1">
@@ -522,7 +539,7 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
         {/* AOW gap */}
         {fireYear !== null && aowGapYears !== null && overbruggingskapitaal !== null && (
           <p className="text-[11px] text-slate-500 dark:text-slate-400">
-            Als je FI bent in <strong className="text-amber-600 dark:text-amber-400">{fireYear}</strong>, heb je nog{' '}
+            Als je FI bent in <strong className="text-amber-600 dark:text-amber-400">{fireYear}</strong> (leeftijd {leeftijd + (fireYear - currentYear)}), heb je nog{' '}
             <strong className="text-slate-700 dark:text-slate-200">{aowGapYears} jaar</strong> tot AOW (leeftijd {aowLeeftijd}).
             {aowGapYears > 0 && (
               <> Overbruggingskapitaal: <strong className="text-amber-600 dark:text-amber-400">{nl0.format(overbruggingskapitaal)}</strong>.</>
