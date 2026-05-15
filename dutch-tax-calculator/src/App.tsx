@@ -157,14 +157,18 @@ export default function App() {
   const [enabledTabs, setEnabledTabs] = useState<Set<Tab>>(loadEnabledTabs);
   const [tab, setTab]             = useState<AnyTab>('home');
   const [isDark, setIsDark]       = useState<boolean>(loadInitialDark);
-  const [showWelcome, setShowWelcome] = useState<boolean>(() => {
+  const [showWelcome, setShowWelcome] = useState<boolean>(false);
+  const [showAbout, setShowAbout] = useState<boolean>(() => {
     try { return localStorage.getItem(WELCOMED_KEY) !== '1'; } catch { return true; }
   });
-  const [showAbout, setShowAbout] = useState<boolean>(false);
   const importRef                 = useRef<HTMLInputElement>(null);
 
-  const closeWelcome = () => {
+  const markWelcomed = () => {
     try { localStorage.setItem(WELCOMED_KEY, '1'); } catch { /* ignore */ }
+  };
+
+  const closeWelcome = () => {
+    markWelcomed();
     setShowWelcome(false);
   };
 
@@ -279,9 +283,9 @@ export default function App() {
       {showWelcome && <WelcomeModal onClose={closeWelcome} />}
       {showAbout && (
         <AboutPage
-          onClose={() => setShowAbout(false)}
-          onGetStarted={() => { setShowAbout(false); setTab('home'); }}
-          onOpenTab={(t) => { setShowAbout(false); setTab(t as Tab); }}
+          onClose={() => { markWelcomed(); setShowAbout(false); }}
+          onGetStarted={() => { markWelcomed(); setShowAbout(false); setTab('home'); }}
+          onOpenTab={(t) => { markWelcomed(); setShowAbout(false); setTab(t as Tab); }}
         />
       )}
 
