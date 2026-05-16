@@ -9,10 +9,14 @@ const FORWARD_HEADERS: Record<string, string> = {
   Referer: 'https://finance.yahoo.com/',
 };
 
-export const onRequest: PagesFunction = async (context) => {
+interface PagesContext {
+  request: Request;
+  params: Record<string, string | string[]>;
+}
+
+export async function onRequest(context: PagesContext): Promise<Response> {
   const { request, params } = context;
 
-  // Handle CORS preflight
   if (request.method === 'OPTIONS') {
     return new Response(null, {
       status: 204,
@@ -25,21 +29,14 @@ export const onRequest: PagesFunction = async (context) => {
     });
   }
 
-  // params.path is an array of path segments after /api/finance/
   const pathSegments = Array.isArray(params.path) ? params.path : [params.path ?? ''];
-  const yahoPath = '/' + pathSegments.join('/');
-
+  const yahooPath = '/' + pathSegments.join('/');
   const incomingUrl = new URL(request.url);
-  const targetUrl = `${YAHOO_BASE}${yahoPath}${incomingUrl.search}`;
+  const targetUrl = `${YAHOO_BASE}${yahooPath}${incomingUrl.search}`;
 
   let yahooResponse: Response;
   try {
-    yahooResponse = await fetch(targetUrl, {
-      method: 'GET',
-      headers: FORWARD_HEADERS,
-      // Cloudflare Workers do not support keepalive in fetch options
-      cf: { cacheEverything: false },
-    } as RequestInit & { cf?: Record<string, unknown> });
+    yahooResponse = await fetch(targetUrl, { method: 'GET', headers: FORWARD_HEADERS });
   } catch (err) {
     return new Response(JSON.stringify({ error: 'upstream fetch failed', detail: String(err) }), {
       status: 502,
@@ -55,8 +52,7 @@ export const onRequest: PagesFunction = async (context) => {
     headers: {
       'Content-Type': contentType,
       'Access-Control-Allow-Origin': '*',
-      // Cache successful price responses for 60 s at the edge to reduce Yahoo rate-limit risk
       'Cache-Control': yahooResponse.ok ? 'public, max-age=60, s-maxage=60' : 'no-store',
     },
   });
-};
+}
