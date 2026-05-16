@@ -35,6 +35,7 @@ interface CatRowProps {
 function CatRow({ cat, rate, taxYear, years, onUpdate, onRemove }: CatRowProps) {
   const [open, setOpen] = useState(true);
   const [editingName, setEditingName] = useState(false);
+  const { t } = useLanguage();
 
   const addItem = () => {
     const today = new Date().toISOString().slice(0, 10);
@@ -81,14 +82,14 @@ function CatRow({ cat, rate, taxYear, years, onUpdate, onRemove }: CatRowProps) 
                 className="text-xs font-semibold text-slate-700 dark:text-slate-200 cursor-pointer hover:text-orange-600"
                 onClick={() => setEditingName(true)}
               >
-                {cat.naam || 'Categorie'}
+                {cat.naam || t.depreciationExtra.defaultCategoryName}
               </span>
             )}
             <button
               onClick={addItem}
               className="ml-2 flex items-center gap-1 text-xs text-orange-600 hover:text-orange-700 bg-transparent border-0 cursor-pointer p-0"
             >
-              <Plus size={12} /> product
+              <Plus size={12} /> {t.depreciationExtra.addProductLabel}
             </button>
             <button
               onClick={onRemove}
@@ -257,7 +258,7 @@ export default function AfschrijvingenSection({ data, taxYear, onChange }: Props
       {/* Settings bar */}
       <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 flex flex-wrap items-center gap-4">
         <div className="flex items-center gap-2">
-          <label className="text-sm font-medium text-slate-700 dark:text-slate-200 whitespace-nowrap flex items-center gap-1">{t.depreciation.sectionTitle} <InfoTooltip tip="Reserveer maandelijks een bedrag voor toekomstige vervangingen (auto, witgoed, etc.). Dit bedrag wordt van uw Box 3 vermogen afgetrokken als 'gereserveerd'." /> · {t.depreciation.sinkingRate} <InfoTooltip tip={t.depreciation.sinkingRateHint} /></label>
+          <label className="text-sm font-medium text-slate-700 dark:text-slate-200 whitespace-nowrap flex items-center gap-1">{t.depreciation.sectionTitle} <InfoTooltip tip={t.depreciationExtra.sinkingFundTip} /> · {t.depreciation.sinkingRate} <InfoTooltip tip={t.depreciation.sinkingRateHint} /></label>
           <div className="flex items-center border border-slate-300 dark:border-slate-600 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-orange-400 bg-white dark:bg-slate-700">
             <input
               type="number" step="0.1" min="0" max="20"
@@ -270,7 +271,7 @@ export default function AfschrijvingenSection({ data, taxYear, onChange }: Props
         </div>
         <div className="ml-auto flex items-center gap-3">
           <div className="text-right">
-            <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center justify-end gap-1">Maandelijks sparen ({taxYear}) <InfoTooltip tip="Het bedrag dat u dit jaar moet reserveren om op tijd het vervangingsbedrag bij elkaar te hebben, rekening houdend met inflatie en rente-aangroei." /></p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center justify-end gap-1">{t.depreciationExtra.monthlySavingYear} ({taxYear}) <InfoTooltip tip={t.depreciationExtra.sinkingFundTip} /></p>
             <p className="text-base font-bold text-orange-700">{nl2.format(maandBedrag)}</p>
           </div>
           <button
@@ -359,10 +360,10 @@ export default function AfschrijvingenSection({ data, taxYear, onChange }: Props
 
       {/* Legend */}
       <div className="flex items-center gap-4 text-xs text-slate-500 dark:text-slate-400 px-1">
-        <span className="flex items-center gap-1.5"><span className="inline-block w-3 h-3 rounded bg-red-100 dark:bg-red-900/40" />Verleden (gespaard)</span>
-        <span className="flex items-center gap-1.5"><span className="inline-block w-3 h-3 rounded bg-amber-100 dark:bg-amber-900/40" />Huidig jaar</span>
-        <span className="flex items-center gap-1.5"><span className="inline-block w-3 h-3 rounded bg-green-100 dark:bg-green-900/40" />Toekomstige jaren</span>
-        <span className="ml-2">Inflatie-geïndexeerde jaarinleg: basisbedrag (aankoopprijs ÷ looptijd) × (1 + rente)^jaar. Gereserveerd-doel = som van alle jaarinlagen.</span>
+        <span className="flex items-center gap-1.5"><span className="inline-block w-3 h-3 rounded bg-red-100 dark:bg-red-900/40" />{t.depreciationExtra.legendPast}</span>
+        <span className="flex items-center gap-1.5"><span className="inline-block w-3 h-3 rounded bg-amber-100 dark:bg-amber-900/40" />{t.depreciationExtra.legendCurrent}</span>
+        <span className="flex items-center gap-1.5"><span className="inline-block w-3 h-3 rounded bg-green-100 dark:bg-green-900/40" />{t.depreciationExtra.legendFuture}</span>
+        <span className="ml-2">{t.depreciationExtra.legendNote}</span>
       </div>
     </div>
   );

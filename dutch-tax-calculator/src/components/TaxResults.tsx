@@ -38,7 +38,7 @@ export default function TaxResults({ result }: Props) {
       <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-6 text-white shadow-xl">
         <div className="flex items-center gap-2 mb-4">
           <Calculator size={20} className="text-orange-400" />
-          <h2 className="text-base font-semibold text-slate-200">Belastingberekening 2026</h2>
+          <h2 className="text-base font-semibold text-slate-200">{t.resultsExtra.taxCalcTitle}</h2>
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div className="min-w-0">
@@ -64,8 +64,8 @@ export default function TaxResults({ result }: Props) {
           <div className="mt-4 pt-4 border-t border-slate-700 flex items-center gap-2">
             <Gift size={15} className="text-teal-400 shrink-0" />
             <span className="text-sm text-slate-300">
-              {toeslagen.total > 0 && <>U ontvangt ca. <span className="text-teal-400 font-bold">{fmt(toeslagen.total)}</span> aan toeslagen</>}
-              {toeslagen.hypotheekrenteaftrek > 0 && <> · HRA belastingvoordeel <span className="text-blue-400 font-bold">{fmt(toeslagen.hypotheekrenteaftrek)}</span></>}
+              {toeslagen.total > 0 && <>{t.resultsExtra.toeslagenReceive} <span className="text-teal-400 font-bold">{fmt(toeslagen.total)}</span> {t.resultsExtra.toeslagenSuffix}</>}
+              {toeslagen.hypotheekrenteaftrek > 0 && <> {t.resultsExtra.hraAdvantage} <span className="text-blue-400 font-bold">{fmt(toeslagen.hypotheekrenteaftrek)}</span></>}
             </span>
           </div>
         )}
@@ -76,41 +76,41 @@ export default function TaxResults({ result }: Props) {
         <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
           <div className="flex items-center gap-3 px-6 py-4 border-b-2 border-teal-400 bg-gradient-to-r from-teal-50 to-white dark:from-slate-800 dark:to-slate-800">
             <Gift size={18} className="text-teal-500" />
-            <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">Toeslagen & voordelen (indicatief)</h3>
+            <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">{t.resultsExtra.toeslagenTitle}</h3>
           </div>
           <div className="p-6 space-y-3">
             <div className="flex items-start gap-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-3 text-xs text-amber-800 dark:text-amber-300">
               <Info size={14} className="mt-0.5 shrink-0" />
-              Indicatieve berekening. Controleer uw exacte recht op{' '}
-              <a href="https://www.belastingdienst.nl/wps/wcm/connect/nl/toeslagen" target="_blank" rel="noopener noreferrer" className="underline">belastingdienst.nl/toeslagen</a>.
+              {t.resultsExtra.toeslagenWarning}{' '}
+              <a href="https://www.belastingdienst.nl/wps/wcm/connect/nl/toeslagen" target="_blank" rel="noopener noreferrer" className="underline">{t.resultsExtra.toeslagenLink}</a>.
             </div>
             <div className="grid grid-cols-1 gap-3">
               {toeslagen.zorgtoeslag > 0 && (
                 <div className="rounded-xl border border-teal-200 dark:border-teal-800 bg-teal-50 dark:bg-teal-900/20 p-4">
-                  <p className="text-xs font-medium text-teal-700 dark:text-teal-300 opacity-75 mb-1">Zorgtoeslag</p>
+                  <p className="text-xs font-medium text-teal-700 dark:text-teal-300 opacity-75 mb-1">{t.resultsExtra.zorgtoeslag}</p>
                   <p className="text-xl font-bold text-teal-700 dark:text-teal-300">{fmt(toeslagen.zorgtoeslag)}</p>
-                  <p className="text-xs text-teal-600 dark:text-teal-400 opacity-60 mt-1">{fmt(Math.round(toeslagen.zorgtoeslag / 12))} per maand</p>
+                  <p className="text-xs text-teal-600 dark:text-teal-400 opacity-60 mt-1">{fmt(Math.round(toeslagen.zorgtoeslag / 12))} {t.resultsExtra.perMonth}</p>
                 </div>
               )}
               {toeslagen.huurtoeslag > 0 && (
                 <div className="rounded-xl border border-teal-200 dark:border-teal-800 bg-teal-50 dark:bg-teal-900/20 p-4">
-                  <p className="text-xs font-medium text-teal-700 dark:text-teal-300 opacity-75 mb-1">Huurtoeslag</p>
+                  <p className="text-xs font-medium text-teal-700 dark:text-teal-300 opacity-75 mb-1">{t.resultsExtra.huurtoeslag}</p>
                   <p className="text-xl font-bold text-teal-700 dark:text-teal-300">{fmt(toeslagen.huurtoeslag)}</p>
-                  <p className="text-xs text-teal-600 dark:text-teal-400 opacity-60 mt-1">{fmt(Math.round(toeslagen.huurtoeslag / 12))} per maand</p>
+                  <p className="text-xs text-teal-600 dark:text-teal-400 opacity-60 mt-1">{fmt(Math.round(toeslagen.huurtoeslag / 12))} {t.resultsExtra.perMonth}</p>
                 </div>
               )}
               {toeslagen.hypotheekrenteaftrek > 0 && (
                 <div className="rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 p-4">
-                  <p className="text-xs font-medium text-blue-700 dark:text-blue-300 opacity-75 mb-1">Hypotheekrenteaftrek</p>
+                  <p className="text-xs font-medium text-blue-700 dark:text-blue-300 opacity-75 mb-1">{t.resultsExtra.hypotheekrenteaftrek}</p>
                   <p className="text-xl font-bold text-blue-700 dark:text-blue-300">{fmt(toeslagen.hypotheekrenteaftrek)}</p>
-                  <p className="text-xs text-blue-600 dark:text-blue-400 opacity-60 mt-1">belastingvoordeel / jaar</p>
+                  <p className="text-xs text-blue-600 dark:text-blue-400 opacity-60 mt-1">{t.resultsExtra.taxBenefitPerYr}</p>
                 </div>
               )}
               {toeslagen.total > 0 && (
                 <div className="rounded-xl border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 p-4">
-                  <p className="text-xs font-medium text-green-700 dark:text-green-400 opacity-75 mb-1">Totaal toeslagen</p>
+                  <p className="text-xs font-medium text-green-700 dark:text-green-400 opacity-75 mb-1">{t.resultsExtra.totalToeslagen}</p>
                   <p className="text-xl font-bold text-green-700 dark:text-green-400">{fmt(toeslagen.total)}</p>
-                  <p className="text-xs text-green-600 dark:text-green-500 opacity-60 mt-1">{fmt(Math.round(toeslagen.total / 12))} per maand</p>
+                  <p className="text-xs text-green-600 dark:text-green-500 opacity-60 mt-1">{fmt(Math.round(toeslagen.total / 12))} {t.resultsExtra.perMonth}</p>
                 </div>
               )}
             </div>
@@ -143,9 +143,9 @@ export default function TaxResults({ result }: Props) {
           {/* Income breakdown: gross → deductions → taxable */}
           {(box1.ewEffect !== 0 || box1.pensionDeduction > 0) && (
             <div className="bg-slate-50 dark:bg-slate-900 rounded-xl p-4 border border-slate-100 dark:border-slate-700">
-              <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-3">Opbouw belastbaar inkomen</p>
+              <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-3">{t.resultsExtra.incomeBreakdown}</p>
               <div className="space-y-0">
-                <Row label="Bruto inkomen" value={fmt(box1.grossIncomeBeforeDeductions)} />
+                <Row label={t.resultsExtra.grossIncomeLine} value={fmt(box1.grossIncomeBeforeDeductions)} />
                 {box1.ewEffect < 0 && (
                   <Row label={t.results.netDeductionHRA} value={`− ${fmt(Math.abs(box1.ewEffect))}`} indent green />
                 )}
@@ -153,7 +153,7 @@ export default function TaxResults({ result }: Props) {
                   <Row label={t.results.ewfIncomeLine} value={`+ ${fmt(box1.ewEffect)}`} indent red />
                 )}
                 {box1.pensionDeduction > 0 && (
-                  <Row label="Lijfrentepremies (aftrek)" value={`− ${fmt(box1.pensionDeduction)}`} indent green />
+                  <Row label={t.resultsExtra.pensionDeduction} value={`− ${fmt(box1.pensionDeduction)}`} indent green />
                 )}
                 <Row label={t.results.taxableIncome} value={fmt(box1.taxableIncome)} bold />
               </div>
@@ -206,9 +206,10 @@ export default function TaxResults({ result }: Props) {
           <div className="flex items-start gap-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-3 text-xs text-amber-800 dark:text-amber-300">
             <Info size={14} className="mt-0.5 shrink-0" />
             <span>
-              Overgangswetgeving 2026. Fictief rendement: spaargeld <strong>1,03%</strong>,
-              overige bezittingen <strong>5,88%</strong>, schulden <strong>2,62%</strong>. Tarief <strong>36%</strong>.
-              Heffingvrij: <strong>€57.684</strong> / <strong>€115.368</strong> (partners).
+              {t.resultsExtra.box3Transition} <strong>{t.resultsExtra.box3RatesSavings}</strong>,
+              {' '}{t.resultsExtra.assetsRate588.split(' ')[0]} <strong>{t.resultsExtra.box3RatesAssets}</strong>,
+              {' '}{t.resultsExtra.debtsRate262.split(' ')[0]} <strong>{t.resultsExtra.box3RatesDebts}</strong>. {t.common.total} <strong>{t.resultsExtra.box3TaxRate}</strong>.
+              {' '}{t.results.exemption}: <strong>{t.resultsExtra.box3ExemptSingle}</strong> / <strong>{t.resultsExtra.box3ExemptPartner}</strong> {t.resultsExtra.box3ExemptPartnerLabel}.
             </span>
           </div>
 
@@ -230,16 +231,16 @@ export default function TaxResults({ result }: Props) {
                 <Row label={t.results.exemption}         value={`− ${fmt(box3.exemption)}`}      indent green />
                 <Row label={t.results.taxableWealth}     value={fmt(box3.taxableWealth)}         bold />
                 {box3.taxableWealth > 0 && <>
-                  <Row label={`Spaargeld (1,03%)`}       value={fmt(box3.breakdown.savingsFictitious)}     indent />
-                  <Row label={`Bezittingen (5,88%)`}     value={fmt(box3.breakdown.investmentsFictitious)} indent />
+                  <Row label={t.resultsExtra.savingsRate103}   value={fmt(box3.breakdown.savingsFictitious)}     indent />
+                  <Row label={t.resultsExtra.assetsRate588}    value={fmt(box3.breakdown.investmentsFictitious)} indent />
                   {box3.breakdown.debtsFictitious > 0 && (
-                    <Row label={`Schulden (2,62%)`}      value={`− ${fmt(box3.breakdown.debtsFictitious)}`} indent green />
+                    <Row label={t.resultsExtra.debtsRate262}   value={`− ${fmt(box3.breakdown.debtsFictitious)}`} indent green />
                   )}
                   <Row label={t.results.fictitiousReturn} value={fmt(box3.fictitiousReturn)}               bold />
                 </>}
                 <Row label={t.results.box3TaxLabel}      value={fmt(box3.netTax)}                bold red />
                 {actualSavingsInterest > 0 && (
-                  <Row label="Werkelijke spaarrente"     value={`+ ${fmt(actualSavingsInterest)}`} indent green />
+                  <Row label={t.resultsExtra.actualSavingsRate} value={`+ ${fmt(actualSavingsInterest)}`} indent green />
                 )}
               </div>
             </div>
@@ -249,17 +250,17 @@ export default function TaxResults({ result }: Props) {
               <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-3">{t.results.netWorth}</p>
               {hasPriceDiff && (
                 <div className="mb-3 p-3 bg-purple-50 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-800 rounded-lg text-xs text-purple-700 dark:text-purple-300">
-                  Portfolio Jan 1: {fmt(portfolioJan1Value)} → huidig: {fmt(portfolioCurrentValue)}
+                  {t.resultsExtra.portfolioJan1} {fmt(portfolioJan1Value)} {t.resultsExtra.portfolioNow} {fmt(portfolioCurrentValue)}
                 </div>
               )}
               <div className="space-y-0">
                 <Row label={t.results.savingsBalance}  value={fmt(box3.breakdown.savings)}    indent />
                 <Row label={t.results.portfolioValue}  value={fmt(portfolioCurrentValue)}     indent />
                 {wozAsset > 0 && (
-                  <Row label="Eigen woning (WOZ)"      value={`+ ${fmt(wozAsset)}`}           indent green />
+                  <Row label={t.resultsExtra.eigenWoning}    value={`+ ${fmt(wozAsset)}`}           indent green />
                 )}
                 {hypotheekRestschuld > 0 && (
-                  <Row label="Hypotheekschuld"         value={`− ${fmt(hypotheekRestschuld)}`} indent red />
+                  <Row label={t.resultsExtra.hypotheekSchuld} value={`− ${fmt(hypotheekRestschuld)}`} indent red />
                 )}
                 {box3.totalDebts > 0 && (
                   <Row label={t.results.debtsBox3}     value={`− ${fmt(box3.totalDebts)}`}    indent red />
@@ -296,10 +297,10 @@ export default function TaxResults({ result }: Props) {
               : []),
             { label: t.results.totalExpenses,  value: -totalExpenses,        sign: '−', color: 'text-orange-500' },
             ...(duoJaarbetaling > 0
-              ? [{ label: 'DUO terugbetaling', value: -duoJaarbetaling,       sign: '−', color: 'text-purple-600' }]
+              ? [{ label: t.resultsExtra.duoRepayment, value: -duoJaarbetaling,       sign: '−', color: 'text-purple-600' }]
               : []),
             ...(afschrijvingenJaarDeposit > 0
-              ? [{ label: 'Sparen voorzieningen', value: -afschrijvingenJaarDeposit, sign: '−', color: 'text-orange-400' }]
+              ? [{ label: t.resultsExtra.savingsProvisions, value: -afschrijvingenJaarDeposit, sign: '−', color: 'text-orange-400' }]
               : []),
           ].map((row, i) => (
             <div key={i} className="flex justify-between items-center gap-2 py-2 border-b border-slate-100 dark:border-slate-700 last:border-0 text-sm">
@@ -315,7 +316,7 @@ export default function TaxResults({ result }: Props) {
           </div>
           {portfolioGainLoss !== 0 && (
             <div className="flex justify-between items-center gap-2 mt-2 text-sm pt-2 border-t border-slate-100 dark:border-slate-700">
-              <span className="min-w-0 flex-1 text-slate-500 dark:text-slate-400">Gerealiseerde koerswinst/-verlies (informatief)</span>
+              <span className="min-w-0 flex-1 text-slate-500 dark:text-slate-400">{t.resultsExtra.gainLossInfo}</span>
               <span className={`shrink-0 font-medium ${portfolioGainLoss >= 0 ? 'text-green-600' : 'text-red-500'}`}>
                 {portfolioGainLoss >= 0 ? '+' : '−'}{fmt(Math.abs(portfolioGainLoss))}
               </span>

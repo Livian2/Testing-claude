@@ -81,9 +81,7 @@ export default function JaarruimteSection({ data }: Props) {
               className="w-full border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent"
             />
             <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-              Uw jaarlijkse pensioenopbouw &times; 6,27. Staat op uw{' '}
-              <strong className="text-slate-600 dark:text-slate-300">Uniform Pensioenoverzicht (UPO)</strong>.
-              Heeft u geen werkgeverspensioen? Laat dit op 0 staan.
+              {t.jaarruimte.factorADesc}
             </p>
           </div>
 
@@ -105,16 +103,15 @@ export default function JaarruimteSection({ data }: Props) {
             <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
               {t.jaarruimte.unusedPrevHint} Maximum 2026:{' '}
               <strong className="text-slate-600 dark:text-slate-300">{nl.format(MAX_RESERVERINGSRUIMTE)}</strong>
-              {' '}of 17% van uw inkomen ({nl.format(maxReservering)}) als dat lager is.
+              {' '}{t.jaarruimte.reservationHint.replace('17%', `17% (${nl.format(maxReservering)})`)}
             </p>
           </div>
 
           {/* Pension contributions already used */}
           {reedsGebruikt > 0 && (
             <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl px-4 py-3 text-xs text-blue-800 dark:text-blue-300">
-              <span className="font-semibold">Al ingelegd dit jaar:</span>{' '}
-              {nl.format(reedsGebruikt)} (pensioenpremies uit het Inkomen-tabblad).
-              Dit wordt afgetrokken van de beschikbare ruimte.
+              <span className="font-semibold">{t.jaarruimte.alreadyDeposited}</span>{' '}
+              {nl.format(reedsGebruikt)} {t.jaarruimte.alreadyDepositedSuffix}
             </div>
           )}
         </div>
@@ -129,28 +126,28 @@ export default function JaarruimteSection({ data }: Props) {
         <div className="space-y-1">
           {inkomenCapped && (
             <div className="mb-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2 text-xs text-amber-800 dark:text-amber-300">
-              Uw inkomen ({nl.format(rawInkomen)}) overschrijdt het maximum van {nl.format(MAX_INKOMEN)}. De berekening gebruikt {nl.format(MAX_INKOMEN)}.
+              {t.jaarruimte.incomeCapped} {nl.format(MAX_INKOMEN)} ({nl.format(rawInkomen)}). {t.jaarruimte.incomeCappedUsing} {nl.format(MAX_INKOMEN)}.
             </div>
           )}
 
-          <CalcRow label="Inkomen (Box 1)" value={nl.format(inkomen)} />
-          <CalcRow label="− AOW-franchise" value={`− ${nl.format(AOW_FRANCHISE)}`} indent />
-          <CalcRow label="Grondslag" value={nl.format(inkomstenBasis)} separator />
-          <CalcRow label="× 30%" value={nl.format(dertigProcent)} indent />
+          <CalcRow label={t.jaarruimte.incomeBox1} value={nl.format(inkomen)} />
+          <CalcRow label={t.jaarruimte.minusAow} value={`− ${nl.format(AOW_FRANCHISE)}`} indent />
+          <CalcRow label={t.jaarruimte.basis} value={nl.format(inkomstenBasis)} separator />
+          <CalcRow label={t.jaarruimte.times30pct} value={nl.format(dertigProcent)} indent />
           {factorA > 0 && (
-            <CalcRow label="− Factor A" value={`− ${nl.format(factorA)}`} indent />
+            <CalcRow label={t.jaarruimte.minusFactorA} value={`− ${nl.format(factorA)}`} indent />
           )}
           <CalcRow
-            label="= Jaarruimte dit jaar"
+            label={t.jaarruimte.annualSpaceThis}
             value={nl.format(jaarruimte)}
             highlight={jaarruimte > 0}
             separator
           />
           {effectieveReserveringsruimte > 0 && (
             <>
-              <CalcRow label="+ Reserveringsruimte" value={`+ ${nl.format(effectieveReserveringsruimte)}`} indent />
+              <CalcRow label={t.jaarruimte.plusReservation} value={`+ ${nl.format(effectieveReserveringsruimte)}`} indent />
               <CalcRow
-                label="= Totale inlegmogelijkheid"
+                label={t.jaarruimte.totalContrib}
                 value={nl.format(totaleInlegmogelijkheid)}
                 highlight={totaleInlegmogelijkheid > 0}
                 separator
@@ -159,9 +156,9 @@ export default function JaarruimteSection({ data }: Props) {
           )}
           {reedsGebruikt > 0 && (
             <>
-              <CalcRow label="− Al ingelegd (pensioenpremies)" value={`− ${nl.format(reedsGebruikt)}`} indent />
+              <CalcRow label={t.jaarruimte.minusDeposited} value={`− ${nl.format(reedsGebruikt)}`} indent />
               <CalcRow
-                label="= Nog beschikbare ruimte"
+                label={t.jaarruimte.remainingSpace}
                 value={nl.format(beschikbareRuimte)}
                 highlight={beschikbareRuimte > 0}
                 separator
@@ -171,12 +168,12 @@ export default function JaarruimteSection({ data }: Props) {
 
           {jaarruimte === 0 && factorA === 0 && inkomen <= AOW_FRANCHISE && (
             <p className="pt-2 text-xs text-slate-500 dark:text-slate-400">
-              Uw inkomen ligt onder de AOW-franchise. Er is geen jaarruimte.
+              {t.jaarruimte.belowFranchise}
             </p>
           )}
           {jaarruimte === 0 && factorA > 0 && (
             <p className="pt-2 text-xs text-slate-500 dark:text-slate-400">
-              Uw Factor A compenseert de volledige 30%-ruimte. Jaarruimte is nihil.
+              {t.jaarruimte.factorAFull}
             </p>
           )}
         </div>
@@ -192,39 +189,36 @@ export default function JaarruimteSection({ data }: Props) {
           <div className="space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <BenefitTile
-                label="Maximale inleg"
+                label={t.jaarruimte.maxContrib}
                 value={nl.format(beschikbareRuimte)}
-                sub="beschikbare ruimte"
+                sub={t.jaarruimte.availableSpace}
                 color="amber"
               />
               <BenefitTile
-                label="Belastingteruggave"
+                label={t.jaarruimte.taxRefund}
                 value={nl.format(belastingteruggave)}
-                sub={`${(marginaalTarief * 100).toFixed(2)}% marginaal tarief`}
+                sub={`${(marginaalTarief * 100).toFixed(2)}% ${t.jaarruimte.marginalRate}`}
                 color="emerald"
               />
               <BenefitTile
-                label="Effectief netto inleg"
+                label={t.jaarruimte.effectiveNet}
                 value={nl.format(effectiefNettoInleg)}
-                sub="na teruggave"
+                sub={t.jaarruimte.afterRefund}
                 color="blue"
               />
             </div>
 
             <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-xl px-4 py-3 text-xs text-amber-800 dark:text-amber-300 space-y-1.5">
-              <p className="font-semibold">Zo werkt het:</p>
+              <p className="font-semibold">{t.jaarruimte.howItWorks}</p>
               <p>
-                U legt {nl.format(beschikbareRuimte)} in op een lijfrente of bankspaarrekening.
-                Bij uw belastingaangifte trekt u dit af van uw Box 1 inkomen, wat een teruggave
-                oplevert van <strong>{nlDec.format(belastingteruggave)}</strong>.
+                {t.jaarruimte.depositExplain1} {nl.format(beschikbareRuimte)} {t.jaarruimte.depositExplain2} <strong>{nlDec.format(belastingteruggave)}</strong>.
               </p>
               <p>
-                Uw effectieve netto-inleg is daarmee slechts{' '}
+                {t.jaarruimte.effectiveDeposit}{' '}
                 <strong>{nlDec.format(effectiefNettoInleg)}</strong>.
               </p>
               <p className="text-amber-700 dark:text-amber-400">
-                Bij uitkering na pensionering betaalt u inkomstenbelasting over de uitkeringen,
-                mogelijk tegen een lager tarief (AOW-leeftijd: ~19,17%).
+                {t.jaarruimte.pensionNote}
               </p>
             </div>
           </div>
@@ -233,37 +227,19 @@ export default function JaarruimteSection({ data }: Props) {
 
       {/* Info card */}
       <SectionCard
-        title="Wat doet u met deze ruimte?"
+        title={t.jaarruimte.whatToDo}
         icon={<Info size={18} />}
         accent="border-slate-300"
       >
         <div className="space-y-3 text-sm text-slate-600 dark:text-slate-300">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <InfoTile
-              emoji="🏦"
-              title="Banksparen (lijfrente)"
-              body="Open een geblokkeerde spaarrekening (bijv. ASN, Centraal Beheer, DEGIRO). Inleg is fiscaal aftrekbaar; het saldo groeit belastingvrij."
-            />
-            <InfoTile
-              emoji="📈"
-              title="Beleggen in lijfrente"
-              body="Sommige aanbieders bieden een beleggingsvariant. Hogere verwachte groei, maar ook meer risico. Vergelijk kosten zorgvuldig."
-            />
-            <InfoTile
-              emoji="📅"
-              title="Deadline: 31 december"
-              body="Inleg moet vóór 31 december van het belastingjaar plaatsvinden om in dat jaar aftrekbaar te zijn. Claim de aftrek in uw aangifte."
-            />
-            <InfoTile
-              emoji="📄"
-              title="Bewijs bewaren"
-              body="Bewaar uw UPO en de jaarbedragen. De Belastingdienst kan vragen om onderbouwing van de berekende jaarruimte."
-            />
+            <InfoTile emoji="🏦" title={t.jaarruimte.bankSavingsTitle} body={t.jaarruimte.bankSavingsBody} />
+            <InfoTile emoji="📈" title={t.jaarruimte.investTitle}       body={t.jaarruimte.investBody} />
+            <InfoTile emoji="📅" title={t.jaarruimte.deadlineTitle}     body={t.jaarruimte.deadlineBody} />
+            <InfoTile emoji="📄" title={t.jaarruimte.keepProofTitle}    body={t.jaarruimte.keepProofBody} />
           </div>
           <p className="text-xs text-slate-400 dark:text-slate-500 pt-1">
-            Indicatieve berekening o.b.v. 2026-regels. Raadpleeg een financieel adviseur of
-            belastingadviseur voor persoonlijk advies. Reserveringsruimte vereist een beschikking
-            van de Belastingdienst als u deze claimt.
+            {t.jaarruimte.disclaimer}
           </p>
         </div>
       </SectionCard>

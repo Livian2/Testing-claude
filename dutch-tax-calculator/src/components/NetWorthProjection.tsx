@@ -84,20 +84,20 @@ function smoothArea(pts: [number, number][], baseY: number): string {
   return `${path} L ${last[0].toFixed(2)} ${baseY.toFixed(2)} L ${first[0].toFixed(2)} ${baseY.toFixed(2)} Z`;
 }
 
-const SERIES = [
-  { key: 'netWorth',    color: '#3b82f6', label: 'Netto vermogen',        dashed: false, width: 2.5, fill: true  },
-  { key: 'investments', color: '#a78bfa', label: 'Beleggingen',           dashed: false, width: 2,   fill: true  },
-  { key: 'savings',     color: '#34d399', label: 'Spaarbalans',           dashed: false, width: 1.5, fill: false },
-  { key: 'woz',         color: '#fbbf24', label: 'Eigen woning (WOZ)',    dashed: true,  width: 1.5, fill: false },
-  { key: 'hyp',         color: '#fb923c', label: 'Hypotheekschuld (neg.)', dashed: true,  width: 1.5, fill: false },
-  { key: 'box3',        color: '#f87171', label: 'Box 3 schulden (neg.)', dashed: true,  width: 1.5, fill: false },
-] as const;
-
-type SeriesKey = typeof SERIES[number]['key'];
+type SeriesKey = 'netWorth' | 'investments' | 'savings' | 'woz' | 'hyp' | 'box3';
 
 export default function NetWorthProjection({ data, config, onConfigChange }: Props) {
   const { t } = useLanguage();
   const currentYear = data.personal.taxYear;
+
+  const SERIES = [
+    { key: 'netWorth' as SeriesKey,    color: '#3b82f6', label: t.forecastExtra.legendNetWorth,    dashed: false, width: 2.5, fill: true  },
+    { key: 'investments' as SeriesKey, color: '#a78bfa', label: t.forecastExtra.legendInvestments, dashed: false, width: 2,   fill: true  },
+    { key: 'savings' as SeriesKey,     color: '#34d399', label: t.forecastExtra.legendSavings,     dashed: false, width: 1.5, fill: false },
+    { key: 'woz' as SeriesKey,         color: '#fbbf24', label: t.forecastExtra.legendWoz,         dashed: true,  width: 1.5, fill: false },
+    { key: 'hyp' as SeriesKey,         color: '#fb923c', label: t.forecastExtra.legendMortgage,    dashed: true,  width: 1.5, fill: false },
+    { key: 'box3' as SeriesKey,        color: '#f87171', label: t.forecastExtra.legendBox3Debts,   dashed: true,  width: 1.5, fill: false },
+  ];
 
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
   const svgRef                  = useRef<SVGSVGElement>(null);
@@ -348,7 +348,7 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
         ))}
         <div className="h-5 w-px bg-slate-300 dark:bg-slate-600 hidden sm:block" />
         <div className="flex items-center gap-1.5">
-          <span className="text-xs text-slate-500 dark:text-slate-400">Periode</span>
+          <span className="text-xs text-slate-500 dark:text-slate-400">{t.forecastExtra.period}</span>
           <div className="flex rounded-lg border border-slate-300 dark:border-slate-600 overflow-hidden">
             {periodOptions.map(n => (
               <button key={n} onClick={() => onConfigChange({ ...config, jaren: n })}
@@ -364,7 +364,7 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
         <div className="flex-1" />
         {/* Stat chips */}
         {[
-          { label: 'Nu',       val: now.netWorth,  extra: '' },
+          { label: t.forecastExtra.now,       val: now.netWorth,  extra: '' },
           { label: `+${config.jaren}j`, val: last.netWorth, extra: '' },
         ].map(({ label, val }) => (
           <div key={label} className="flex items-center gap-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1 shadow-sm">
@@ -380,7 +380,7 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
         )}
       </div>
       <p className="text-[10px] text-slate-400 dark:text-slate-500 -mt-1 mb-4">
-        Bijdragen via <strong className="text-slate-500 dark:text-slate-400">Kosten</strong> — sparen {nl0.format(jaarlijksSparen)}/jr · beleggen {nl0.format(jaarlijksBeleggen)}/jr
+        {t.forecastExtra.contributions} <strong className="text-slate-500 dark:text-slate-400">{t.tabs.expenses}</strong> — {t.forecastExtra.savingYr} {nl0.format(jaarlijksSparen)}/jr · {t.forecastExtra.investYr} {nl0.format(jaarlijksBeleggen)}/jr
       </p>
 
       {/* ── FIRE section ── */}
@@ -390,7 +390,7 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
 
           {/* Huidige leeftijd */}
           <label className="flex items-center gap-1.5">
-            <span className="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">Huidige leeftijd</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">{t.forecastExtra.currentAge}</span>
             <div className="flex items-center border border-slate-300 dark:border-slate-600 rounded-lg overflow-hidden bg-white dark:bg-slate-700 focus-within:ring-2 focus-within:ring-amber-400">
               <input type="number" min="18" max="80" step="1"
                 value={leeftijd}
@@ -403,7 +403,7 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
 
           {/* Doel FIRE leeftijd */}
           <label className="flex items-center gap-1.5">
-            <span className="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">Doel FIRE-leeftijd</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">{t.forecastExtra.fireTargetAge}</span>
             <div className="flex items-center border border-slate-300 dark:border-slate-600 rounded-lg overflow-hidden bg-white dark:bg-slate-700 focus-within:ring-2 focus-within:ring-amber-400">
               <input type="number" min={leeftijd} max="80" step="1"
                 value={gewensteFireLeeftijd}
@@ -432,7 +432,7 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
 
           {/* AOW leeftijd */}
           <label className="flex items-center gap-1.5">
-            <span className="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">AOW-leeftijd</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">{t.forecastExtra.aowAge}</span>
             <div className="flex items-center border border-slate-300 dark:border-slate-600 rounded-lg overflow-hidden bg-white dark:bg-slate-700 focus-within:ring-2 focus-within:ring-amber-400">
               <input type="number" min="60" max="75" step="1"
                 value={aowLeeftijd}
@@ -446,8 +446,8 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
           {/* AOW bedrag per maand */}
           <label className="flex items-center gap-1.5">
             <span className="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">
-              AOW bedrag (bruto/mnd)
-              <span className="ml-1 text-[9px] text-slate-400 dark:text-slate-500">(ca. €1.400 alleenst. 2026)</span>
+              {t.forecastExtra.aowAmount}
+              <span className="ml-1 text-[9px] text-slate-400 dark:text-slate-500">{t.forecastExtra.aowAmountHint}</span>
             </span>
             <div className="flex items-center border border-slate-300 dark:border-slate-600 rounded-lg overflow-hidden bg-white dark:bg-slate-700 focus-within:ring-2 focus-within:ring-emerald-400">
               <span className="px-1.5 py-1 bg-slate-100 dark:bg-slate-600 text-slate-400 text-xs border-r border-slate-300 dark:border-slate-600 select-none">€</span>
@@ -461,7 +461,7 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
 
           {/* Aanvullend pensioen */}
           <label className="flex items-center gap-1.5">
-            <span className="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">Aanvullend pensioen (bruto/mnd)</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">{t.forecastExtra.suppPension}</span>
             <div className="flex items-center border border-slate-300 dark:border-slate-600 rounded-lg overflow-hidden bg-white dark:bg-slate-700 focus-within:ring-2 focus-within:ring-indigo-400">
               <span className="px-1.5 py-1 bg-slate-100 dark:bg-slate-600 text-slate-400 text-xs border-r border-slate-300 dark:border-slate-600 select-none">€</span>
               <input type="number" min="0" max="10000" step="10"
@@ -475,7 +475,7 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
           {/* Pensioen leeftijd */}
           {pensioenBedragMaand > 0 && (
             <label className="flex items-center gap-1.5">
-              <span className="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">Pensioenleeftijd</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">{t.forecastExtra.pensionAge}</span>
               <div className="flex items-center border border-slate-300 dark:border-slate-600 rounded-lg overflow-hidden bg-white dark:bg-slate-700 focus-within:ring-2 focus-within:ring-indigo-400">
                 <input type="number" min="55" max="75" step="1"
                   value={pensioenLeeftijd}
@@ -490,42 +490,42 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
           {/* FIRE numbers */}
           <div className="flex items-center gap-3 flex-wrap">
             <div className="flex items-center gap-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1">
-              <span className="text-[10px] text-slate-400">Bruto FIRE</span>
+              <span className="text-[10px] text-slate-400">{t.forecastExtra.bruteFireLabel}</span>
               <span className="text-xs font-bold tabular-nums text-amber-600 dark:text-amber-400">{nl0.format(bruteFireNumber)}</span>
             </div>
             <div className="flex items-center gap-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1">
-              <span className="text-[10px] text-slate-400">Netto (Box 3)</span>
+              <span className="text-[10px] text-slate-400">{t.forecastExtra.netBox3Label}</span>
               <span className="text-xs font-bold tabular-nums text-amber-500 dark:text-amber-300">{nl0.format(fireNumber)}</span>
             </div>
             <div className="flex items-center gap-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1">
-              <span className="text-[10px] text-slate-400">Jaaruitgaven</span>
+              <span className="text-[10px] text-slate-400">{t.forecastExtra.annualExpenses}</span>
               <span className="text-xs font-bold tabular-nums text-slate-600 dark:text-slate-300">{nl0.format(annualExpenses)}</span>
             </div>
             <div className="flex items-center gap-1.5 bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-800/40 rounded-lg px-2.5 py-1">
-              <span className="text-[10px] text-slate-400">AOW bijdrage</span>
+              <span className="text-[10px] text-slate-400">{t.forecastExtra.aowContrib}</span>
               <span className="text-xs font-bold tabular-nums text-emerald-600 dark:text-emerald-400">{nl0.format(aowJaarBedrag)}/jr</span>
             </div>
             {pensioenJaarBedrag > 0 && (
               <div className="flex items-center gap-1.5 bg-white dark:bg-slate-900 border border-indigo-200 dark:border-indigo-800/40 rounded-lg px-2.5 py-1">
-                <span className="text-[10px] text-slate-400">Pensioen bijdrage</span>
+                <span className="text-[10px] text-slate-400">{t.forecastExtra.pensionContrib}</span>
                 <span className="text-xs font-bold tabular-nums text-indigo-500 dark:text-indigo-400">{nl0.format(pensioenJaarBedrag)}/jr</span>
               </div>
             )}
             <div className="flex items-center gap-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1">
-              <span className="text-[10px] text-slate-400">Netto onttrekking na AOW</span>
+              <span className="text-[10px] text-slate-400">{t.forecastExtra.netWithdrawalAow}</span>
               <span className="text-xs font-bold tabular-nums text-blue-600 dark:text-blue-400">{nl0.format(nettoOnttrekkingNaAow)}/jr</span>
             </div>
             {fireYear !== null ? (
               <div className="flex items-center gap-1.5 bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-800/40 rounded-lg px-2.5 py-1">
-                <span className="text-[10px] text-slate-400">FI-jaar</span>
+                <span className="text-[10px] text-slate-400">{t.forecastExtra.fiYear}</span>
                 <span className="text-xs font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
-                  {fireYear} <span className="font-normal text-slate-400">(leeftijd {leeftijd + (fireYear - currentYear)})</span>
+                  {fireYear} <span className="font-normal text-slate-400">({t.forecastExtra.currentAge.toLowerCase()} {leeftijd + (fireYear - currentYear)})</span>
                 </span>
               </div>
             ) : (
               <div className="flex items-center gap-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1">
-                <span className="text-[10px] text-slate-400">FI-jaar</span>
-                <span className="text-xs font-bold tabular-nums text-slate-400">Buiten prognoseperiode</span>
+                <span className="text-[10px] text-slate-400">{t.forecastExtra.fiYear}</span>
+                <span className="text-xs font-bold tabular-nums text-slate-400">{t.forecastExtra.outsidePeriod}</span>
               </div>
             )}
           </div>
@@ -541,50 +541,50 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
           const targetFireYear = currentYear + yearsToTarget;
           return (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-              {/* Nu */}
+              {/* Now */}
               <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2.5">
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-[10px] uppercase tracking-wider text-slate-400">Nu</span>
+                  <span className="text-[10px] uppercase tracking-wider text-slate-400">{t.forecastExtra.nowLabel}</span>
                   <span className="text-[10px] text-slate-400">{currentYear}</span>
                 </div>
                 <div className="flex items-baseline gap-1.5">
                   <span className="text-2xl font-bold tabular-nums text-slate-700 dark:text-slate-200">{leeftijd}</span>
-                  <span className="text-[11px] text-slate-400">jaar</span>
+                  <span className="text-[11px] text-slate-400">jr</span>
                 </div>
-                <div className="text-[10px] text-slate-400 mt-0.5">Huidige leeftijd</div>
+                <div className="text-[10px] text-slate-400 mt-0.5">{t.forecastExtra.currentAgeLabel}</div>
               </div>
 
-              {/* Doel FIRE */}
+              {/* Target FIRE */}
               <div className={`bg-white dark:bg-slate-900 border rounded-lg px-3 py-2.5 ${
                 targetReached
                   ? 'border-emerald-300 dark:border-emerald-700/50'
                   : 'border-amber-300 dark:border-amber-700/50'
               }`}>
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-[10px] uppercase tracking-wider text-amber-600 dark:text-amber-400">Doel FIRE</span>
+                  <span className="text-[10px] uppercase tracking-wider text-amber-600 dark:text-amber-400">{t.forecastExtra.fireTargetAge}</span>
                   <span className="text-[10px] text-slate-400">{targetFireYear}</span>
                 </div>
                 <div className="flex items-baseline gap-1.5">
                   <span className="text-2xl font-bold tabular-nums text-amber-600 dark:text-amber-400">{gewensteFireLeeftijd}</span>
-                  <span className="text-[11px] text-slate-400">jaar</span>
-                  <span className="ml-auto text-[11px] font-medium text-slate-500 dark:text-slate-400">over {yearsToTarget}j</span>
+                  <span className="text-[11px] text-slate-400">jr</span>
+                  <span className="ml-auto text-[11px] font-medium text-slate-500 dark:text-slate-400">+{yearsToTarget}j</span>
                 </div>
                 <div className="text-[10px] mt-0.5">
                   {actualFiAge === null ? (
-                    <span className="text-slate-400">Prognose: niet bereikt binnen periode</span>
+                    <span className="text-slate-400">{t.forecastExtra.fireNotInPeriod}</span>
                   ) : targetVsActual! <= 0 ? (
                     <span className="text-emerald-600 dark:text-emerald-400">
-                      ✓ Haalbaar — prognose: leeftijd {actualFiAge} ({-targetVsActual!}j eerder)
+                      ✓ {t.forecastExtra.fireReachable} {actualFiAge} ({-targetVsActual!} {t.forecastExtra.fireEarlier})
                     </span>
                   ) : (
                     <span className="text-orange-500 dark:text-orange-400">
-                      Prognose: leeftijd {actualFiAge} ({targetVsActual}j later dan doel)
+                      {t.forecastExtra.fireForecastAge} {actualFiAge} ({targetVsActual} {t.forecastExtra.fireLater})
                     </span>
                   )}
                 </div>
               </div>
 
-              {/* AOW */}
+              {/* State pension */}
               <div className="bg-white dark:bg-slate-900 border border-emerald-300 dark:border-emerald-700/50 rounded-lg px-3 py-2.5">
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-[10px] uppercase tracking-wider text-emerald-600 dark:text-emerald-400">AOW</span>
@@ -592,11 +592,11 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
                 </div>
                 <div className="flex items-baseline gap-1.5">
                   <span className="text-2xl font-bold tabular-nums text-emerald-600 dark:text-emerald-400">{aowLeeftijd}</span>
-                  <span className="text-[11px] text-slate-400">jaar</span>
-                  <span className="ml-auto text-[11px] font-medium text-slate-500 dark:text-slate-400">over {yearsToAow}j</span>
+                  <span className="text-[11px] text-slate-400">jr</span>
+                  <span className="ml-auto text-[11px] font-medium text-slate-500 dark:text-slate-400">+{yearsToAow}j</span>
                 </div>
                 <div className="text-[10px] text-slate-400 mt-0.5">
-                  +€{aowJaarBedrag.toLocaleString('nl-NL')}/jr vanaf {aowCalendarYear}
+                  +€{aowJaarBedrag.toLocaleString('nl-NL')}/jr {aowCalendarYear}
                 </div>
               </div>
             </div>
@@ -606,7 +606,7 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
         {/* FIRE progress bar */}
         <div className="space-y-1">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] text-slate-500 dark:text-slate-400">FIRE voortgang</span>
+            <span className="text-[11px] text-slate-500 dark:text-slate-400">{t.forecastExtra.fireProgress}</span>
             <span className="text-[11px] font-semibold text-amber-600 dark:text-amber-400">{fireProgress.toFixed(1)}%</span>
           </div>
           <div className="h-2 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
@@ -625,17 +625,17 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
         {/* AOW gap */}
         {fireYear !== null && aowGapYears !== null && overbruggingskapitaal !== null && (
           <p className="text-[11px] text-slate-500 dark:text-slate-400">
-            Als je FI bent in <strong className="text-amber-600 dark:text-amber-400">{fireYear}</strong> (leeftijd {leeftijd + (fireYear - currentYear)}), heb je nog{' '}
-            <strong className="text-slate-700 dark:text-slate-200">{aowGapYears} jaar</strong> tot AOW (leeftijd {aowLeeftijd}).
+            {t.forecastExtra.aowGapMsg} <strong className="text-amber-600 dark:text-amber-400">{fireYear}</strong>, {t.forecastExtra.aowGapAge}{' '}
+            <strong className="text-slate-700 dark:text-slate-200">{aowGapYears} {t.forecastExtra.aowGapYears} {aowLeeftijd})</strong>.
             {aowGapYears > 0 && (
-              <> Overbruggingskapitaal: <strong className="text-amber-600 dark:text-amber-400">{nl0.format(overbruggingskapitaal)}</strong>.</>
+              <> {t.forecastExtra.bridgeCapital} <strong className="text-amber-600 dark:text-amber-400">{nl0.format(overbruggingskapitaal)}</strong>.</>
             )}
-            {aowGapYears === 0 && <> Je bereikt AOW rond hetzelfde jaar als FI.</>}
+            {aowGapYears === 0 && <> {t.forecastExtra.sameYearAow}</>}
           </p>
         )}
         {fireYear === null && (
           <p className="text-[11px] text-slate-500 dark:text-slate-400">
-            FI-datum valt buiten de prognoseperiode. Vergroot je bijdragen of verleng de periode om de FIRE-datum te zien.
+            {t.forecastExtra.fiOutsidePeriod}
           </p>
         )}
       </div>
@@ -805,13 +805,13 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
                   {/* Tooltip — position left of cursor if near right edge */}
                   {(() => {
                     const tipRows = [
-                      { label: 'Netto',       val: hp.netWorth,                       color: '#60a5fa', show: true },
-                      { label: 'Beleg',       val: hp.investments,                    color: '#c4b5fd', show: true },
-                      { label: 'Spaar',       val: hp.savings,                        color: '#6ee7b7', show: true },
-                      { label: 'WOZ',         val: hp.wozWaarde,                      color: '#fbbf24', show: hasWoz },
-                      { label: 'Hypotheek',   val: -hp.hypotheekDebt,                 color: '#fdba74', show: true },
-                      { label: 'Box3 sch.',   val: -(hp.duoDebt + hp.overigeDebt),    color: '#fca5a5', show: true },
-                      { label: 'Afschr.res.', val: -hp.afschrijvingenReserve,         color: '#94a3b8', show: hp.afschrijvingenReserve > 0 },
+                      { label: t.forecastExtra.tooltipNetto,      val: hp.netWorth,                       color: '#60a5fa', show: true },
+                      { label: t.forecastExtra.tooltipBeleg,      val: hp.investments,                    color: '#c4b5fd', show: true },
+                      { label: t.forecastExtra.tooltipSpaar,      val: hp.savings,                        color: '#6ee7b7', show: true },
+                      { label: 'WOZ',                             val: hp.wozWaarde,                      color: '#fbbf24', show: hasWoz },
+                      { label: t.forecastExtra.tooltipHypotheek,  val: -hp.hypotheekDebt,                 color: '#fdba74', show: true },
+                      { label: t.forecastExtra.tooltipBox3Sch,    val: -(hp.duoDebt + hp.overigeDebt),    color: '#fca5a5', show: true },
+                      { label: t.forecastExtra.tooltipAfschrRes,  val: -hp.afschrijvingenReserve,         color: '#94a3b8', show: hp.afschrijvingenReserve > 0 },
                     ].filter(r => r.show);
                     const tipW = 185; const tipH = 28 + tipRows.length * 22;
                     const flip = hoverX > W - padR - tipW - 20;
@@ -854,7 +854,7 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
                   <svg width={20} height={12} style={{ flexShrink: 0 }}>
                     <line x1={0} y1={6} x2={20} y2={6} stroke="#f59e0b" strokeWidth={1.5} strokeDasharray="8 4" />
                   </svg>
-                  <span className="text-[11px] text-slate-400 whitespace-nowrap">FIRE target</span>
+                  <span className="text-[11px] text-slate-400 whitespace-nowrap">{t.forecastExtra.fireTarget}</span>
                 </div>
               )}
             </div>
@@ -866,12 +866,12 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
           <table className="w-full text-xs table-fixed">
             <thead>
               <tr className="bg-slate-100 dark:bg-slate-800 border-b-2 border-slate-300 dark:border-slate-600">
-                <th className="text-left px-3 py-2 font-semibold text-slate-500 dark:text-slate-400 w-[52px]">Jaar</th>
-                <th className="text-right px-2 py-2 font-semibold text-emerald-600 dark:text-emerald-400">Spaar</th>
-                <th className="text-right px-2 py-2 font-semibold text-violet-500 dark:text-violet-400">Beleg</th>
+                <th className="text-left px-3 py-2 font-semibold text-slate-500 dark:text-slate-400 w-[52px]">{t.forecastExtra.tableYearCol}</th>
+                <th className="text-right px-2 py-2 font-semibold text-emerald-600 dark:text-emerald-400">{t.forecastExtra.tableSavingsCol}</th>
+                <th className="text-right px-2 py-2 font-semibold text-violet-500 dark:text-violet-400">{t.forecastExtra.tableInvestCol}</th>
                 {hasWoz && <th className="text-right px-2 py-2 font-semibold text-amber-500 dark:text-amber-400">WOZ</th>}
-                <th className="text-right px-2 py-2 font-semibold text-orange-500 dark:text-orange-400">Schuld</th>
-                <th className="text-right px-3 py-2 font-semibold text-blue-600 dark:text-blue-400">Netto</th>
+                <th className="text-right px-2 py-2 font-semibold text-orange-500 dark:text-orange-400">{t.forecastExtra.tableDebtCol}</th>
+                <th className="text-right px-3 py-2 font-semibold text-blue-600 dark:text-blue-400">{t.forecastExtra.tableNetCol}</th>
               </tr>
             </thead>
           </table>
@@ -901,7 +901,7 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
                         :           'text-slate-500 dark:text-slate-400'
                       }`}>
                         {p.year}
-                        {isNow && <span className="ml-1 text-[9px] bg-amber-500 text-white rounded px-1 py-0.5 align-middle">nu</span>}
+                        {isNow && <span className="ml-1 text-[9px] bg-amber-500 text-white rounded px-1 py-0.5 align-middle">{t.forecastExtra.now}</span>}
                       </td>
                       <td className="px-2 py-1.5 text-right font-mono tabular-nums text-emerald-600 dark:text-emerald-400">{fmtK(p.savings)}</td>
                       <td className="px-2 py-1.5 text-right font-mono tabular-nums text-violet-500 dark:text-violet-400">{fmtK(p.investments)}</td>

@@ -6,6 +6,7 @@ import {
 import type { PortfolioData, Holding, Transaction, AssetType, TransactionType } from '../types';
 import { computePositions } from '../utils/taxCalculations';
 import { fetchPricesWithFX, resolveIsins, resolveBareTickers, looksLikeIsin } from '../utils/priceFetcher';
+import { useLanguage } from '../i18n/LanguageContext';
 import SectionCard from './SectionCard';
 import PieChart from './PieChart';
 import CsvImportPanel from './CsvImportPanel';
@@ -76,6 +77,7 @@ interface FondsSearchProps {
 }
 
 function FondsSearch({ value, holdings, onChange }: FondsSearchProps) {
+  const { t } = useLanguage();
   const [query, setQuery]     = useState(value);
   const [results, setResults] = useState<SearchResultItem[]>([]);
   const [open, setOpen]       = useState(false);
@@ -151,7 +153,7 @@ function FondsSearch({ value, holdings, onChange }: FondsSearchProps) {
       <input
         ref={inputRef}
         className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1.5 text-sm bg-white dark:bg-slate-700 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-400"
-        placeholder="Zoek fonds…"
+        placeholder={t.portfolioExtra.searchPlaceholder}
         value={query}
         onChange={e => handleInput(e.target.value)}
         onFocus={() => query.length >= 2 && setOpen(true)}
@@ -168,7 +170,7 @@ function FondsSearch({ value, holdings, onChange }: FondsSearchProps) {
         >
           {existingMatches.length > 0 && (
             <>
-              <div className="px-3 py-1.5 text-slate-400 font-semibold uppercase tracking-wide border-b border-slate-200 dark:border-slate-600 sticky top-0 bg-white dark:bg-slate-800">Eigen posities</div>
+              <div className="px-3 py-1.5 text-slate-400 font-semibold uppercase tracking-wide border-b border-slate-200 dark:border-slate-600 sticky top-0 bg-white dark:bg-slate-800">{t.portfolioExtra.ownPositions}</div>
               {existingMatches.map(h => (
                 <button
                   key={h.id}
@@ -184,6 +186,7 @@ function FondsSearch({ value, holdings, onChange }: FondsSearchProps) {
           {results.length > 0 && (
             <>
               <div className="px-3 py-1.5 text-slate-400 font-semibold uppercase tracking-wide border-b border-slate-200 dark:border-slate-600 border-t border-slate-200 dark:border-slate-600 sticky top-0 bg-white dark:bg-slate-800">Yahoo Finance</div>
+
               {results.map(r => (
                 <button
                   key={r.symbol}
@@ -203,7 +206,7 @@ function FondsSearch({ value, holdings, onChange }: FondsSearchProps) {
             </>
           )}
           {loading && (
-            <div className="px-3 py-3 text-slate-400 text-center">Zoeken…</div>
+            <div className="px-3 py-3 text-slate-400 text-center">{t.portfolioExtra.searching}</div>
           )}
         </div>
       )}
@@ -212,6 +215,7 @@ function FondsSearch({ value, holdings, onChange }: FondsSearchProps) {
 }
 
 export default function PortfolioSection({ data, onChange }: Props) {
+  const { t } = useLanguage();
   const [tab, setTab]               = useState<InnerTab>('holdings');
   const [txType, setTxType]         = useState<TransactionType>('buy');
   const [fetchState, setFetchState] = useState<FetchState>('idle');
@@ -245,7 +249,7 @@ export default function PortfolioSection({ data, onChange }: Props) {
   const doFetch = async (holdingsSnapshot: Holding[]) => {
     const hasAnyTicker = holdingsSnapshot.some(h => h.ticker || h.isin);
     if (!hasAnyTicker) {
-      setFetchMsg('Geen ticker-symbolen of ISIN-codes ingevuld. Voeg tickers toe bij uw posities (bijv. VWCE.AS).');
+      setFetchMsg(t.portfolioExtra.noTickerError);
       setFetchState('error');
       return;
     }
@@ -290,7 +294,7 @@ export default function PortfolioSection({ data, onChange }: Props) {
       // Step 2: fetch prices for all resolved tickers
       const tickers = [...new Set(resolvedSnapshot.map(h => h.ticker).filter(Boolean))];
       if (tickers.length === 0) {
-        setFetchMsg('Kon geen geldige ticker-symbolen vinden. Controleer uw ISIN-codes of vul tickers handmatig in.');
+        setFetchMsg(t.portfolioExtra.noValidTickerError);
         setFetchState('error');
         return;
       }
@@ -321,12 +325,13 @@ export default function PortfolioSection({ data, onChange }: Props) {
 
       const found = Object.keys(result.quotes).length;
       const resolvedTotal = Object.keys(isinMap).length + Object.keys(tickerMap).length;
-      const resolvedNote = resolvedTotal > 0 ? ` (${resolvedTotal} symbolen automatisch omgezet)` : '';
-      setFetchMsg(`${found} van ${tickers.length} koers${tickers.length !== 1 ? 'en' : ''} bijgewerkt.${resolvedNote}`);
+      const resolvedNote = resolvedTotal > 0 ? ` (${resolvedTotal} ${t.portfolioExtra.resolvedNote})` : '';
+      const priceWord = tickers.length !== 1 ? t.portfolioExtra.pricesUpdatedPlural : t.portfolioExtra.pricesUpdated;
+      setFetchMsg(`${found} ${t.portfolioExtra.fetchedOf} ${tickers.length} ${priceWord} ${t.portfolioExtra.bijgewerkt}${resolvedNote}`);
       setFetchState('ok');
     } catch (err) {
       console.error('Price fetch failed:', err);
-      setFetchMsg('Kon koersen niet ophalen. Controleer uw internetverbinding of de ticker-symbolen.');
+      setFetchMsg(t.portfolioExtra.fetchError);
       setFetchState('error');
     }
   };
@@ -343,6 +348,16 @@ export default function PortfolioSection({ data, onChange }: Props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const assetLabels: Record<AssetType, string> = {
+    savings:    t.portfolio.assetSavings,
+    stocks:     t.portfolio.assetStocks,
+    etf:        t.portfolio.assetEtf,
+    bonds:      t.portfolio.assetBonds,
+    realEstate: t.portfolio.assetRealEstate,
+    crypto:     t.portfolio.assetCrypto,
+    other:      t.portfolio.assetOther,
+  };
+
   const positions         = computePositions(data.holdings, data.transactions);
   const totalCurrentValue = positions.reduce((s, p) => s + p.currentValue, 0);
 
@@ -352,28 +367,28 @@ export default function PortfolioSection({ data, onChange }: Props) {
       return acc;
     }, {} as Record<AssetType, number>),
   ).map(([type, value]) => ({
-    label: ASSET_LABELS[type as AssetType],
+    label: assetLabels[type as AssetType],
     value,
     color: ASSET_COLORS[type as AssetType],
   }));
 
   const INNER_TABS = [
-    { id: 'holdings' as InnerTab,     label: 'Posities',    icon: <TrendingUp size={13} /> },
-    { id: 'transactions' as InnerTab, label: 'Transacties', icon: <ArrowUpCircle size={13} /> },
-    { id: 'import' as InnerTab,       label: 'Importeer',   icon: <FileUp size={13} /> },
-    { id: 'overview' as InnerTab,     label: 'Overzicht',   icon: <LayoutList size={13} /> },
+    { id: 'holdings' as InnerTab,     label: t.portfolioExtra.tabHoldings,     icon: <TrendingUp size={13} /> },
+    { id: 'transactions' as InnerTab, label: t.portfolioExtra.tabTransactions,  icon: <ArrowUpCircle size={13} /> },
+    { id: 'import' as InnerTab,       label: t.portfolioExtra.tabImport,        icon: <FileUp size={13} /> },
+    { id: 'overview' as InnerTab,     label: t.portfolioExtra.tabOverview,      icon: <LayoutList size={13} /> },
   ];
 
   const hasTickers = data.holdings.some(h => h.ticker);
 
   return (
-    <SectionCard title="Beleggingsportefeuille — Live tracking" icon={<TrendingUp size={20} />} accent="border-purple-400">
+    <SectionCard title={t.portfolioExtra.sectionTitle} icon={<TrendingUp size={20} />} accent="border-purple-400">
       {/* Live total banner — always show when there are holdings with tickers */}
       {(hasTickers || totalCurrentValue > 0 || fetchState === 'loading') && (
         <div className="mb-4 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-xl px-4 py-3 space-y-2">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Actuele portefeuillewaarde</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">{t.portfolioExtra.currentValue}</p>
               <p className="text-xl font-bold text-purple-700 dark:text-purple-300">{nl0.format(totalCurrentValue)}</p>
             </div>
             <div className="flex flex-col items-end gap-1.5">
@@ -383,11 +398,11 @@ export default function PortfolioSection({ data, onChange }: Props) {
                 className="flex items-center gap-1.5 text-xs bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700 cursor-pointer border-0 disabled:opacity-60"
               >
                 <RefreshCw size={13} className={fetchState === 'loading' ? 'animate-spin' : ''} />
-                {fetchState === 'loading' ? 'Ophalen…' : 'Koersen bijwerken'}
+                {fetchState === 'loading' ? t.portfolioExtra.fetchingPrices : t.portfolioExtra.refreshPrices}
               </button>
               {lastFetchTime && (
                 <span className="flex items-center gap-1 text-xs text-slate-400">
-                  <Clock size={11} />Bijgewerkt om {lastFetchTime}
+                  <Clock size={11} />{t.portfolioExtra.updatedAt} {lastFetchTime}
                 </span>
               )}
             </div>
@@ -437,16 +452,15 @@ export default function PortfolioSection({ data, onChange }: Props) {
         <div>
           <div className="flex items-center justify-between mb-3 gap-3 flex-wrap">
             <p className="text-xs text-slate-500">
-              Voeg posities toe voor live koersopvolging. Vul de <strong>ticker</strong> in (bijv.{' '}
-              <code className="bg-slate-100 px-1 rounded">VWCE.AS</code>) voor automatisch ophalen.
+              {t.portfolioExtra.holdingsDescFull}
               <br />
-              <span className="text-slate-400">Belastingwaardes (1 jan) invullen op het tabblad <strong>Waardes 1 jan</strong>.</span>
+              <span className="text-slate-400">{t.portfolioExtra.holdingsDescTax}</span>
             </p>
           </div>
 
           {data.holdings.length === 0 ? (
             <div className="text-center py-6 text-slate-400 dark:text-slate-500 text-sm border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl mb-3">
-              Nog geen posities toegevoegd
+              {t.portfolio.noHoldings}
             </div>
           ) : (
             <div className="space-y-2 mb-3">
@@ -454,16 +468,16 @@ export default function PortfolioSection({ data, onChange }: Props) {
                 <div key={h.id} className="p-3 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700">
                   <div className="grid grid-cols-12 gap-2 items-end">
                     <div className="col-span-6 sm:col-span-2 flex flex-col gap-1">
-                      <label className="text-xs text-slate-500">Naam</label>
+                      <label className="text-xs text-slate-500">{t.portfolioExtra.colName}</label>
                       <input className="border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1.5 text-sm bg-white dark:bg-slate-700 dark:text-slate-100 outline-none focus:ring-2 focus:ring-purple-400"
                         placeholder="VWCE" value={h.name}
                         onChange={e => updateHolding(h.id, { name: e.target.value })} />
                     </div>
                     <div className="col-span-5 sm:col-span-2 flex flex-col gap-1">
                       <label className="text-xs text-slate-500">
-                        Ticker
+                        {t.portfolioExtra.colTicker}
                         {h.isin && !h.ticker && (
-                          <span className="ml-1 text-indigo-400">(auto via ISIN)</span>
+                          <span className="ml-1 text-indigo-400">{t.portfolioExtra.colAutoViaIsin}</span>
                         )}
                       </label>
                       <input className="border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1.5 text-sm bg-white dark:bg-slate-700 dark:text-slate-100 outline-none focus:ring-2 focus:ring-indigo-400 font-mono"
@@ -471,29 +485,29 @@ export default function PortfolioSection({ data, onChange }: Props) {
                         onChange={e => updateHolding(h.id, { ticker: e.target.value.toUpperCase() })} />
                     </div>
                     <div className="col-span-6 sm:col-span-2 flex flex-col gap-1">
-                      <label className="text-xs text-slate-500">Type</label>
+                      <label className="text-xs text-slate-500">{t.portfolioExtra.colType}</label>
                       <select className="border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1.5 text-sm bg-white dark:bg-slate-700 dark:text-slate-100 outline-none focus:ring-2 focus:ring-purple-400"
                         value={h.type} onChange={e => updateHolding(h.id, { type: e.target.value as AssetType })}>
-                        {(Object.keys(ASSET_LABELS) as AssetType[]).map(k => (
-                          <option key={k} value={k}>{ASSET_LABELS[k]}</option>
+                        {(Object.keys(assetLabels) as AssetType[]).map(k => (
+                          <option key={k} value={k}>{assetLabels[k]}</option>
                         ))}
                       </select>
                     </div>
                     <div className="col-span-5 sm:col-span-2 flex flex-col gap-1">
-                      <label className="text-xs text-slate-500">Broker</label>
+                      <label className="text-xs text-slate-500">{t.portfolioExtra.colBroker}</label>
                       <input className="border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1.5 text-sm bg-white dark:bg-slate-700 dark:text-slate-100 outline-none focus:ring-2 focus:ring-purple-400"
                         placeholder="DEGIRO" value={h.broker}
                         onChange={e => updateHolding(h.id, { broker: e.target.value })} />
                     </div>
                     <div className="col-span-4 sm:col-span-1 flex flex-col gap-1">
-                      <label className="text-xs text-slate-500">Aantal</label>
+                      <label className="text-xs text-slate-500">{t.portfolioExtra.colQty}</label>
                       <input type="number" min={0}
                         className="border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1.5 text-sm bg-white dark:bg-slate-700 dark:text-slate-100 outline-none focus:ring-2 focus:ring-purple-400"
                         placeholder="0" value={h.quantity || ''}
                         onChange={e => updateHolding(h.id, { quantity: parseFloat(e.target.value) || 0 })} />
                     </div>
                     <div className="col-span-7 sm:col-span-2 flex flex-col gap-1">
-                      <label className="text-xs text-slate-500">Aankoopkoers (€)</label>
+                      <label className="text-xs text-slate-500">{t.portfolioExtra.colBuyPrice}</label>
                       <input type="number" min={0}
                         className="border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1.5 text-sm bg-white dark:bg-slate-700 dark:text-slate-100 outline-none focus:ring-2 focus:ring-purple-400"
                         placeholder="0" value={h.pricePerUnit || ''}
@@ -536,8 +550,8 @@ export default function PortfolioSection({ data, onChange }: Props) {
                         ) : (
                           <span className="text-slate-400">
                             {fetchState === 'loading'
-                              ? (h.isin && !h.ticker ? 'ISIN omzetten…' : 'Ophalen…')
-                              : (h.isin && !h.ticker ? `ISIN: ${h.isin} — wordt automatisch omgezet bij ophalen` : 'Koers nog niet opgehaald')}
+                              ? (h.isin && !h.ticker ? t.portfolioExtra.isinConverting : t.portfolioExtra.fetchingPrices)
+                              : (h.isin && !h.ticker ? t.portfolioExtra.isinAutoMsg.replace('{isin}', h.isin) : t.portfolioExtra.priceNotFetched)}
                           </span>
                         )}
                       </div>
@@ -572,7 +586,7 @@ export default function PortfolioSection({ data, onChange }: Props) {
 
           <button onClick={addHolding}
             className="flex items-center gap-1 text-xs bg-purple-600 text-white px-3 py-1.5 rounded-lg hover:bg-purple-700 cursor-pointer border-0">
-            <Plus size={13} /> Positie toevoegen
+            <Plus size={13} /> {t.portfolioExtra.addPosition}
           </button>
 
         </div>
@@ -591,21 +605,21 @@ export default function PortfolioSection({ data, onChange }: Props) {
                 }`}
               >
                 {type === 'buy' ? <ArrowUpCircle size={13} /> : <ArrowDownCircle size={13} />}
-                {type === 'buy' ? 'Aankopen' : 'Verkopen'}
+                {type === 'buy' ? t.portfolioExtra.buysLabel : t.portfolioExtra.sellsLabel}
               </button>
             ))}
           </div>
 
-          {data.transactions.filter(t => t.type === txType).length === 0 ? (
+          {data.transactions.filter(tx => tx.type === txType).length === 0 ? (
             <div className="text-center py-6 text-slate-400 dark:text-slate-500 text-sm border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl mb-3">
-              Geen {txType === 'buy' ? 'aankopen' : 'verkopen'} ingevoerd
+              {txType === 'buy' ? t.portfolioExtra.noBuys : t.portfolioExtra.noSells}
             </div>
           ) : (
             <div className="space-y-2 mb-3">
               {data.transactions.filter(t => t.type === txType).map(tx => (
                 <div key={tx.id} className="grid grid-cols-12 gap-2 items-end p-3 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700">
                   <div className="col-span-12 sm:col-span-3 flex flex-col gap-1">
-                    <label className="text-xs text-slate-500">Fonds</label>
+                    <label className="text-xs text-slate-500">{t.portfolioExtra.colFund}</label>
                     <FondsSearch
                       value={tx.holdingName}
                       holdings={data.holdings}
@@ -633,26 +647,26 @@ export default function PortfolioSection({ data, onChange }: Props) {
                     />
                   </div>
                   <div className="col-span-6 sm:col-span-2 flex flex-col gap-1">
-                    <label className="text-xs text-slate-500">Broker</label>
+                    <label className="text-xs text-slate-500">{t.portfolioExtra.colBroker}</label>
                     <input className="border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1.5 text-sm bg-white dark:bg-slate-700 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-400"
                       placeholder="DEGIRO" value={tx.broker}
                       onChange={e => updateTx(tx.id, { broker: e.target.value })} />
                   </div>
                   <div className="col-span-6 sm:col-span-2 flex flex-col gap-1">
-                    <label className="text-xs text-slate-500">Datum</label>
+                    <label className="text-xs text-slate-500">{t.portfolioExtra.colDate}</label>
                     <input type="date"
                       className="border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1.5 text-sm bg-white dark:bg-slate-700 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-400"
                       value={tx.date} onChange={e => updateTx(tx.id, { date: e.target.value })} />
                   </div>
                   <div className="col-span-5 sm:col-span-2 flex flex-col gap-1">
-                    <label className="text-xs text-slate-500">Aantal</label>
+                    <label className="text-xs text-slate-500">{t.portfolioExtra.colQty}</label>
                     <input type="number" min={0}
                       className="border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1.5 text-sm bg-white dark:bg-slate-700 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-400"
                       placeholder="0" value={tx.quantity || ''}
                       onChange={e => updateTx(tx.id, { quantity: parseFloat(e.target.value) || 0 })} />
                   </div>
                   <div className="col-span-5 sm:col-span-2 flex flex-col gap-1">
-                    <label className="text-xs text-slate-500">Koers (€)</label>
+                    <label className="text-xs text-slate-500">{t.portfolioExtra.colPrice}</label>
                     <input type="number" min={0}
                       className="border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1.5 text-sm bg-white dark:bg-slate-700 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-400"
                       placeholder="0" value={tx.pricePerUnit || ''}
@@ -665,7 +679,7 @@ export default function PortfolioSection({ data, onChange }: Props) {
                     </button>
                   </div>
                   <div className="col-span-12 text-right text-xs text-slate-500">
-                    Totaal: {nl0.format(tx.quantity * tx.pricePerUnit)}
+                    {t.portfolioExtra.txTotal} {nl0.format(tx.quantity * tx.pricePerUnit)}
                   </div>
                 </div>
               ))}
@@ -677,7 +691,7 @@ export default function PortfolioSection({ data, onChange }: Props) {
               txType === 'buy' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'
             }`}
           >
-            <Plus size={13} /> Transactie toevoegen
+            <Plus size={13} /> {t.portfolioExtra.addTx}
           </button>
         </div>
       )}
@@ -702,7 +716,7 @@ export default function PortfolioSection({ data, onChange }: Props) {
         <div>
           {positions.length === 0 ? (
             <div className="text-center py-8 text-slate-400 dark:text-slate-500 text-sm border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl">
-              Voeg posities of transacties toe om het overzicht te zien
+              {t.portfolioExtra.noPositions}
             </div>
           ) : (
             <>
@@ -715,21 +729,21 @@ export default function PortfolioSection({ data, onChange }: Props) {
                 return (
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
                     <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-xl p-3 text-center">
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Portefeuillewaarde</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">{t.portfolioExtra.portfolioValue}</p>
                       <p className="text-base font-bold text-purple-700 dark:text-purple-300">{nl0.format(totalCurrentValue)}</p>
                     </div>
                     <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-3 text-center">
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Jaarlijks dividend</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">{t.portfolioExtra.annualDiv}</p>
                       <p className="text-base font-bold text-amber-700 dark:text-amber-300">
                         {totalAnnualDiv > 0 ? nl0.format(totalAnnualDiv) : '—'}
                       </p>
                     </div>
                     <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-center">
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Posities</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">{t.portfolioExtra.positions}</p>
                       <p className="text-base font-bold text-slate-700 dark:text-slate-200">{positions.length}</p>
                     </div>
                     <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-center">
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Transacties</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">{t.portfolioExtra.transactions}</p>
                       <p className="text-base font-bold text-slate-700 dark:text-slate-200">{data.transactions.length}</p>
                     </div>
                   </div>
@@ -739,7 +753,7 @@ export default function PortfolioSection({ data, onChange }: Props) {
               {/* Pie chart */}
               {pieSlices.length > 1 && (
                 <div className="mb-5 p-4 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700">
-                  <p className="text-xs font-semibold text-slate-600 mb-3">Allocatie per categorie</p>
+                  <p className="text-xs font-semibold text-slate-600 mb-3">{t.portfolioExtra.allocChart}</p>
                   <PieChart slices={pieSlices} size={160} />
                 </div>
               )}
@@ -749,21 +763,21 @@ export default function PortfolioSection({ data, onChange }: Props) {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-slate-200 dark:border-slate-700 text-xs text-slate-500 dark:text-slate-400">
-                      <th className="text-left py-2 pr-3 font-medium">Naam</th>
-                      <th className="text-left py-2 pr-3 font-medium hidden sm:table-cell">Broker</th>
-                      <th className="text-right py-2 pr-3 font-medium">Aantal</th>
-                      <th className="text-right py-2 pr-3 font-medium hidden sm:table-cell">Gem. koers</th>
+                      <th className="text-left py-2 pr-3 font-medium">{t.portfolioExtra.colName}</th>
+                      <th className="text-left py-2 pr-3 font-medium hidden sm:table-cell">{t.portfolioExtra.colBroker}</th>
+                      <th className="text-right py-2 pr-3 font-medium">{t.portfolioExtra.colQty}</th>
+                      <th className="text-right py-2 pr-3 font-medium hidden sm:table-cell">{t.portfolioExtra.colAvgPrice}</th>
                       <th className="text-right py-2 pr-3 font-medium">
                         <span className="flex items-center justify-end gap-1">
-                          Huidige koers
+                          {t.portfolioExtra.colCurrentPrice}
                           {fetchState === 'loading' && (
                             <RefreshCw size={10} className="animate-spin text-indigo-500" />
                           )}
                         </span>
                       </th>
-                      <th className="text-right py-2 pr-3 font-medium hidden md:table-cell">Dividend/jr</th>
-                      <th className="text-right py-2 pr-3 font-medium">Rendement</th>
-                      <th className="text-right py-2 font-medium">Waarde</th>
+                      <th className="text-right py-2 pr-3 font-medium hidden md:table-cell">{t.portfolioExtra.colDivYr}</th>
+                      <th className="text-right py-2 pr-3 font-medium">{t.portfolioExtra.colReturn}</th>
+                      <th className="text-right py-2 font-medium">{t.portfolioExtra.colValue}</th>
                       <th className="py-2 font-medium w-6"></th>
                     </tr>
                   </thead>
@@ -880,7 +894,7 @@ export default function PortfolioSection({ data, onChange }: Props) {
                                 });
                               }}
                               className="text-red-300 hover:text-red-500 transition-colors p-1 bg-transparent border-0 cursor-pointer"
-                              title="Positie en alle transacties verwijderen"
+                              title={t.portfolioExtra.removeTitle}
                             >
                               <Trash2 size={14} />
                             </button>
@@ -891,8 +905,8 @@ export default function PortfolioSection({ data, onChange }: Props) {
                   </tbody>
                   <tfoot>
                     <tr className="border-t-2 border-slate-200 dark:border-slate-700">
-                      <td colSpan={4} className="py-2.5 font-semibold text-slate-700 dark:text-slate-200 hidden sm:table-cell">Totaal</td>
-                      <td colSpan={3} className="py-2.5 font-semibold text-slate-700 dark:text-slate-200 sm:hidden">Totaal</td>
+                      <td colSpan={4} className="py-2.5 font-semibold text-slate-700 dark:text-slate-200 hidden sm:table-cell">{t.portfolioExtra.totalLabel}</td>
+                      <td colSpan={3} className="py-2.5 font-semibold text-slate-700 dark:text-slate-200 sm:hidden">{t.portfolioExtra.totalLabel}</td>
                       <td colSpan={4} className="py-2.5 text-right">
                         <span className="font-bold text-slate-900 dark:text-slate-100">{nl0.format(totalCurrentValue)}</span>
                         {lastFetchTime && (
