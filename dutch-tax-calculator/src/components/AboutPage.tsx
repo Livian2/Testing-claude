@@ -390,7 +390,7 @@ export default function AboutPage({ onClose, onGetStarted, onOpenTab }: Props) {
       }} />
 
       {/* ── Top nav ── */}
-      <header className="relative z-10 sticky top-0 backdrop-blur-xl bg-[#08080b]/80 border-b border-white/[0.06]">
+      <header className="relative z-20 sticky top-0 backdrop-blur-xl bg-[#08080b]/80 border-b border-white/[0.06]">
         <div className="max-w-7xl mx-auto px-6 lg:px-10 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center shadow-lg shadow-orange-500/20">
