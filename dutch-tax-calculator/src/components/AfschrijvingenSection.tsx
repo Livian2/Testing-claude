@@ -315,7 +315,7 @@ export default function AfschrijvingenSection({ data, taxYear, onChange }: Props
             <tbody>
               <tr>
                 <td colSpan={6 + years.length + 1} className="text-center py-10 text-slate-400 dark:text-slate-500 text-sm">
-                  Geen categorieën. Voeg een categorie toe om te beginnen.
+                  {t.depreciation.noCategories}
                 </td>
               </tr>
             </tbody>
@@ -337,7 +337,7 @@ export default function AfschrijvingenSection({ data, taxYear, onChange }: Props
           {data.categorieen.length > 0 && (
             <tfoot>
               <tr className="border-t-2 border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 font-semibold">
-                <td colSpan={6} className="px-2 py-2 text-sm text-slate-700 dark:text-slate-200">Totaal per jaar</td>
+                <td colSpan={6} className="px-2 py-2 text-sm text-slate-700 dark:text-slate-200">{t.depreciation.totalPerYear}</td>
                 {years.map(y => {
                   const total = allItems.reduce((s, it) => s + jaarDeposit(it, rate, y), 0);
                   const isCurrent = y === taxYear;

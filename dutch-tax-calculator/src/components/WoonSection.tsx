@@ -28,6 +28,7 @@ const DEFAULT_HYP: Omit<HypotheekData, 'id' | 'label'> = {
 // ── Amortisation SVG chart ──────────────────────────────────────────────────
 
 function MortgageChart({ hyp, taxYear }: { hyp: HypotheekData; taxYear: number }) {
+  const { t } = useLanguage();
   const W = 520; const H = 140;
   const PAD_T = 10; const PAD_R = 10; const PAD_B = 28; const PAD_L = 48;
   const iW = W - PAD_L - PAD_R;
@@ -83,7 +84,7 @@ function MortgageChart({ hyp, taxYear }: { hyp: HypotheekData; taxYear: number }
   return (
     <div className="mt-3">
       <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1 flex items-center gap-1.5">
-        <BarChart2 size={12} />Verloop restschuld
+        <BarChart2 size={12} />{t.housing.debtChart}
       </p>
       <div className="relative" style={{ cursor: 'crosshair' }}
         onMouseMove={handleMouseMove} onMouseLeave={() => setHoverIdx(null)}>
@@ -174,7 +175,7 @@ function HypotheekCard({
   const HYPOTHEEK_TYPES: { value: HypotheekType; label: string; desc: string; tip: string }[] = [
     { value: 'annuiteit',        label: t.housing.annuity,       desc: t.housing.annuityDesc,      tip: 'Vaste maandlast gedurende de hele looptijd. Aan het begin betaalt u vooral rente, aan het einde vooral aflossing.' },
     { value: 'lineair',          label: t.housing.linear,        desc: t.housing.linearDesc,       tip: 'Elke maand lost u een vast bedrag af. De rente daalt elk jaar, dus uw maandlast wordt steeds lager.' },
-    { value: 'aflossingsvrijij', label: t.housing.interestOnly,  desc: t.housing.interestOnlyDesc, tip: 'U betaalt alleen rente, u lost niets af. De schuld blijft gelijk. Let op: u heeft geen recht op hypotheekrenteaftrek bij nieuw afgesloten aflossingsvrije hypotheken.' },
+    { value: 'aflossingsvrijij', label: t.housing.interestOnly,  desc: t.housing.interestOnlyDesc, tip: t.housing.interestOnlyTip },
   ];
 
   const berekening = useMemo(() => {
@@ -419,11 +420,11 @@ export default function WoonSection({ data, taxYear, onChange }: Props) {
           {data.woningType === 'hypotheek' && (
             <div className="space-y-3">
               <CurrencyInput
-                label="WOZ-waarde woning"
-                hint="Waarde volgens WOZ-beschikking"
+                label={t.housing.wozValue}
+                hint={t.housing.wozHint}
                 value={data.wozWaarde ?? 0}
                 onChange={v => onChange({ ...data, wozWaarde: v })}
-                tooltip={<InfoTooltip tip="De WOZ-waarde staat op uw WOZ-beschikking (jaarlijks van de gemeente). Wordt gebruikt voor het eigenwoningforfait (EWF): 0,35% van de WOZ-waarde die bij uw inkomen wordt opgeteld. De netto aftrekpost = betaalde rente − EWF." />}
+                tooltip={<InfoTooltip tip={t.housing.wozTooltip} />}
               />
 
               {data.hypotheken.map(h => (
@@ -469,12 +470,12 @@ export default function WoonSection({ data, taxYear, onChange }: Props) {
                         <p className="text-xs text-slate-400 dark:text-slate-500">0,35% × WOZ {woz > 0 ? `(${nl.format(woz)})` : '(vul WOZ in)'}</p>
                       </div>
                       <div>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">Netto aftrekpost</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">{t.housing.netDeduction}</p>
                         <p className="font-bold text-slate-800 dark:text-slate-100">{nl.format(nettoAftrekpost)}</p>
                         <p className="text-xs text-slate-400 dark:text-slate-500">verlaagt Box 1 inkomen</p>
                       </div>
                       <div>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">Belastingvoordeel</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">{t.housing.taxBenefit}</p>
                         <p className="font-bold text-green-700 dark:text-green-400">{nl.format(belastingVoordeel)}/jaar</p>
                         <p className="text-xs text-slate-400 dark:text-slate-500">≈ {nl.format(Math.round(belastingVoordeel / 12))}/mnd</p>
                       </div>
@@ -497,8 +498,8 @@ export default function WoonSection({ data, taxYear, onChange }: Props) {
                       </div>
                     )}
                     <p className="text-xs text-green-700 dark:text-green-300 border-t border-green-200 dark:border-green-800 pt-2">
-                      Netto aftrekpost = betaalde rente − eigenwoningforfait. Het werkelijke voordeel hangt af van uw marginale tarief (zie Resultaten voor exacte berekening).
-                      {ewf > totaalRente && <span className="block mt-1 text-orange-600 dark:text-orange-400">Let op: uw EWF ({nl.format(ewf)}) is hoger dan uw rente ({nl.format(totaalRente)}). Er is geen HRA-voordeel; het positieve eigenwoninginkomen wordt gedeeltelijk belast (Wet Hillen afbouw).</span>}
+                      {t.housing.netDeductionExplain}
+                      {ewf > totaalRente && <span className="block mt-1 text-orange-600 dark:text-orange-400">{t.housing.ewfHigherWarning.replace('{ewf}', nl.format(ewf)).replace('{rente}', nl.format(totaalRente))}</span>}
                     </p>
                   </div>
                 );
@@ -509,7 +510,7 @@ export default function WoonSection({ data, taxYear, onChange }: Props) {
       </SectionCard>
 
       {/* Overige woonkosten */}
-      <SectionCard title="Overige woonlasten — per maand" icon={<Home size={20} />} accent="border-orange-400">
+      <SectionCard title={t.housing.otherCostsTitle} icon={<Home size={20} />} accent="border-orange-400">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <CurrencyInput label={t.housing.gasWaterElec} hint={t.housing.gasWaterElecHint}
             value={data.gwe} onChange={v => onChange({ ...data, gwe: v })}
@@ -519,7 +520,7 @@ export default function WoonSection({ data, taxYear, onChange }: Props) {
             value={data.vve} onChange={v => onChange({ ...data, vve: v })}
             tooltip={<InfoTooltip tip="Maandelijkse bijdrage aan de Vereniging van Eigenaren. Alleen van toepassing bij een appartement." />}
           />
-          <CurrencyInput label={t.housing.other} hint="Onderhoud, gemeentelijke heffingen"
+          <CurrencyInput label={t.housing.other} hint={t.housing.otherHint}
             value={data.overig} onChange={v => onChange({ ...data, overig: v })} />
         </div>
 

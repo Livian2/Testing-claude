@@ -188,6 +188,21 @@ export default function App() {
     });
   };
 
+  const ALL_TABS: TabMeta[] = [
+    { id: 'income',         emoji: '💼', description: t.tabDescriptions.income },
+    { id: 'woon',           emoji: '🏠', description: t.tabDescriptions.woon },
+    { id: 'waardes',        emoji: '📋', description: t.tabDescriptions.waardes },
+    { id: 'expenses',       emoji: '🛒', description: t.tabDescriptions.expenses },
+    { id: 'schulden',       emoji: '💳', description: t.tabDescriptions.schulden },
+    { id: 'bank',           emoji: '🏦', description: t.tabDescriptions.bank },
+    { id: 'portfolio',      emoji: '📈', description: t.tabDescriptions.portfolio },
+    { id: 'afschrijvingen', emoji: '🔄', description: t.tabDescriptions.afschrijvingen },
+    { id: 'jaarruimte',     emoji: '🏛️', description: t.tabDescriptions.jaarruimte },
+    { id: 'prognose',       emoji: '🔮', description: t.tabDescriptions.prognose },
+    { id: 'results',        emoji: '🧮', description: t.tabDescriptions.results },
+    { id: 'marginale',      emoji: '📊', description: t.tabDescriptions.marginale },
+  ];
+
   const visibleTabs = ALL_TABS.filter(tab => enabledTabs.has(tab.id));
 
   const TAB_LABELS: Record<Tab, string> = {
@@ -424,18 +439,18 @@ export default function App() {
                 <div className="text-white">
                   <div className="flex items-center gap-2 mb-2">
                     <Sparkles size={18} className="text-white/90" />
-                    <span className="text-xs font-semibold uppercase tracking-wider text-white/90">Belastingjaar 2026</span>
+                    <span className="text-xs font-semibold uppercase tracking-wider text-white/90">{t.home.taxYear}</span>
                   </div>
-                  <h2 className="text-2xl sm:text-3xl font-bold tracking-tight m-0">Welkom bij NL Belastingcalculator</h2>
+                  <h2 className="text-2xl sm:text-3xl font-bold tracking-tight m-0">{t.home.welcome}</h2>
                   <p className="text-sm sm:text-base text-white/85 mt-1.5 max-w-2xl">
-                    Live berekening van inkomstenbelasting, Box 3 vermogen, toeslagen, en een 20-jaars vermogensprognose.
+                    {t.home.subtitle}
                   </p>
                 </div>
                 <button
                   onClick={() => setShowWelcome(true)}
                   className="flex items-center gap-2 bg-white/15 hover:bg-white/25 backdrop-blur-sm text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors border border-white/20 cursor-pointer whitespace-nowrap"
                 >
-                  <HelpCircle size={16} /> Uitleg bekijken
+                  <HelpCircle size={16} /> {t.home.viewGuide}
                 </button>
               </div>
             </div>
@@ -443,10 +458,10 @@ export default function App() {
             {/* Section header */}
             <div className="flex items-end justify-between gap-2 px-1">
               <div>
-                <h3 className="text-base font-semibold text-slate-800 dark:text-slate-100 m-0">Jouw tabbladen</h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Schakel aan wat je nodig hebt — gegevens blijven bewaard ook als je een tab uitschakelt.</p>
+                <h3 className="text-base font-semibold text-slate-800 dark:text-slate-100 m-0">{t.home.yourTabs}</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{t.home.toggleHint}</p>
               </div>
-              <span className="text-xs font-mono text-slate-400 dark:text-slate-500">{visibleTabs.length} / {ALL_TABS.length} actief</span>
+              <span className="text-xs font-mono text-slate-400 dark:text-slate-500">{visibleTabs.length} / {ALL_TABS.length} {t.home.active}</span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
@@ -490,7 +505,7 @@ export default function App() {
                         onClick={() => setTab(tabMeta.id)}
                         className="text-xs text-orange-600 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-300 font-semibold text-left bg-transparent border-0 cursor-pointer p-0 transition-all duration-200 group-hover:translate-x-1"
                       >
-                        Open {TAB_LABELS[tabMeta.id]} →
+                        {t.home.openTab} {TAB_LABELS[tabMeta.id]} →
                       </button>
                     )}
                   </div>
@@ -502,22 +517,22 @@ export default function App() {
               <div className="bg-white dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 flex items-start gap-3">
                 <div className="bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-lg p-2 flex-shrink-0">🔒</div>
                 <div>
-                  <p className="text-xs font-semibold text-slate-800 dark:text-slate-100 m-0">100% lokaal</p>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 m-0 leading-relaxed">Alle data blijft in je browser.</p>
+                  <p className="text-xs font-semibold text-slate-800 dark:text-slate-100 m-0">{t.home.localTitle}</p>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 m-0 leading-relaxed">{t.home.localDesc}</p>
                 </div>
               </div>
               <div className="bg-white dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 flex items-start gap-3">
                 <div className="bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg p-2 flex-shrink-0">⚡</div>
                 <div>
-                  <p className="text-xs font-semibold text-slate-800 dark:text-slate-100 m-0">Live berekening</p>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 m-0 leading-relaxed">Geen "Bereken" knop nodig.</p>
+                  <p className="text-xs font-semibold text-slate-800 dark:text-slate-100 m-0">{t.home.liveTitle}</p>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 m-0 leading-relaxed">{t.home.liveDesc}</p>
                 </div>
               </div>
               <div className="bg-white dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 flex items-start gap-3">
                 <div className="bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-lg p-2 flex-shrink-0">💾</div>
                 <div>
-                  <p className="text-xs font-semibold text-slate-800 dark:text-slate-100 m-0">Auto-opslaan</p>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 m-0 leading-relaxed">Wijzigingen direct bewaard.</p>
+                  <p className="text-xs font-semibold text-slate-800 dark:text-slate-100 m-0">{t.home.autoSaveTitle}</p>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 m-0 leading-relaxed">{t.home.autoSaveDesc}</p>
                 </div>
               </div>
             </div>

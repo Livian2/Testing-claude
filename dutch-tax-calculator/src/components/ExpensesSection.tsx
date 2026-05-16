@@ -78,15 +78,15 @@ export default function ExpensesSection({ data, onChange, savings, onSavingsChan
         </div>
         <div className="mt-4 grid grid-cols-3 gap-3">
           <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 rounded-xl px-3 py-2.5">
-            <p className="text-xs text-slate-500 dark:text-slate-400">Sparen/mnd</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">{t.expenses.savingsPerMonth}</p>
             <p className="text-base font-bold text-emerald-700">{nl.format(savings.monthlySavingsContribution)}</p>
           </div>
           <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-800 rounded-xl px-3 py-2.5">
-            <p className="text-xs text-slate-500 dark:text-slate-400">Beleggen/mnd</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">{t.expenses.investPerMonth}</p>
             <p className="text-base font-bold text-purple-700">{nl.format(savings.maandelijksBeleggen)}</p>
           </div>
           <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5">
-            <p className="text-xs text-slate-500 dark:text-slate-400">Totaal uitgaand/jr</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">{t.expenses.totalOutPerYear}</p>
             <p className="text-base font-bold text-slate-700 dark:text-slate-200">{nl.format(yearlyTotal)}</p>
           </div>
         </div>

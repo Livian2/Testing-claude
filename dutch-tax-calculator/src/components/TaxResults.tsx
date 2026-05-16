@@ -147,10 +147,10 @@ export default function TaxResults({ result }: Props) {
               <div className="space-y-0">
                 <Row label="Bruto inkomen" value={fmt(box1.grossIncomeBeforeDeductions)} />
                 {box1.ewEffect < 0 && (
-                  <Row label="Netto aftrekpost (rente − EWF)" value={`− ${fmt(Math.abs(box1.ewEffect))}`} indent green />
+                  <Row label={t.results.netDeductionHRA} value={`− ${fmt(Math.abs(box1.ewEffect))}`} indent green />
                 )}
                 {box1.ewEffect > 0 && (
-                  <Row label="Eigenwoninginkomen (Wet Hillen)" value={`+ ${fmt(box1.ewEffect)}`} indent red />
+                  <Row label={t.results.ewfIncomeLine} value={`+ ${fmt(box1.ewEffect)}`} indent red />
                 )}
                 {box1.pensionDeduction > 0 && (
                   <Row label="Lijfrentepremies (aftrek)" value={`− ${fmt(box1.pensionDeduction)}`} indent green />

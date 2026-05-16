@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Landmark, Info, TrendingDown, Calculator } from 'lucide-react';
 import type { TaxFormData } from '../types';
 import SectionCard from './SectionCard';
+import { useLanguage } from '../i18n/LanguageContext';
 
 interface Props {
   data: TaxFormData;
@@ -27,6 +28,7 @@ function clamp(value: number, min: number, max: number): number {
 }
 
 export default function JaarruimteSection({ data }: Props) {
+  const { t } = useLanguage();
   const [factorA, setFactorA] = useState<number>(0);
   const [reserveringsruimte, setReserveringsruimte] = useState<number>(0);
 
@@ -59,7 +61,7 @@ export default function JaarruimteSection({ data }: Props) {
     <div className="space-y-4">
       {/* Inputs card */}
       <SectionCard
-        title="Jaarruimte invoer"
+        title={t.jaarruimte.inputTitle}
         icon={<Calculator size={18} />}
         accent="border-amber-400"
       >
@@ -67,7 +69,7 @@ export default function JaarruimteSection({ data }: Props) {
           {/* Factor A */}
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-              Factor A <span className="text-slate-400 dark:text-slate-500 font-normal">(van uw UPO)</span>
+              Factor A <span className="text-slate-400 dark:text-slate-500 font-normal">{t.jaarruimte.fromUpo}</span>
             </label>
             <input
               type="number"
@@ -88,8 +90,8 @@ export default function JaarruimteSection({ data }: Props) {
           {/* Reserveringsruimte */}
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-              Onbenutte jaarruimte voorgaande jaren
-              <span className="ml-1 text-slate-400 dark:text-slate-500 font-normal">(max 10 jaar)</span>
+              {t.jaarruimte.unusedPrev}
+              <span className="ml-1 text-slate-400 dark:text-slate-500 font-normal">{t.jaarruimte.maxTenYears}</span>
             </label>
             <input
               type="number"
@@ -101,7 +103,7 @@ export default function JaarruimteSection({ data }: Props) {
               className="w-full border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent"
             />
             <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-              Ongebruikte jaarruimte van de afgelopen 10 jaar. Maximum 2026:{' '}
+              {t.jaarruimte.unusedPrevHint} Maximum 2026:{' '}
               <strong className="text-slate-600 dark:text-slate-300">{nl.format(MAX_RESERVERINGSRUIMTE)}</strong>
               {' '}of 17% van uw inkomen ({nl.format(maxReservering)}) als dat lager is.
             </p>
@@ -120,7 +122,7 @@ export default function JaarruimteSection({ data }: Props) {
 
       {/* Calculation breakdown card */}
       <SectionCard
-        title="Jaarruimte berekening 2026"
+        title={t.jaarruimte.calcTitle}
         icon={<Landmark size={18} />}
         accent="border-amber-400"
       >
@@ -183,7 +185,7 @@ export default function JaarruimteSection({ data }: Props) {
       {/* Tax benefit card */}
       {beschikbareRuimte > 0 && (
         <SectionCard
-          title="Belastingvoordeel"
+          title={t.jaarruimte.taxBenefitTitle}
           icon={<TrendingDown size={18} />}
           accent="border-emerald-400"
         >

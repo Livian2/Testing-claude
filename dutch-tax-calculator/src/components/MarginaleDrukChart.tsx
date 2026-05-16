@@ -2,6 +2,7 @@ import { useMemo, useState, useRef, useCallback } from 'react';
 import type { TaxFormData } from '../types';
 import SectionCard from './SectionCard';
 import { TrendingDown, AlertTriangle, Info } from 'lucide-react';
+import { useLanguage } from '../i18n/LanguageContext';
 
 interface Props {
   data: TaxFormData;
@@ -163,6 +164,7 @@ const DANGER_THRESHOLD = 0.80;
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function MarginaleDrukChart({ data }: Props) {
+  const { t } = useLanguage();
   const isPartner  = data.personal.filingStatus === 'partner';
   const grossIncome =
     data.income.grossSalary + data.income.freelanceIncome +
@@ -225,7 +227,7 @@ export default function MarginaleDrukChart({ data }: Props) {
   return (
     <div className="space-y-4">
       <SectionCard
-        title="Marginale Druk"
+        title={t.tabs.marginale}
         icon={<TrendingDown size={16} />}
       >
         <div className="space-y-4">
@@ -233,19 +235,19 @@ export default function MarginaleDrukChart({ data }: Props) {
           <div className="flex flex-wrap gap-4 text-xs text-slate-600 dark:text-slate-400">
             <div className="flex items-center gap-1.5">
               <span className="inline-block w-6 h-0.5 bg-blue-400 rounded" />
-              Effectief tarief Box 1
+              {t.marginale.effectiveRateBox1}
             </div>
             <div className="flex items-center gap-1.5">
               <span className="inline-block w-6 h-0.5 bg-orange-400 rounded" />
-              Marginale druk incl. kortingen
+              {t.marginale.pressureWithCredits}
             </div>
             <div className="flex items-center gap-1.5">
               <span className="inline-block w-6 h-0.5 bg-teal-400 rounded" />
-              Marginale druk incl. toeslagen
+              {t.marginale.pressureWithAllowances}
             </div>
             <div className="flex items-center gap-1.5">
               <span className="inline-block w-4 h-3 rounded-sm border" style={{ background: 'rgba(239,68,68,0.15)', borderColor: 'rgba(239,68,68,0.35)' }} />
-              Gevarenzone (&gt;80%)
+              {t.marginale.dangerZone}
             </div>
           </div>
 
@@ -420,18 +422,18 @@ export default function MarginaleDrukChart({ data }: Props) {
                         </text>
                         <rect x={bx + 8}  y={by + 37} width={8} height={8} rx={2} fill="#fb923c" />
                         <text x={bx + 20} y={by + 45} fontSize={9} fill="#cbd5e1">
-                          Marg. kortingen: {fmtPct(hovPt.marginalKortingen)}
+                          {t.marginale.tooltipCredits}: {fmtPct(hovPt.marginalKortingen)}
                         </text>
                         <rect x={bx + 8}  y={by + 52} width={8} height={8} rx={2} fill="#2dd4bf" />
                         <text x={bx + 20} y={by + 60} fontSize={9} fill="#cbd5e1">
-                          Marg. toeslagen: {fmtPct(hovPt.marginalToeslagen)}
+                          {t.marginale.tooltipAllowances}: {fmtPct(hovPt.marginalToeslagen)}
                         </text>
                         <text x={bx + 8}  y={by + 74} fontSize={9} fill="#94a3b8">
                           Netto: €{Math.round((1 - hovPt.marginalToeslagen) * 10)} / €10 extra
                         </text>
                         {hovPt.marginalToeslagen > DANGER_THRESHOLD && (
                           <text x={bx + 8} y={by + 86} fontSize={9} fill="#f87171" fontWeight="bold">
-                            ⚠ Gevarenzone
+                            ⚠ {t.marginale.dangerZoneShort}
                           </text>
                         )}
                       </g>
@@ -517,7 +519,7 @@ export default function MarginaleDrukChart({ data }: Props) {
             <div className="flex items-start gap-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl px-4 py-3">
               <AlertTriangle size={16} className="text-red-500 flex-shrink-0 mt-0.5" />
               <p className="text-xs text-red-700 dark:text-red-300 leading-relaxed">
-                <strong>Gevarenzone:</strong> Bij uw huidige inkomen van{' '}
+                <strong>{t.marginale.dangerZoneShort}:</strong> {t.marginale.dangerZoneExplain}{' '}
                 {nlCur.format(grossIncome)} bedraagt de marginale druk inclusief toeslag-afbouw{' '}
                 <strong>{fmtPct(userMargToes)}</strong>.
                 Van elke extra euro houdt u slechts <strong>{fmtPct(1 - userMargToes)}</strong> over.
