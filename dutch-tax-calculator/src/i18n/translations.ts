@@ -84,6 +84,17 @@ export const translations = {
       yearlyInterest:     'Jaarlijkse rente',
       remainingDebt:      'Restschuld',
       interestDeduction:  'Hypotheekrenteaftrek',
+      wozValue:           'WOZ-waarde woning',
+      wozHint:            'Waarde volgens WOZ-beschikking',
+      wozTooltip:         'De WOZ-waarde staat op uw WOZ-beschikking (jaarlijks van de gemeente). Wordt gebruikt voor het eigenwoningforfait (EWF): 0,35% van de WOZ-waarde die bij uw inkomen wordt opgeteld. De netto aftrekpost = betaalde rente − EWF.',
+      interestOnlyTip:    'U betaalt alleen rente, u lost niets af. De schuld blijft gelijk. Let op: u heeft geen recht op hypotheekrenteaftrek bij nieuw afgesloten aflossingsvrije hypotheken.',
+      debtChart:          'Verloop restschuld',
+      netDeduction:       'Netto aftrekpost',
+      taxBenefit:         'Belastingvoordeel',
+      netDeductionExplain:'Netto aftrekpost = betaalde rente − eigenwoningforfait. Het werkelijke voordeel hangt af van uw marginale tarief (zie Resultaten voor exacte berekening).',
+      ewfHigherWarning:   'Let op: uw EWF ({ewf}) is hoger dan uw rente ({rente}). Er is geen HRA-voordeel; het positieve eigenwoninginkomen wordt gedeeltelijk belast (Wet Hillen afbouw).',
+      otherCostsTitle:    'Overige woonlasten — per maand',
+      otherHint:          'Onderhoud, gemeentelijke heffingen',
     },
 
     // ── Values (Box 3) ──────────────────────────────────────────────────────
@@ -178,6 +189,9 @@ export const translations = {
       monthlySavingsHint: 'Overschrijving naar spaarrekening',
       monthlyInvest:    'Maandelijks beleggen',
       monthlyInvestHint:'Automatisch aankopen bij broker',
+      savingsPerMonth:  'Sparen/mnd',
+      investPerMonth:   'Beleggen/mnd',
+      totalOutPerYear:  'Totaal uitgaand/jr',
     },
 
     // ── Savings ──────────────────────────────────────────────────────────────
@@ -213,6 +227,8 @@ export const translations = {
       yearlyDeposit:    'Sparen per jaar',
       targetAmount:     'Benodigde vervanging',
       month:            'Maand',
+      noCategories:     'Geen categorieën. Voeg een categorie toe om te beginnen.',
+      totalPerYear:     'Totaal per jaar',
     },
 
     // ── Results ───────────────────────────────────────────────────────────────
@@ -254,6 +270,8 @@ export const translations = {
       hypotheekDebt:    'Hypotheekschuld',
       otherDebts:       'Overige schulden',
       depreciationRes:  'Afschrijvingsreservering',
+      netDeductionHRA:  'Netto aftrekpost (rente − EWF)',
+      ewfIncomeLine:    'Eigenwoninginkomen (Wet Hillen)',
     },
 
     // ── Forecast ──────────────────────────────────────────────────────────────
@@ -305,6 +323,63 @@ export const translations = {
       amount:     'Bedrag',
       date:       'Datum',
       noItems:    'Geen items toegevoegd',
+    },
+
+    // ── Home ─────────────────────────────────────────────────────────────────
+    home: {
+      taxYear:      'Belastingjaar 2026',
+      welcome:      'Welkom bij NL Belastingcalculator',
+      subtitle:     'Live berekening van inkomstenbelasting, Box 3 vermogen, toeslagen, en een 20-jaars vermogensprognose.',
+      viewGuide:    'Uitleg bekijken',
+      yourTabs:     'Jouw tabbladen',
+      toggleHint:   'Schakel aan wat je nodig hebt — gegevens blijven bewaard ook als je een tab uitschakelt.',
+      active:       'actief',
+      openTab:      'Open',
+      localTitle:   '100% lokaal',
+      localDesc:    'Alle data blijft in je browser.',
+      liveTitle:    'Live berekening',
+      liveDesc:     'Geen "Bereken" knop nodig.',
+      autoSaveTitle:'Auto-opslaan',
+      autoSaveDesc: 'Wijzigingen direct bewaard.',
+    },
+
+    // ── Tab descriptions ─────────────────────────────────────────────────────
+    tabDescriptions: {
+      income:         'Salaris, freelance, huurinkomsten en andere Box 1 inkomsten.',
+      woon:           'Hypotheek(en), huur, VvE, GWE en extra aflossingen.',
+      waardes:        'Box 3 vermogen op 1 januari: beleggingen, spaar- en betaalrekeningen.',
+      expenses:       'Maandelijkse uitgaven, spaar- en beleggingsbijdragen.',
+      schulden:       'DUO studieschuld (SF15/SF35) met aflossing simulatie, en beleggingsschulden.',
+      bank:           'Actuele saldi van spaar- en betaalrekeningen — tellen mee voor netto vermogen.',
+      portfolio:      'Portefeuille beheer: aankopen, verkopen, live koersen en dividenden.',
+      afschrijvingen: 'Sinking fund calculator: hoeveel spaar je per jaar voor vervangingen?',
+      jaarruimte:     'Bereken uw fiscale ruimte voor een lijfrenteverzekering of banksparen.',
+      prognose:       'Vermogensprognose over 10/20/30 jaar: sparen, beleggen, schulden, netto vermogen.',
+      results:        'Live belastingberekening: Box 1, Box 3, toeslagen en beschikbaar inkomen.',
+      marginale:      'Effectief marginaal tarief: hoeveel houd je over van iedere extra verdiende euro?',
+    },
+
+    // ── Marginale druk ───────────────────────────────────────────────────────
+    marginale: {
+      effectiveRateBox1:      'Effectief tarief Box 1',
+      pressureWithCredits:    'Marginale druk incl. kortingen',
+      pressureWithAllowances: 'Marginale druk incl. toeslagen',
+      dangerZone:             'Gevarenzone (>80%)',
+      dangerZoneShort:        'Gevarenzone',
+      tooltipCredits:         'Marginale druk (kortingen)',
+      tooltipAllowances:      'Marginale druk (incl. toeslagen)',
+      dangerZoneExplain:      'Bij uw huidige inkomen van',
+    },
+
+    // ── Jaarruimte ───────────────────────────────────────────────────────────
+    jaarruimte: {
+      inputTitle:     'Jaarruimte invoer',
+      fromUpo:        '(van uw UPO)',
+      unusedPrev:     'Onbenutte jaarruimte voorgaande jaren',
+      maxTenYears:    '(max 10 jaar)',
+      unusedPrevHint: 'Ongebruikte jaarruimte van de afgelopen 10 jaar. U kunt dit terugvinden op uw aangifte of via de Belastingdienst.',
+      calcTitle:      'Jaarruimte berekening 2026',
+      taxBenefitTitle:'Belastingvoordeel',
     },
   },
 
@@ -391,6 +466,17 @@ export const translations = {
       yearlyInterest:     'Yearly interest',
       remainingDebt:      'Remaining debt',
       interestDeduction:  'Mortgage interest deduction',
+      wozValue:           'WOZ property value',
+      wozHint:            'Value per WOZ assessment',
+      wozTooltip:         'The WOZ value is on your annual WOZ assessment from the municipality. Used for the owner-occupied home allowance (EWF): 0.35% of the WOZ value added to your Box 1 income. Net deduction = interest paid − EWF.',
+      interestOnlyTip:    'You pay interest only — the principal stays the same. Note: interest-only mortgages taken out after 2013 are not eligible for mortgage interest deduction.',
+      debtChart:          'Remaining debt',
+      netDeduction:       'Net deduction',
+      taxBenefit:         'Tax benefit',
+      netDeductionExplain:'Net deduction = interest paid − owner-occupied home allowance (EWF). The actual benefit depends on your marginal rate (see Calculation for exact figures).',
+      ewfHigherWarning:   'Note: your EWF ({ewf}) exceeds your interest ({rente}). No mortgage interest deduction applies; the positive owner-occupied income is partially taxed (Wet Hillen phase-out).',
+      otherCostsTitle:    'Other housing costs — per month',
+      otherHint:          'Maintenance, municipal levies',
     },
 
     // ── Values (Box 3) ──────────────────────────────────────────────────────
@@ -485,6 +571,9 @@ export const translations = {
       monthlySavingsHint: 'Transfer to savings account',
       monthlyInvest:    'Monthly investments',
       monthlyInvestHint:'Automatic purchase plan at broker',
+      savingsPerMonth:  'Savings/mo',
+      investPerMonth:   'Invest/mo',
+      totalOutPerYear:  'Total out/yr',
     },
 
     // ── Savings ──────────────────────────────────────────────────────────────
@@ -520,6 +609,8 @@ export const translations = {
       yearlyDeposit:    'Annual savings',
       targetAmount:     'Replacement target',
       month:            'Month',
+      noCategories:     'No categories. Add a category to get started.',
+      totalPerYear:     'Total per year',
     },
 
     // ── Results ───────────────────────────────────────────────────────────────
@@ -561,6 +652,8 @@ export const translations = {
       hypotheekDebt:    'Mortgage debt',
       otherDebts:       'Other debts',
       depreciationRes:  'Depreciation reserve',
+      netDeductionHRA:  'Net deduction (interest − EWF)',
+      ewfIncomeLine:    'Owner-occupied income (Wet Hillen)',
     },
 
     // ── Forecast ──────────────────────────────────────────────────────────────
@@ -612,6 +705,63 @@ export const translations = {
       amount:     'Amount',
       date:       'Date',
       noItems:    'No items added',
+    },
+
+    // ── Home ─────────────────────────────────────────────────────────────────
+    home: {
+      taxYear:      'Tax year 2026',
+      welcome:      'Welcome to NL Tax Calculator',
+      subtitle:     'Live calculation of income tax, Box 3 wealth, allowances, and a 20-year wealth projection.',
+      viewGuide:    'View guide',
+      yourTabs:     'Your tabs',
+      toggleHint:   'Toggle what you need — data is preserved even when a tab is disabled.',
+      active:       'active',
+      openTab:      'Open',
+      localTitle:   '100% local',
+      localDesc:    'All data stays in your browser.',
+      liveTitle:    'Live calculation',
+      liveDesc:     'No "Calculate" button needed.',
+      autoSaveTitle:'Auto-save',
+      autoSaveDesc: 'Changes saved instantly.',
+    },
+
+    // ── Tab descriptions ─────────────────────────────────────────────────────
+    tabDescriptions: {
+      income:         'Salary, freelance, rental income and other Box 1 sources.',
+      woon:           'Mortgage(s), rent, owners association, utilities and extra repayments.',
+      waardes:        'Box 3 wealth on January 1st: investments, savings and checking accounts.',
+      expenses:       'Monthly expenses, savings and investment contributions.',
+      schulden:       'DUO student loan (SF15/SF35) with repayment simulation, and investment debts.',
+      bank:           'Current balances of savings and checking accounts — count toward net worth.',
+      portfolio:      'Portfolio management: purchases, sales, live prices and dividends.',
+      afschrijvingen: 'Sinking fund calculator: how much to save per year for replacements?',
+      jaarruimte:     'Calculate your fiscal space for an annuity or bank savings policy.',
+      prognose:       'Wealth projection over 10/20/30 years: savings, investments, debts, net worth.',
+      results:        'Live tax calculation: Box 1, Box 3, allowances and disposable income.',
+      marginale:      'Effective marginal rate: how much do you keep of each extra euro earned?',
+    },
+
+    // ── Marginale druk ───────────────────────────────────────────────────────
+    marginale: {
+      effectiveRateBox1:      'Effective rate Box 1',
+      pressureWithCredits:    'Marginal pressure incl. credits',
+      pressureWithAllowances: 'Marginal pressure incl. allowances',
+      dangerZone:             'Danger zone (>80%)',
+      dangerZoneShort:        'Danger zone',
+      tooltipCredits:         'Marginal pressure (credits)',
+      tooltipAllowances:      'Marginal pressure (incl. allowances)',
+      dangerZoneExplain:      'At your current income of',
+    },
+
+    // ── Jaarruimte ───────────────────────────────────────────────────────────
+    jaarruimte: {
+      inputTitle:     'Annual space input',
+      fromUpo:        '(from your UPO)',
+      unusedPrev:     'Unused annual space previous years',
+      maxTenYears:    '(max 10 years)',
+      unusedPrevHint: 'Unused annual space from the past 10 years. You can find this on your tax return or via the Tax Authority.',
+      calcTitle:      'Annual space calculation 2026',
+      taxBenefitTitle:'Tax benefit',
     },
   },
 } as const;

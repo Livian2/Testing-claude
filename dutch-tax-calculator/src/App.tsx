@@ -107,31 +107,21 @@ function loadSavedData(): TaxFormData {
 type Tab = 'income' | 'woon' | 'waardes' | 'expenses' | 'schulden' | 'bank' | 'portfolio' | 'afschrijvingen' | 'jaarruimte' | 'prognose' | 'results' | 'marginale';
 type AnyTab = Tab | 'home';
 
-interface TabMeta { id: Tab; label: string; emoji: string; description: string }
+interface TabMeta { id: Tab; emoji: string; description: string }
 
-const ALL_TABS: TabMeta[] = [
-  { id: 'income',         label: 'Inkomen',         emoji: '💼', description: 'Salaris, freelance, huurinkomsten en andere Box 1 inkomsten.' },
-  { id: 'woon',           label: 'Wonen',           emoji: '🏠', description: 'Hypotheek(en), huur, VvE, GWE en extra aflossingen.' },
-  { id: 'waardes',        label: 'Waardes 1 jan',   emoji: '📋', description: 'Box 3 vermogen op 1 januari: beleggingen, spaar- en betaalrekeningen.' },
-  { id: 'expenses',       label: 'Kosten',          emoji: '🛒', description: 'Maandelijkse uitgaven, spaar- en beleggingsbijdragen.' },
-  { id: 'schulden',       label: 'Schulden',        emoji: '💳', description: 'DUO studieschuld (SF15/SF35) met aflossing simulatie, en beleggingsschulden.' },
-  { id: 'bank',           label: 'Bankrekeningen',  emoji: '🏦', description: 'Actuele saldi van spaar- en betaalrekeningen — tellen mee voor netto vermogen.' },
-  { id: 'portfolio',      label: 'Beleggen',        emoji: '📈', description: 'Portefeuille beheer: aankopen, verkopen, live koersen en dividenden.' },
-  { id: 'afschrijvingen', label: 'Afschrijvingen',  emoji: '🔄', description: 'Sinking fund calculator: hoeveel spaar je per jaar voor vervangingen?' },
-  { id: 'jaarruimte',    label: 'Jaarruimte',      emoji: '🏛️', description: 'Bereken uw fiscale ruimte voor een lijfrenteverzekering of banksparen.' },
-  { id: 'prognose',       label: 'Prognose',        emoji: '🔮', description: 'Vermogensprognose over 10/20/30 jaar: sparen, beleggen, schulden, netto vermogen.' },
-  { id: 'results',        label: 'Berekening',      emoji: '🧮', description: 'Live belastingberekening: Box 1, Box 3, toeslagen en beschikbaar inkomen.' },
-  { id: 'marginale',      label: 'Marginale Druk',  emoji: '📊', description: 'Effectief marginaal tarief: hoeveel houd je over van iedere extra verdiende euro?' },
+const ALL_TAB_IDS: Tab[] = [
+  'income', 'woon', 'waardes', 'expenses', 'schulden', 'bank',
+  'portfolio', 'afschrijvingen', 'jaarruimte', 'prognose', 'results', 'marginale',
 ];
 
-const DEFAULT_ENABLED_TABS = new Set<Tab>(ALL_TABS.map(t => t.id));
+const DEFAULT_ENABLED_TABS = new Set<Tab>(ALL_TAB_IDS);
 
 function loadEnabledTabs(): Set<Tab> {
   try {
     const raw = localStorage.getItem(TABS_STORAGE_KEY);
     if (!raw) return DEFAULT_ENABLED_TABS;
     const arr = JSON.parse(raw) as Tab[];
-    return new Set(arr.filter(id => ALL_TABS.some(t => t.id === id)));
+    return new Set(arr.filter(id => ALL_TAB_IDS.includes(id)));
   } catch {
     return DEFAULT_ENABLED_TABS;
   }
