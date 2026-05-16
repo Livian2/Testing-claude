@@ -15,15 +15,6 @@ function uid() { return Math.random().toString(36).slice(2); }
 const nl  = new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
 const nl2 = new Intl.NumberFormat('nl-NL', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-const ASSET_TYPE_OPTIONS: { value: AssetType; label: string }[] = [
-  { value: 'etf',        label: 'ETF / Indexfonds' },
-  { value: 'stocks',     label: 'Aandelen' },
-  { value: 'bonds',      label: 'Obligaties' },
-  { value: 'realEstate', label: 'Vastgoed' },
-  { value: 'crypto',     label: 'Crypto' },
-  { value: 'other',      label: 'Overig' },
-];
-
 // ── Section: Beleggingen ──────────────────────────────────────────────────
 
 function BeleggingenSection({ data, onChange }: Props) {
@@ -36,9 +27,18 @@ function BeleggingenSection({ data, onChange }: Props) {
   const update = (id: string, p: Partial<BeleggingRekening>) =>
     onChange({ ...data, beleggingen: data.beleggingen.map(b => b.id === id ? { ...b, ...p } : b) });
 
+  const assetTypeOptions: { value: AssetType; label: string }[] = [
+    { value: 'etf',        label: t.portfolio.assetEtf },
+    { value: 'stocks',     label: t.portfolio.assetStocks },
+    { value: 'bonds',      label: t.portfolio.assetBonds },
+    { value: 'realEstate', label: t.portfolio.assetRealEstate },
+    { value: 'crypto',     label: t.portfolio.assetCrypto },
+    { value: 'other',      label: t.portfolio.assetOther },
+  ];
+
   // Group by broker for the summary
   const byBroker = data.beleggingen.reduce((acc, b) => {
-    const key = b.broker || 'Onbekend';
+    const key = b.broker || t.values.institution;
     acc[key] = (acc[key] ?? 0) + b.waardeJan1;
     return acc;
   }, {} as Record<string, number>);
@@ -48,13 +48,12 @@ function BeleggingenSection({ data, onChange }: Props) {
   return (
     <SectionCard title={<span className="flex items-center gap-1.5">{t.values.investments} <InfoTooltip tip={t.values.investmentsHint} /></span>} icon={<Landmark size={20} />} accent="border-purple-400">
       <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
-        Waarde van uw beleggingen op <strong>1 januari</strong> — dit is de Box 3 grondslag.
-        Voer in per broker / rekening.
+        {t.values.investmentsDesc}
       </p>
 
       {data.beleggingen.length === 0 ? (
         <div className="text-center py-5 text-slate-400 dark:text-slate-500 text-sm border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl mb-3">
-          Nog geen beleggingsrekeningen toegevoegd
+          {t.values.noInvestments}
         </div>
       ) : (
         <div className="space-y-2 mb-3">
@@ -85,13 +84,13 @@ function BeleggingenSection({ data, onChange }: Props) {
                   value={b.type}
                   onChange={e => update(b.id, { type: e.target.value as AssetType })}
                 >
-                  {ASSET_TYPE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  {assetTypeOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
               </div>
               <div className="col-span-11 sm:col-span-4">
                 <CurrencyInput label={t.values.valueJan1} value={b.waardeJan1}
                   onChange={v => update(b.id, { waardeJan1: v })}
-                  tooltip={<InfoTooltip tip="De waarde van deze rekening/portefeuille op exactement 1 januari van het belastingjaar." />}
+                  tooltip={<InfoTooltip tip={t.values.investTooltip} />}
                 />
               </div>
               <div className="col-span-1 flex items-end justify-center pb-0.5">
@@ -150,12 +149,12 @@ function SpaarSection({ data, onChange }: Props) {
   return (
     <SectionCard title={<span className="flex items-center gap-1.5">{t.values.savings} <InfoTooltip tip={t.values.savingsHint} /></span>} icon={<PiggyBank size={20} />} accent="border-green-400">
       <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
-        Saldo op <strong>1 januari</strong>. Fictief rendement 2026: <strong>1,03%</strong> (ongeacht werkelijke rente).
+        {t.values.savingsDesc}
       </p>
 
       {data.spaarrekeningen.length === 0 ? (
         <div className="text-center py-5 text-slate-400 dark:text-slate-500 text-sm border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl mb-3">
-          Nog geen spaarrekeningen toegevoegd
+          {t.values.noSavings}
         </div>
       ) : (
         <div className="space-y-2 mb-3">
@@ -180,7 +179,7 @@ function SpaarSection({ data, onChange }: Props) {
                 />
               </div>
               <div className="col-span-5 sm:col-span-2 flex flex-col gap-1">
-                <label className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">{t.values.interestRate} <InfoTooltip tip="Het jaarlijkse rentepercentage dat u ontvangt op deze spaarrekening. Dit wordt gebruikt voor de daadwerkelijke rente-inkomsten berekening." /></label>
+                <label className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">{t.values.interestRate} <InfoTooltip tip={t.values.interestRateTip} /></label>
                 <div className="relative">
                   <input type="number" min="0" max="20" step="0.01"
                     className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1.5 pr-8 text-sm bg-white dark:bg-slate-700 dark:text-slate-100 outline-none focus:ring-2 focus:ring-green-400"
@@ -197,7 +196,7 @@ function SpaarSection({ data, onChange }: Props) {
               <div className="col-span-11 sm:col-span-4">
                 <CurrencyInput label={t.values.balanceJan1} value={s.saldoJan1}
                   onChange={v => update(s.id, { saldoJan1: v })}
-                  tooltip={<InfoTooltip tip="De waarde van deze rekening/portefeuille op exactement 1 januari van het belastingjaar." />}
+                  tooltip={<InfoTooltip tip={t.values.investTooltip} />}
                 />
               </div>
               <div className="col-span-1 flex items-end justify-center pb-0.5">
@@ -223,7 +222,7 @@ function SpaarSection({ data, onChange }: Props) {
             <p className="text-base font-bold text-green-700">{nl.format(totalSaldo)}</p>
           </div>
           <div className="bg-green-50 dark:bg-green-900/20 rounded-xl px-4 py-3 border border-green-100 dark:border-green-800">
-            <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Werkelijke rente-opbrengst</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">{t.values.actualInterest}</p>
             <p className="text-base font-bold text-green-700">{nl.format(totalRente)}</p>
           </div>
         </div>
@@ -249,12 +248,12 @@ function BetaalSection({ data, onChange }: Props) {
   return (
     <SectionCard title={<span className="flex items-center gap-1.5">{t.values.checking} <InfoTooltip tip={t.values.checkingHint} /></span>} icon={<Wallet size={20} />} accent="border-sky-400">
       <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
-        Saldo betaalrekening(en) op <strong>1 januari</strong> — telt mee als spaartegoed in Box 3 (fictief rendement 1,03%).
+        {t.values.checkingDesc}
       </p>
 
       {data.betaalrekeningen.length === 0 ? (
         <div className="text-center py-5 text-slate-400 dark:text-slate-500 text-sm border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl mb-3">
-          Nog geen betaalrekeningen toegevoegd
+          {t.values.noChecking}
         </div>
       ) : (
         <div className="space-y-2 mb-3">
@@ -281,7 +280,7 @@ function BetaalSection({ data, onChange }: Props) {
               <div className="col-span-6 sm:col-span-5">
                 <CurrencyInput label={t.values.balanceJan1} value={b.saldoJan1}
                   onChange={v => update(b.id, { saldoJan1: v })}
-                  tooltip={<InfoTooltip tip="De waarde van deze rekening/portefeuille op exactement 1 januari van het belastingjaar." />}
+                  tooltip={<InfoTooltip tip={t.values.investTooltip} />}
                 />
               </div>
               <div className="col-span-1 flex items-end justify-center pb-0.5">
@@ -313,6 +312,7 @@ function BetaalSection({ data, onChange }: Props) {
 // ── Box 3 summary ─────────────────────────────────────────────────────────
 
 function Box3Summary({ data }: { data: WaardesData }) {
+  const { t } = useLanguage();
   const totalBeleggingen = data.beleggingen.reduce((s, b) => s + b.waardeJan1, 0);
   const totalSpaar       = data.spaarrekeningen.reduce((s, a) => s + a.saldoJan1, 0);
   const totalBetaal      = data.betaalrekeningen.reduce((s, a) => s + a.saldoJan1, 0);
@@ -320,16 +320,16 @@ function Box3Summary({ data }: { data: WaardesData }) {
   if (grandTotal === 0) return null;
 
   const rows = [
-    { label: 'Beleggingen',    val: totalBeleggingen, color: 'bg-purple-400' },
-    { label: 'Spaarrekeningen', val: totalSpaar,      color: 'bg-green-400' },
-    { label: 'Betaalrekeningen', val: totalBetaal,    color: 'bg-sky-400' },
+    { label: t.values.assetInvestments, val: totalBeleggingen, color: 'bg-purple-400' },
+    { label: t.values.assetSavings,     val: totalSpaar,       color: 'bg-green-400' },
+    { label: t.values.assetChecking,    val: totalBetaal,      color: 'bg-sky-400' },
   ].filter(r => r.val > 0);
 
   return (
     <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm p-5 space-y-3">
       <div className="flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-slate-700">
         <CalendarDays size={16} className="text-slate-500 dark:text-slate-400" />
-        <span className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1">Totaal Box 3 vermogen (1 jan) <InfoTooltip tip="De Belastingdienst gebruikt de waarde van uw vermogen op 1 januari van het belastingjaar als grondslag voor Box 3. Dit heet de peildatum." /></span>
+        <span className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1">{t.values.box3Total} <InfoTooltip tip={t.values.box3Tooltip} /></span>
         <span className="ml-auto text-lg font-bold text-slate-900 dark:text-slate-100">{nl.format(grandTotal)}</span>
       </div>
       {/* Bar visualisation */}
