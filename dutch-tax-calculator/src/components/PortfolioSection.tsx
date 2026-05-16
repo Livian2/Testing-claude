@@ -123,15 +123,48 @@ function FondsSearch({ value, holdings, onChange }: FondsSearchProps) {
     timerRef.current = setTimeout(async () => {
       setLoading(true);
       try {
+        // Primary: Yahoo Finance search API (requires crumb on server side)
         const res = await fetch(
           `/api/finance/v1/finance/search?q=${encodeURIComponent(raw)}&quotesCount=15&newsCount=0&enableFuzzyQuery=false`,
           { headers: { Accept: 'application/json' } }
         );
         if (res.ok) {
           const json = await res.json() as { quotes?: SearchResultItem[] };
-          setResults((json.quotes ?? []).filter(q =>
+          const found = (json.quotes ?? []).filter(q =>
             q.quoteType === 'ETF' || q.quoteType === 'EQUITY' || q.quoteType === 'MUTUALFUND'
-          ));
+          );
+          if (found.length > 0) { setResults(found); setOpen(true); return; }
+        }
+
+        // Fallback: resolve the query as a bare ticker via the v8/chart endpoint
+        // (works without crumb). Tries the most common European exchange suffixes.
+        const upper = raw.trim().toUpperCase();
+        if (/^[A-Z0-9]{2,12}(\.[A-Z]{1,3})?$/.test(upper)) {
+          const suffixes = upper.includes('.')
+            ? ['']
+            : ['', '.AS', '.L', '.DE', '.PA', '.MI', '.F'];
+          const hits = (
+            await Promise.all(suffixes.map(async sfx => {
+              const ticker = upper + sfx;
+              try {
+                const r = await fetch(
+                  `/api/finance/v8/finance/chart/${encodeURIComponent(ticker)}?interval=1d&range=1d&includePrePost=false`,
+                  { headers: { Accept: 'application/json' } }
+                );
+                if (!r.ok) return null;
+                const d = await r.json() as { chart?: { result?: { meta?: { symbol: string; longName?: string; quoteType?: string; exchangeName?: string } }[] } };
+                const meta = d?.chart?.result?.[0]?.meta;
+                if (!meta?.symbol) return null;
+                return {
+                  symbol: meta.symbol,
+                  shortname: meta.longName ?? meta.symbol,
+                  quoteType: meta.quoteType ?? 'EQUITY',
+                  exchDisp: meta.exchangeName,
+                } as SearchResultItem;
+              } catch { return null; }
+            }))
+          ).filter((r): r is SearchResultItem => r !== null);
+          setResults(hits);
         }
       } catch { /* ignore */ } finally {
         setLoading(false);

@@ -600,16 +600,10 @@ export default function App() {
                 />
               )}
               {tab === 'portfolio' && (
-                <div className="space-y-4">
-                  <PortfolioSection
-                    data={data.portfolio}
-                    onChange={portfolio => setData(d => ({ ...d, portfolio }))}
-                  />
-                  <InfoBox>
-                    Vul tickers in (bijv. <code className="bg-blue-100 dark:bg-blue-900/30 px-1 rounded">VWCE.AS</code>) voor live koersen.
-                    Box 3 belastingwaardes (1 jan) invullen op het tabblad <strong>Waardes 1 jan</strong>.
-                  </InfoBox>
-                </div>
+                <PortfolioSection
+                  data={data.portfolio}
+                  onChange={portfolio => setData(d => ({ ...d, portfolio }))}
+                />
               )}
               {tab === 'afschrijvingen' && (
                 <AfschrijvingenSection
