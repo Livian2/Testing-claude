@@ -16,20 +16,42 @@ const nl0 = new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR',
 
 function uid() { return Math.random().toString(36).slice(2); }
 
+// Fixed column widths and sticky left offsets (px).
+// Adjust these if column content needs more room.
+const COLS = [
+  { minW: 150, left: 0   },  // 0 Product
+  { minW: 135, left: 150 },  // 1 Purchase price
+  { minW: 122, left: 285 },  // 2 Purchase date
+  { minW: 80,  left: 407 },  // 3 Lifetime
+  { minW: 130, left: 487 },  // 4 Replacement date
+  { minW: 115, left: 617 },  // 5 Reserved
+] as const;
+
+// Shared sticky style builders
+const thStyle = (i: number) => ({ minWidth: COLS[i].minW, left: COLS[i].left } as React.CSSProperties);
+const tdStyle = (i: number) => ({ left: COLS[i].left } as React.CSSProperties);
+
+const TH_BASE    = 'sticky z-20 text-left px-2 py-2 font-medium text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-900';
+const TH_RIGHT   = 'sticky z-20 text-right px-2 py-2 font-medium text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-900';
+// Item row sticky td: use group-hover so the bg tracks the row hover
+const TD_STICKY  = 'sticky z-10 bg-white dark:bg-slate-800 group-hover:bg-slate-50 dark:group-hover:bg-slate-700';
+// Category row sticky td: solid bg, no hover
+const TDC_STICKY = 'sticky z-10 bg-slate-100 dark:bg-slate-800';
+// Footer sticky td
+const TDF_STICKY = 'sticky z-10 bg-slate-50 dark:bg-slate-900';
+
 interface ItemComputed {
   replDate: Date | null;
   replYear: number | null;
-  deposits: Float64Array;  // typed array — faster than number[]
+  deposits: Float64Array;
   reserved: number;
   target: number;
 }
 
-// Inline deposit calculation with pre-parsed timestamps — no Date construction per call
 function calcDeposit(
   purchaseMs: number, replaceMs: number,
   aankoopprijs: number, looptijdJaren: number,
-  rate: number,
-  purchaseYear: number,
+  rate: number, purchaseYear: number,
   L3ms: number, M3ms: number, year: number,
 ): number {
   if (M3ms <= purchaseMs) return 0;
@@ -44,6 +66,8 @@ function calcDeposit(
   const daysMJ = (M3ms - replaceMs) / 86400000;
   return daysMJ < 364 ? (365 - daysMJ) * baseDaily * (1 + rate) : 0;
 }
+
+// ─── Category row ────────────────────────────────────────────────────────────
 
 interface CatRowProps {
   cat: AfschrijvingCategorie;
@@ -77,8 +101,10 @@ const CatRow = memo(function CatRow({
 
   return (
     <tbody>
-      <tr className="bg-slate-100 dark:bg-slate-800 border-y border-slate-200 dark:border-slate-700">
-        <td colSpan={6} className="px-2 py-1">
+      {/* ── Category header ── */}
+      <tr className="border-y border-slate-200 dark:border-slate-700">
+        {/* Single sticky cell spanning all 6 fixed columns */}
+        <td colSpan={6} style={tdStyle(0)} className={`${TDC_STICKY} px-2 py-1`}>
           <div className="flex items-center gap-2">
             <button onClick={() => setOpen(o => !o)}
               className="text-slate-600 dark:text-slate-300 bg-transparent border-0 cursor-pointer p-0 flex items-center gap-1">
@@ -108,69 +134,96 @@ const CatRow = memo(function CatRow({
             </button>
           </div>
         </td>
+        {/* Category year totals (scrollable) */}
         {years.map((y, i) => (
-          <td key={y} className="px-2 py-1 text-right text-xs font-semibold text-slate-600 dark:text-slate-300">
+          <td key={y} className="px-2 py-1 text-right text-xs font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800">
             {(catDeposits[i] ?? 0) > 0 ? nl2.format(catDeposits[i]) : ''}
           </td>
         ))}
-        <td />
+        <td className="bg-slate-100 dark:bg-slate-800" />
       </tr>
 
+      {/* ── Item rows ── */}
       {open && cat.items.map(item => {
-        const comp      = itemComputed.get(item.id);
-        const replDate  = comp?.replDate  ?? null;
-        const replYear  = comp?.replYear  ?? null;
-        const deposits  = comp?.deposits;
-        const reserved  = comp?.reserved  ?? 0;
-        const target    = comp?.target    ?? 0;
+        const comp     = itemComputed.get(item.id);
+        const replDate = comp?.replDate ?? null;
+        const replYear = comp?.replYear ?? null;
+        const deposits = comp?.deposits;
+        const reserved = comp?.reserved ?? 0;
+        const target   = comp?.target   ?? 0;
+        const active   = item.enabled !== false;
 
         return (
-          <tr key={item.id} className="border-b border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700">
-            <td className="px-2 py-1.5 pl-6">
-              <input
-                className="w-full text-xs border border-transparent hover:border-slate-200 dark:hover:border-slate-600 focus:border-slate-300 dark:focus:border-slate-500 rounded px-1.5 py-1 outline-none focus:ring-1 focus:ring-orange-400 bg-transparent focus:bg-white dark:focus:bg-slate-700 dark:text-slate-100"
-                placeholder={t.depreciation.productPlaceholder}
-                value={item.naam}
-                onChange={e => updateItem(item.id, { naam: e.target.value })}
-              />
+          <tr key={item.id}
+            className={`border-b border-slate-100 dark:border-slate-700 group transition-opacity ${active ? '' : 'opacity-40'}`}>
+
+            {/* Col 0: Product (sticky) — contains the enabled checkbox */}
+            <td style={tdStyle(0)} className={`${TD_STICKY} px-2 py-1.5 pl-3`}>
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="checkbox"
+                  checked={active}
+                  onChange={e => updateItem(item.id, { enabled: e.target.checked })}
+                  className="w-3.5 h-3.5 accent-orange-500 cursor-pointer flex-shrink-0"
+                  title={active ? 'Disable item' : 'Enable item'}
+                />
+                <input
+                  className="w-full text-xs border border-transparent hover:border-slate-200 dark:hover:border-slate-600 focus:border-slate-300 dark:focus:border-slate-500 rounded px-1.5 py-1 outline-none focus:ring-1 focus:ring-orange-400 bg-transparent focus:bg-white dark:focus:bg-slate-700 dark:text-slate-100"
+                  placeholder={t.depreciation.productPlaceholder}
+                  value={item.naam}
+                  onChange={e => updateItem(item.id, { naam: e.target.value })}
+                />
+              </div>
             </td>
-            <td className="px-2 py-1.5">
+
+            {/* Col 1: Purchase price (sticky) */}
+            <td style={tdStyle(1)} className={`${TD_STICKY} px-2 py-1.5`}>
               <div className="flex items-center border border-slate-200 dark:border-slate-600 rounded overflow-hidden focus-within:ring-1 focus-within:ring-orange-400">
                 <span className="px-1.5 bg-slate-50 dark:bg-slate-700 text-slate-400 text-xs border-r border-slate-200 dark:border-slate-600 select-none">€</span>
                 <input type="number" min={0} step={0.01}
-                  className="w-24 text-xs px-2 py-1 outline-none bg-white dark:bg-slate-800 dark:text-slate-100"
+                  className="w-20 text-xs px-2 py-1 outline-none bg-white dark:bg-slate-800 dark:text-slate-100"
                   placeholder="0,00"
                   value={item.aankoopprijs || ''}
                   onChange={e => updateItem(item.id, { aankoopprijs: parseFloat(e.target.value) || 0 })}
                 />
               </div>
             </td>
-            <td className="px-2 py-1.5">
+
+            {/* Col 2: Purchase date (sticky) */}
+            <td style={tdStyle(2)} className={`${TD_STICKY} px-2 py-1.5`}>
               <input type="date"
                 className="text-xs border border-slate-200 dark:border-slate-600 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-orange-400 bg-white dark:bg-slate-800 dark:text-slate-100"
                 value={item.aankoopdatum}
                 onChange={e => updateItem(item.id, { aankoopdatum: e.target.value })}
               />
             </td>
-            <td className="px-2 py-1.5">
+
+            {/* Col 3: Lifetime (sticky) */}
+            <td style={tdStyle(3)} className={`${TD_STICKY} px-2 py-1.5`}>
               <div className="flex items-center gap-1">
                 <input type="number" min={1}
-                  className="w-14 text-xs text-center border border-slate-200 dark:border-slate-600 rounded px-1 py-1 outline-none focus:ring-1 focus:ring-orange-400 bg-white dark:bg-slate-800 dark:text-slate-100"
+                  className="w-12 text-xs text-center border border-slate-200 dark:border-slate-600 rounded px-1 py-1 outline-none focus:ring-1 focus:ring-orange-400 bg-white dark:bg-slate-800 dark:text-slate-100"
                   value={item.looptijdJaren || ''}
                   onChange={e => updateItem(item.id, { looptijdJaren: parseInt(e.target.value) || 1 })}
                 />
                 <span className="text-xs text-slate-400 dark:text-slate-500">jr</span>
               </div>
             </td>
-            <td className="px-2 py-1.5 text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">
+
+            {/* Col 4: Replacement date (sticky) */}
+            <td style={tdStyle(4)} className={`${TD_STICKY} px-2 py-1.5 text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap`}>
               {replDate ? replDate.toLocaleDateString('nl-NL', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—'}
               {replYear !== null && replYear <= taxYear && <span className="ml-1 text-red-500 font-semibold">!</span>}
             </td>
-            <td className="px-2 py-1.5 text-xs text-right">
+
+            {/* Col 5: Reserved / target (sticky) */}
+            <td style={tdStyle(5)} className={`${TD_STICKY} px-2 py-1.5 text-xs text-right`}>
               {item.aankoopprijs > 0
                 ? <span className="text-slate-500 dark:text-slate-400">{nl0.format(reserved)} / {nl0.format(target)}</span>
                 : '—'}
             </td>
+
+            {/* Year cells (scrollable) */}
             {years.map((y, i) => {
               const dep       = deposits?.[i] ?? 0;
               const isOverdue = replYear !== null && y > replYear;
@@ -188,6 +241,8 @@ const CatRow = memo(function CatRow({
                 </td>
               );
             })}
+
+            {/* Delete */}
             <td className="px-2 py-1.5 text-center">
               <button onClick={() => removeItem(item.id)}
                 className="text-red-300 hover:text-red-500 bg-transparent border-0 cursor-pointer p-0.5">
@@ -206,19 +261,17 @@ const CatRow = memo(function CatRow({
 export default function AfschrijvingenSection({ data, taxYear, onChange }: Props) {
   const { t } = useLanguage();
 
-  // Defer the expensive matrix computation so keystrokes are never blocked.
-  // Inputs use live `data`; table cells use stale-until-idle `deferred`.
-  const deferred       = useDeferredValue(data);
-  const deferredYear   = useDeferredValue(taxYear);
-  const isStale        = deferred !== data || deferredYear !== taxYear;
-  const deferredRate   = deferred.rentePercentage / 100;
+  const deferred     = useDeferredValue(data);
+  const deferredYear = useDeferredValue(taxYear);
+  const isStale      = deferred !== data || deferredYear !== taxYear;
+  const deferredRate = deferred.rentePercentage / 100;
 
-  // Year range from deferred data
   const years = useMemo<number[]>(() => {
     let minYear = deferredYear - 2;
     let maxYear = deferredYear + 8;
     for (const cat of deferred.categorieen) {
       for (const it of cat.items) {
+        if (it.enabled === false) continue;
         const purchase = parseAfschrijvingDate(it.aankoopdatum);
         if (!purchase) continue;
         const py = purchase.getFullYear();
@@ -232,15 +285,11 @@ export default function AfschrijvingenSection({ data, taxYear, onChange }: Props
     return arr;
   }, [deferred.categorieen, deferredYear]);
 
-  // Precompute year boundaries once as millisecond timestamps — avoids
-  // 2 × items × years Date constructions inside the inner loop
   const yearBounds = useMemo(
     () => years.map(y => ({ L3ms: Date.UTC(y, 0, 1), M3ms: Date.UTC(y + 1, 0, 1) })),
     [years],
   );
 
-  // Build full deposit matrix from deferred data — O(items × years), runs off the
-  // critical typing path thanks to useDeferredValue
   const { itemComputed, catDeposits, yearTotals, maandBedrag } = useMemo(() => {
     const itemComputed = new Map<string, ItemComputed>();
     const catDeposits  = new Map<string, Float64Array>();
@@ -250,22 +299,36 @@ export default function AfschrijvingenSection({ data, taxYear, onChange }: Props
       const catDeps = new Float64Array(years.length);
 
       for (const item of cat.items) {
-        const empty = () => itemComputed.set(item.id, {
-          replDate: null, replYear: null,
-          deposits: new Float64Array(years.length), reserved: 0, target: 0,
-        });
+        // Disabled items: store date info for display but zero deposits
+        if (item.enabled === false) {
+          const purchase = parseAfschrijvingDate(item.aankoopdatum);
+          const replDate = purchase
+            ? (() => { const d = new Date(purchase); d.setFullYear(d.getFullYear() + item.looptijdJaren); return d; })()
+            : null;
+          itemComputed.set(item.id, {
+            replDate, replYear: replDate?.getFullYear() ?? null,
+            deposits: new Float64Array(years.length), reserved: 0, target: 0,
+          });
+          continue;
+        }
 
-        if (!item.aankoopprijs || !item.looptijdJaren || !item.aankoopdatum) { empty(); continue; }
+        if (!item.aankoopprijs || !item.looptijdJaren || !item.aankoopdatum) {
+          itemComputed.set(item.id, { replDate: null, replYear: null, deposits: new Float64Array(years.length), reserved: 0, target: 0 });
+          continue;
+        }
 
         const purchase = parseAfschrijvingDate(item.aankoopdatum);
-        if (!purchase) { empty(); continue; }
+        if (!purchase) {
+          itemComputed.set(item.id, { replDate: null, replYear: null, deposits: new Float64Array(years.length), reserved: 0, target: 0 });
+          continue;
+        }
 
-        const replDate = new Date(purchase);
+        const replDate   = new Date(purchase);
         replDate.setFullYear(replDate.getFullYear() + item.looptijdJaren);
-        const replYear    = replDate.getFullYear();
-        const purchaseMs  = purchase.getTime();
-        const replaceMs   = replDate.getTime();
-        const purchaseYr  = purchase.getFullYear();
+        const replYear   = replDate.getFullYear();
+        const purchaseMs = purchase.getTime();
+        const replaceMs  = replDate.getTime();
+        const purchaseYr = purchase.getFullYear();
 
         const deposits = new Float64Array(years.length);
         let reserved = 0, target = 0;
@@ -339,33 +402,35 @@ export default function AfschrijvingenSection({ data, taxYear, onChange }: Props
         </div>
       </div>
 
-      {/* Table — fades slightly while deferred recomputation is in flight */}
+      {/* Table */}
       <div className={`bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-x-auto transition-opacity duration-150 ${isStale ? 'opacity-60' : 'opacity-100'}`}>
         <table className="w-full border-collapse text-xs" style={{ minWidth: 900 }}>
           <thead>
-            <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900">
-              <th className="text-left px-2 py-2 font-medium text-slate-600 dark:text-slate-300">{t.depreciation.product}</th>
-              <th className="text-left px-2 py-2 font-medium text-slate-600 dark:text-slate-300">
+            <tr className="border-b border-slate-200 dark:border-slate-700">
+              {/* Fixed sticky header cells */}
+              <th style={thStyle(0)} className={TH_BASE}>{t.depreciation.product}</th>
+              <th style={thStyle(1)} className={TH_BASE}>
                 <span className="flex items-center gap-1">{t.depreciation.purchasePrice} <InfoTooltip tip={t.depreciation.purchasePriceTip} /></span>
               </th>
-              <th className="text-left px-2 py-2 font-medium text-slate-600 dark:text-slate-300">
+              <th style={thStyle(2)} className={TH_BASE}>
                 <span className="flex items-center gap-1">{t.depreciation.purchaseDate} <InfoTooltip tip={t.depreciation.purchaseDateTip} /></span>
               </th>
-              <th className="text-left px-2 py-2 font-medium text-slate-600 dark:text-slate-300">
+              <th style={thStyle(3)} className={TH_BASE}>
                 <span className="flex items-center gap-1">{t.depreciation.lifetimeYears} <InfoTooltip tip={t.depreciation.lifetimeTip} /></span>
               </th>
-              <th className="text-left px-2 py-2 font-medium text-slate-600 dark:text-slate-300">{t.depreciation.replacementDate}</th>
-              <th className="text-right px-2 py-2 font-medium text-slate-600 dark:text-slate-300">
+              <th style={thStyle(4)} className={TH_BASE}>{t.depreciation.replacementDate}</th>
+              <th style={thStyle(5)} className={TH_RIGHT}>
                 <span className="flex items-center justify-end gap-1">{t.depreciation.reserved} <InfoTooltip tip={t.depreciation.reservedTip} /></span>
               </th>
+              {/* Scrollable year headers */}
               {years.map(y => (
                 <th key={y} className={`text-right px-2 py-2 font-medium whitespace-nowrap ${
-                  y === taxYear ? 'text-orange-600 bg-amber-50 dark:bg-amber-900/20'
-                    : y < taxYear ? 'text-slate-400 dark:text-slate-500'
-                    : 'text-slate-600 dark:text-slate-300'
+                  y === taxYear   ? 'text-orange-600 bg-amber-50 dark:bg-amber-900/20'
+                  : y < taxYear   ? 'text-slate-400 dark:text-slate-500'
+                  :                 'text-slate-600 dark:text-slate-300'
                 }`}>{y}</th>
               ))}
-              <th className="px-2 py-2 w-8" />
+              <th className="px-2 py-2 w-8 bg-slate-50 dark:bg-slate-900" />
             </tr>
           </thead>
 
@@ -392,19 +457,22 @@ export default function AfschrijvingenSection({ data, taxYear, onChange }: Props
             ))
           )}
 
+          {/* Grand total row */}
           {data.categorieen.length > 0 && (
             <tfoot>
-              <tr className="border-t-2 border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 font-semibold">
-                <td colSpan={6} className="px-2 py-2 text-sm text-slate-700 dark:text-slate-200">{t.depreciation.totalPerYear}</td>
+              <tr className="border-t-2 border-slate-300 dark:border-slate-600 font-semibold">
+                <td colSpan={6} style={tdStyle(0)} className={`${TDF_STICKY} px-2 py-2 text-sm text-slate-700 dark:text-slate-200`}>
+                  {t.depreciation.totalPerYear}
+                </td>
                 {Array.from(yearTotals).map((total, i) => {
                   const isCurrent = years[i] === taxYear;
                   return (
-                    <td key={years[i]} className={`text-right px-2 py-2 text-sm ${isCurrent ? 'text-orange-700 bg-amber-50 dark:bg-amber-900/20' : 'text-slate-600 dark:text-slate-300'}`}>
+                    <td key={years[i]} className={`text-right px-2 py-2 text-sm bg-slate-50 dark:bg-slate-900 ${isCurrent ? 'text-orange-700 bg-amber-50 dark:bg-amber-900/20' : 'text-slate-600 dark:text-slate-300'}`}>
                       {total > 0 ? nl2.format(total) : ''}
                     </td>
                   );
                 })}
-                <td />
+                <td className="bg-slate-50 dark:bg-slate-900" />
               </tr>
             </tfoot>
           )}

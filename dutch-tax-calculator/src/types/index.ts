@@ -182,6 +182,7 @@ export interface AfschrijvingItem {
   aankoopprijs: number;
   aankoopdatum: string;   // YYYY-MM-DD
   looptijdJaren: number;
+  enabled?: boolean;      // undefined/true = counted, false = skipped
 }
 
 export interface AfschrijvingCategorie {
