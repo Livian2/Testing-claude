@@ -98,6 +98,7 @@ export interface IncomeData {
   rentalIncome: number;
   otherBox1Income: number;
   pensionContributions: number;
+  duoLening?: number;  // monthly DUO loan disbursement received (NOT taxable — it's a loan)
 }
 
 export interface ExpensesData {
@@ -287,6 +288,7 @@ export interface TaxResult {
   hypotheekRestschuld: number;
   afschrijvingenActueel: number;
   duoJaarbetaling: number;
+  duoLeningJaar: number;        // annual DUO loan disbursement received (cash inflow, untaxed)
   afschrijvingenJaarDeposit: number;
   schenkbelasting: number;
   schenkNetOntvangen: number;

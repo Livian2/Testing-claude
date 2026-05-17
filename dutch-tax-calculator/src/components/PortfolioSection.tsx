@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo, lazy, Suspense } from 'react';
 import {
   TrendingUp, Plus, Trash2, ArrowUpCircle, ArrowDownCircle,
   LayoutList, RefreshCw, AlertCircle, CheckCircle2, FileUp, Clock, Globe,
@@ -9,7 +9,8 @@ import { fetchPricesWithFX, resolveIsins, resolveBareTickers, looksLikeIsin } fr
 import { useLanguage } from '../i18n/LanguageContext';
 import SectionCard from './SectionCard';
 import PieChart from './PieChart';
-import CsvImportPanel from './CsvImportPanel';
+// Lazy: only rendered when the Import inner tab is selected
+const CsvImportPanel = lazy(() => import('./CsvImportPanel'));
 
 interface Props {
   data: PortfolioData;
@@ -410,19 +411,52 @@ export default function PortfolioSection({ data, onChange }: Props) {
     other:      t.portfolio.assetOther,
   };
 
-  const positions         = computePositions(data.holdings, data.transactions);
-  const totalCurrentValue = positions.reduce((s, p) => s + p.currentValue, 0);
+  const positions = useMemo(
+    () => computePositions(data.holdings, data.transactions),
+    [data.holdings, data.transactions],
+  );
 
-  const pieSlices = Object.entries(
-    positions.reduce((acc, p) => {
-      acc[p.type] = (acc[p.type] ?? 0) + p.currentValue;
-      return acc;
-    }, {} as Record<AssetType, number>),
-  ).map(([type, value]) => ({
-    label: assetLabels[type as AssetType],
-    value,
-    color: ASSET_COLORS[type as AssetType],
-  }));
+  const totalCurrentValue = useMemo(
+    () => positions.reduce((s, p) => s + p.currentValue, 0),
+    [positions],
+  );
+
+  // Filter transactions by current type once — was filtered twice (empty check + map)
+  const filteredTxs = useMemo(
+    () => data.transactions.filter(tx => tx.type === txType),
+    [data.transactions, txType],
+  );
+
+  const pieSlices = useMemo(() => {
+    const totals: Partial<Record<AssetType, number>> = {};
+    for (const p of positions) totals[p.type] = (totals[p.type] ?? 0) + p.currentValue;
+    return Object.entries(totals).map(([type, value]) => ({
+      label: assetLabels[type as AssetType],
+      value: value ?? 0,
+      color: ASSET_COLORS[type as AssetType],
+    }));
+  }, [positions, assetLabels]);
+
+  const totalAnnualDiv = useMemo(() => {
+    let s = 0;
+    for (const h of data.holdings) {
+      if (!h.dividendPerShareEur || h.quantity <= 0) continue;
+      s += h.quantity * h.dividendPerShareEur;
+    }
+    return s;
+  }, [data.holdings]);
+
+  // O(1) lookup of Holding by either name or ticker — was data.holdings.find() per row (O(N²))
+  const holdingByKey = useMemo(() => {
+    const byName: Record<string, Holding>   = {};
+    const byTicker: Record<string, Holding> = {};
+    for (const h of data.holdings) {
+      if (h.name)   byName[h.name]     = h;
+      if (h.ticker) byTicker[h.ticker] = h;
+    }
+    return (name?: string, ticker?: string): Holding | undefined =>
+      (ticker && byTicker[ticker]) || (name && byName[name]) || undefined;
+  }, [data.holdings]);
 
   const INNER_TABS = [
     { id: 'holdings' as InnerTab,     label: t.portfolioExtra.tabHoldings,     icon: <TrendingUp size={13} /> },
@@ -672,13 +706,13 @@ export default function PortfolioSection({ data, onChange }: Props) {
             </button>
           </div>
 
-          {data.transactions.filter(tx => tx.type === txType).length === 0 ? (
+          {filteredTxs.length === 0 ? (
             <div className="text-center py-6 text-slate-400 dark:text-slate-500 text-sm border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl">
               {txType === 'buy' ? t.portfolioExtra.noBuys : t.portfolioExtra.noSells}
             </div>
           ) : (
             <div className="space-y-2">
-              {data.transactions.filter(t => t.type === txType).map(tx => (
+              {filteredTxs.map(tx => (
                 <div key={tx.id} className="grid grid-cols-12 gap-2 items-end p-3 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700">
                   <div className="col-span-12 sm:col-span-3 flex flex-col gap-1">
                     <label className="text-xs text-slate-500">{t.portfolioExtra.colFund}</label>
@@ -753,17 +787,19 @@ export default function PortfolioSection({ data, onChange }: Props) {
 
       {/* ── Import ── */}
       {tab === 'import' && (
-        <CsvImportPanel
-          existingTransactions={data.transactions}
-          existingHoldings={data.holdings}
-          onImport={(newTxs, newHoldings) => {
-            onChange({
-              ...data,
-              transactions: [...data.transactions, ...newTxs],
-              holdings:     [...data.holdings, ...newHoldings],
-            });
-          }}
-        />
+        <Suspense fallback={<div className="text-center py-6 text-slate-400 text-sm">…</div>}>
+          <CsvImportPanel
+            existingTransactions={data.transactions}
+            existingHoldings={data.holdings}
+            onImport={(newTxs, newHoldings) => {
+              onChange({
+                ...data,
+                transactions: [...data.transactions, ...newTxs],
+                holdings:     [...data.holdings, ...newHoldings],
+              });
+            }}
+          />
+        </Suspense>
       )}
 
       {/* ── Overview ── */}
@@ -776,34 +812,26 @@ export default function PortfolioSection({ data, onChange }: Props) {
           ) : (
             <>
               {/* Summary row */}
-              {(() => {
-                const totalAnnualDiv = data.holdings.reduce((s, h) => {
-                  if (!h.dividendPerShareEur || h.quantity <= 0) return s;
-                  return s + h.quantity * h.dividendPerShareEur;
-                }, 0);
-                return (
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-                    <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-xl p-3 text-center">
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">{t.portfolioExtra.portfolioValue}</p>
-                      <p className="text-base font-bold text-purple-700 dark:text-purple-300">{nl0.format(totalCurrentValue)}</p>
-                    </div>
-                    <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-3 text-center">
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">{t.portfolioExtra.annualDiv}</p>
-                      <p className="text-base font-bold text-amber-700 dark:text-amber-300">
-                        {totalAnnualDiv > 0 ? nl0.format(totalAnnualDiv) : '—'}
-                      </p>
-                    </div>
-                    <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-center">
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">{t.portfolioExtra.positions}</p>
-                      <p className="text-base font-bold text-slate-700 dark:text-slate-200">{positions.length}</p>
-                    </div>
-                    <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-center">
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">{t.portfolioExtra.transactions}</p>
-                      <p className="text-base font-bold text-slate-700 dark:text-slate-200">{data.transactions.length}</p>
-                    </div>
-                  </div>
-                );
-              })()}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+                <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-xl p-3 text-center">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">{t.portfolioExtra.portfolioValue}</p>
+                  <p className="text-base font-bold text-purple-700 dark:text-purple-300">{nl0.format(totalCurrentValue)}</p>
+                </div>
+                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-3 text-center">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">{t.portfolioExtra.annualDiv}</p>
+                  <p className="text-base font-bold text-amber-700 dark:text-amber-300">
+                    {totalAnnualDiv > 0 ? nl0.format(totalAnnualDiv) : '—'}
+                  </p>
+                </div>
+                <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-center">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">{t.portfolioExtra.positions}</p>
+                  <p className="text-base font-bold text-slate-700 dark:text-slate-200">{positions.length}</p>
+                </div>
+                <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-center">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">{t.portfolioExtra.transactions}</p>
+                  <p className="text-base font-bold text-slate-700 dark:text-slate-200">{data.transactions.length}</p>
+                </div>
+              </div>
 
               {/* Pie chart */}
               {pieSlices.length > 1 && (
@@ -838,7 +866,7 @@ export default function PortfolioSection({ data, onChange }: Props) {
                   </thead>
                   <tbody>
                     {positions.map((p, i) => {
-                      const holding = data.holdings.find(hh => hh.name === p.name || hh.ticker === p.ticker);
+                      const holding = holdingByKey(p.name, p.ticker);
                       const hasFetched = p.currentPrice > 0;
                       const gainPct = p.avgCost > 0 && hasFetched
                         ? ((p.currentPrice - p.avgCost) / p.avgCost) * 100
@@ -893,7 +921,7 @@ export default function PortfolioSection({ data, onChange }: Props) {
                           {/* Dividend/jr */}
                           <td className="py-2.5 pr-3 text-right text-xs hidden md:table-cell">
                             {(() => {
-                              const h = data.holdings.find(hh => hh.name === p.name || hh.ticker === p.ticker);
+                              const h = holdingByKey(p.name, p.ticker);
                               const div = h?.dividendPerShareEur;
                               if (!div || div <= 0) return <span className="text-slate-300">—</span>;
                               const annual = p.quantity * div;

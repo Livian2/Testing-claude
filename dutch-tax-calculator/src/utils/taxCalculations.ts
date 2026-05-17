@@ -92,13 +92,22 @@ function hillenTaxableFraction(taxYear: number): number {
 // Net eigenwoninginkomen effect on Box 1 taxable income.
 // Returns a signed value: negative = deduction, positive = addition.
 // Aflossingsvrij hypotheken without overgangsrecht (post-2013) are not deductible.
-function eigenwoningEffect(woon: import('../types').WoonData, taxYear: number): number {
+// Optional hypResults parameter avoids re-running berekenHypotheek when already computed.
+function eigenwoningEffect(
+  woon: import('../types').WoonData,
+  taxYear: number,
+  hypResults?: ReturnType<typeof berekenHypotheek>[],
+): number {
   if (woon.woningType !== 'hypotheek') return 0;
   let totalRente = 0;
-  for (const hyp of woon.hypotheken) {
+  for (let i = 0; i < woon.hypotheken.length; i++) {
+    const hyp = woon.hypotheken[i];
     if (hyp.leningBedrag <= 0) continue;
     const deductible = hyp.type !== 'aflossingsvrijij' || (hyp.overgangsrechtVoor2013 ?? true);
-    if (deductible) totalRente += berekenHypotheek(hyp, taxYear).jaarRente;
+    if (deductible) {
+      const r = hypResults ? hypResults[i] : berekenHypotheek(hyp, taxYear);
+      totalRente += r.jaarRente;
+    }
   }
   const ewf = calcEwf(woon.wozWaarde ?? 0);
   const ewi  = ewf - totalRente; // eigenwoninginkomen
@@ -150,11 +159,15 @@ function calcArbeidskorting(employmentIncome: number): number {
 
 // verzamelinkomen is passed in from calculateTaxes (box1 + box3 fictitious return)
 // so the AHK afbouw uses the correct grondslag. Falls back to box1 taxableIncome if omitted.
-export function calculateBox1(data: TaxFormData, verzamelinkomen?: number): Box1Result {
+export function calculateBox1(
+  data: TaxFormData,
+  verzamelinkomen?: number,
+  hypResults?: ReturnType<typeof berekenHypotheek>[],
+): Box1Result {
   const { income, woon, personal } = data;
 
   // Net eigenwoninginkomen: negative = deduction (rente > EWF), positive = addition (Wet Hillen phase-out)
-  const ewEffect = eigenwoningEffect(woon, personal.taxYear);
+  const ewEffect = eigenwoningEffect(woon, personal.taxYear, hypResults);
 
   const totalGrossIncome =
     income.grossSalary + income.freelanceIncome + income.rentalIncome + income.otherBox1Income;
@@ -198,7 +211,11 @@ const BOX3_DEBT_THRESHOLD    = 3700;
 const BOX3_EXEMPTION_SINGLE  = 57684;
 const BOX3_EXEMPTION_PARTNER = 115368;
 
-export function calculateBox3(data: TaxFormData): Box3Result {
+// Optional precomputed inputs allow calculateTaxes to avoid duplicate work.
+export function calculateBox3(
+  data: TaxFormData,
+  positions?: Position[],
+): Box3Result {
   const { schulden, personal, afschrijvingen } = data;
   const bankData = data.bankData ?? { spaarrekeningen: [], betaalrekeningen: [] };
   const isPartner = personal.filingStatus === 'partner';
@@ -211,8 +228,8 @@ export function calculateBox3(data: TaxFormData): Box3Result {
     bankData.betaalrekeningen.reduce((s, a) => s + (a.saldoJan1 ?? a.saldoHuidig), 0);
 
   // Investments = portfolio current value
-  const positions = computePositions(data.portfolio.holdings, data.portfolio.transactions);
-  const totalInvestments = positions.reduce((s, p) => s + p.currentValue, 0);
+  const pos = positions ?? computePositions(data.portfolio.holdings, data.portfolio.transactions);
+  const totalInvestments = pos.reduce((s, p) => s + p.currentValue, 0);
 
   const totalAssets = totalSavings + totalInvestments;
 
@@ -437,28 +454,33 @@ export function calcRealisedGain(holdings: Holding[], transactions: Transaction[
 // ─── Full calculation ───────────────────────────────────────────────────────
 
 export function calculateTaxes(data: TaxFormData): TaxResult {
+  const { expenses, savings, income, woon, personal, portfolio, schulden } = data;
+
+  // Compute once and share — was previously called 2× (Box3 + main) and 3× (hypotheek)
+  const positions   = computePositions(portfolio.holdings, portfolio.transactions);
+  const hypResults  = woon.woningType === 'hypotheek'
+    ? woon.hypotheken.map(h => berekenHypotheek(h, personal.taxYear))
+    : [];
+
   // Box 3 must be computed first: the AHK afbouw is based on verzamelinkomen (box1+box3)
-  const box3 = calculateBox3(data);
+  const box3 = calculateBox3(data, positions);
 
   // Compute box1 taxable income early so we can form the verzamelinkomen for AHK
-  const { income: _inc, woon: _woon, personal: _pers } = data;
-  const _ewEffect    = eigenwoningEffect(_woon, _pers.taxYear);
-  const _grossInc    = _inc.grossSalary + _inc.freelanceIncome + _inc.rentalIncome + _inc.otherBox1Income;
-  const _box1Taxable = Math.max(0, _grossInc + _ewEffect - _inc.pensionContributions);
+  const _ewEffect    = eigenwoningEffect(woon, personal.taxYear, hypResults);
+  const _grossInc    = income.grossSalary + income.freelanceIncome + income.rentalIncome + income.otherBox1Income;
+  const _box1Taxable = Math.max(0, _grossInc + _ewEffect - income.pensionContributions);
   // Verzamelinkomen = box1 belastbaar inkomen + box3 fictief rendement (box2 = €0 in this app)
   const verzamelinkomen = _box1Taxable + Math.max(0, box3.fictitiousReturn);
 
-  const box1      = calculateBox1(data, verzamelinkomen);
+  const box1      = calculateBox1(data, verzamelinkomen, hypResults);
   const toeslagen = calculateToeslagen(data, box1, box3);
   const totalTax  = Math.max(0, box1.netTax + box3.netTax);
 
-  const { expenses, savings, income, woon, personal, portfolio, schulden } = data;
-
   let maandWoonlast = 0;
   if (woon.woningType === 'hypotheek') {
-    for (const hyp of woon.hypotheken) {
-      if (hyp.leningBedrag > 0) {
-        maandWoonlast += berekenHypotheek(hyp, personal.taxYear).maandlast;
+    for (let i = 0; i < woon.hypotheken.length; i++) {
+      if (woon.hypotheken[i].leningBedrag > 0) {
+        maandWoonlast += hypResults[i].maandlast;
       }
     }
   } else if (woon.woningType === 'huur') {
@@ -472,74 +494,76 @@ export function calculateTaxes(data: TaxFormData): TaxResult {
      expenses.other) * 12 + totalWoonlasten;
 
   const annualSavings = savings.monthlySavingsContribution * 12;
+  const grossIncome   = _grossInc;
 
-  const grossIncome =
-    income.grossSalary + income.freelanceIncome + income.rentalIncome + income.otherBox1Income;
-
-  const positions = computePositions(portfolio.holdings, portfolio.transactions);
-
-  const portfolioCurrentValue = positions.reduce((s, p) => s + p.currentValue, 0);
-  const portfolioJan1Value    = 0;
+  let portfolioCurrentValue = 0;
+  for (const p of positions) portfolioCurrentValue += p.currentValue;
+  const portfolioJan1Value = 0;
 
   const gainLoss = calcRealisedGain(portfolio.holdings, portfolio.transactions);
 
   const bankData = data.bankData ?? { spaarrekeningen: [], betaalrekeningen: [] };
 
-  const actualSavingsInterest = bankData.spaarrekeningen.reduce(
-    (s, a) => s + a.saldoHuidig * (a.rentePercentage / 100), 0,
-  );
+  let actualSavingsInterest = 0;
+  let totalSavingsBalance   = 0;
+  for (const a of bankData.spaarrekeningen) {
+    actualSavingsInterest += a.saldoHuidig * (a.rentePercentage / 100);
+    totalSavingsBalance   += a.saldoHuidig;
+  }
+  for (const a of bankData.betaalrekeningen) totalSavingsBalance += a.saldoHuidig;
 
-  const totalSavingsBalance =
-    bankData.spaarrekeningen.reduce((s, a) => s + a.saldoHuidig, 0) +
-    bankData.betaalrekeningen.reduce((s, a) => s + a.saldoHuidig, 0);
+  let hypotheekRestschuld = 0;
+  for (const r of hypResults) hypotheekRestschuld += r.restschuldBegin;
 
-  const hypotheekRestschuld = woon.hypotheken.reduce(
-    (s, hyp) => s + berekenHypotheek(hyp, personal.taxYear).restschuldBegin, 0,
-  );
-
-  // Reserved amount as of today (for current net worth — not end-of-year)
-  const rate = data.afschrijvingen.rentePercentage / 100;
-  const today = new Date();
-  const afschrijvingenActueel = data.afschrijvingen.categorieen
-    .flatMap(c => c.items)
-    .reduce((sum, item) => sum + gereserveerdTotDatum(item, rate, today), 0);
-
-  // Annual sinking fund deposits for the current tax year
-  const afschrijvingenJaarDeposit = data.afschrijvingen.categorieen
-    .flatMap(c => c.items)
-    .reduce((sum, item) => sum + jaarDeposit(item, rate, personal.taxYear), 0);
+  // Single pass over afschrijvingen items — was previously 2× flatMap + 2× reduce
+  const rate    = data.afschrijvingen.rentePercentage / 100;
+  const today   = new Date();
+  let afschrijvingenActueel     = 0;
+  let afschrijvingenJaarDeposit = 0;
+  for (const cat of data.afschrijvingen.categorieen) {
+    for (const item of cat.items) {
+      afschrijvingenActueel     += gereserveerdTotDatum(item, rate, today);
+      afschrijvingenJaarDeposit += jaarDeposit(item, rate, personal.taxYear);
+    }
+  }
 
   // DUO repayment: income-based annual payment (only if there are DUO schulden)
-  const hasDuo = schulden.duo.length > 0;
   const isPartner = personal.filingStatus === 'partner';
-  const duoJaarbetaling = hasDuo
+  const duoJaarbetaling = schulden.duo.length > 0
     ? berekenDuoJaarbetaling(grossIncome, isPartner)
     : 0;
 
+  // DUO lending inflow: monthly loan disbursement received (non-taxable cash inflow)
+  const duoLeningJaar = (income.duoLening ?? 0) * 12;
+
   const netDisposableIncome =
-    grossIncome - totalTax + toeslagen.total - totalExpenses - duoJaarbetaling - afschrijvingenJaarDeposit;
+    grossIncome - totalTax + toeslagen.total - totalExpenses - duoJaarbetaling - afschrijvingenJaarDeposit + duoLeningJaar;
 
   const wozAsset = woon.woningType === 'hypotheek' ? (woon.wozWaarde ?? 0) : 0;
 
-  const currentNetWorth =
-    totalSavingsBalance +
-    portfolioCurrentValue +
-    wozAsset -
-    [...schulden.duo, ...schulden.beleggingen].reduce((s, d) => s + d.bedrag, 0) -
-    hypotheekRestschuld -
-    afschrijvingenActueel;
+  let totalSchulden = 0;
+  for (const d of schulden.duo)         totalSchulden += d.bedrag;
+  for (const d of schulden.beleggingen) totalSchulden += d.bedrag;
 
-  // Schenkbelasting
-  const schenkItems = (data.schenkingen?.schenkingen ?? []);
-  const schenkCalcs = schenkItems.map(s => berekenSchenking(s, personal.taxYear));
-  const schenkbelasting   = schenkCalcs.reduce((t, c) => t + c.belasting, 0);
-  const schenkNetOntvangen = schenkCalcs.reduce((t, c) => t + c.netOntvangen, 0);
+  const currentNetWorth =
+    totalSavingsBalance + portfolioCurrentValue + wozAsset
+    - totalSchulden - hypotheekRestschuld - afschrijvingenActueel;
+
+  // Schenkbelasting — single pass
+  const schenkItems = data.schenkingen?.schenkingen ?? [];
+  let schenkbelasting   = 0;
+  let schenkNetOntvangen = 0;
+  for (const item of schenkItems) {
+    const c = berekenSchenking(item, personal.taxYear);
+    schenkbelasting    += c.belasting;
+    schenkNetOntvangen += c.netOntvangen;
+  }
 
   return {
     box1, box3, toeslagen, totalTax, netDisposableIncome, totalExpenses,
     annualSavings, portfolioCurrentValue, portfolioJan1Value,
     portfolioGainLoss: gainLoss, actualSavingsInterest, currentNetWorth, wozAsset, hypotheekRestschuld, afschrijvingenActueel,
-    duoJaarbetaling, afschrijvingenJaarDeposit,
+    duoJaarbetaling, duoLeningJaar, afschrijvingenJaarDeposit,
     schenkbelasting, schenkNetOntvangen,
   };
 }

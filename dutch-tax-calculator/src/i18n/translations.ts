@@ -55,6 +55,9 @@ export const translations = {
       rentalTip:           'Inkomsten uit verhuur van een deel van uw eigen woning (bijv. een kamer). Verhuur van een tweede woning valt in Box 3.',
       otherBox1Tip:        'Andere inkomsten die in Box 1 vallen: AOW, pensioen, WW-uitkering, ziektewet, etc.',
       pensionContribTip:   'Betalingen op een lijfrentepolis of bankspaarrekening die u mag aftrekken van uw Box 1 inkomen. Raadpleeg uw jaaropgave.',
+      duoLening:           'DUO lening (maandelijks ontvangen)',
+      duoLeningHint:       'Maandelijks bedrag dat u ontvangt van DUO',
+      duoLeningTip:        'Een studielening van DUO is geen belastbaar inkomen — het is een lening die u later terugbetaalt. Vul hier het maandbedrag in dat u ontvangt.',
     },
 
     // ── Housing ─────────────────────────────────────────────────────────────
@@ -778,6 +781,7 @@ export const translations = {
       savingsProvisions:  'Sparen voorzieningen',
       schenkbelasting:    'Schenkbelasting',
       schenkNetOntvangen: 'Netto ontvangen schenkingen',
+      duoLeningInflow:    'DUO lening ontvangen',
       gainLossInfo:       'Gerealiseerde koerswinst/-verlies (informatief)',
     },
 
@@ -891,6 +895,9 @@ export const translations = {
       rentalTip:           'Income from renting out part of your own home (e.g. a room). Renting out a second property falls under Box 3.',
       otherBox1Tip:        'Other Box 1 income: state pension (AOW), private pension, unemployment benefit, sick pay, etc.',
       pensionContribTip:   'Contributions to an annuity policy or bank savings account deductible from your Box 1 income. Check your annual income statement.',
+      duoLening:           'DUO loan (monthly received)',
+      duoLeningHint:       'Monthly amount you receive from DUO',
+      duoLeningTip:        'A student loan from DUO is not taxable income — it is a loan you will repay later. Enter the monthly amount you receive.',
     },
 
     // ── Housing ─────────────────────────────────────────────────────────────
@@ -1614,6 +1621,7 @@ export const translations = {
       savingsProvisions:  'Savings provisions',
       schenkbelasting:    'Gift tax',
       schenkNetOntvangen: 'Net gifts received',
+      duoLeningInflow:    'DUO loan received',
       gainLossInfo:       'Realised gain/loss (informational)',
     },
 

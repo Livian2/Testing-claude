@@ -101,23 +101,32 @@ function buildDataPoints(data: TaxFormData): DataPoint[] {
     return x - box1 + zorg + huur;
   }
 
-  const points: DataPoint[] = [];
-  const STEP = 1000;
+  // STEP=2000 gives ~75 sample points across 0–150k — visually identical to STEP=1000
+  // but halves the number of expensive tax calculations on every data change.
+  // Also share netIncome calls between adjacent points (was computed twice per point).
+  const STEP = 2000;
   const MAX  = 150000;
+  const N    = Math.floor(MAX / STEP) + 1;
+  const points: DataPoint[] = new Array(N);
 
-  for (let x = 0; x <= MAX; x += STEP) {
-    const box1Tax      = calcBox1NetTax(x);
+  // Cache netIncome values to reuse adjacent computations
+  let prevNetK = netIncomeKortingen(0);
+  let prevNetT = netIncomeToeslagen(0);
+  for (let i = 0; i < N; i++) {
+    const x = i * STEP;
+    const xNext = x + STEP;
+    const box1Tax = calcBox1NetTax(x);
     const effectiefBox1 = x > 0 ? Math.max(0, Math.min(1.2, box1Tax / x)) : 0;
 
-    const netK0 = netIncomeKortingen(x);
-    const netK1 = netIncomeKortingen(x + STEP);
-    const marginalKortingen = Math.max(0, Math.min(1.2, 1 - (netK1 - netK0) / STEP));
+    const netK1 = netIncomeKortingen(xNext);
+    const marginalKortingen = Math.max(0, Math.min(1.2, 1 - (netK1 - prevNetK) / STEP));
 
-    const netT0 = netIncomeToeslagen(x);
-    const netT1 = netIncomeToeslagen(x + STEP);
-    const marginalToeslagen = Math.max(0, Math.min(1.2, 1 - (netT1 - netT0) / STEP));
+    const netT1 = netIncomeToeslagen(xNext);
+    const marginalToeslagen = Math.max(0, Math.min(1.2, 1 - (netT1 - prevNetT) / STEP));
 
-    points.push({ inkomen: x, effectiefBox1, marginalKortingen, marginalToeslagen });
+    points[i] = { inkomen: x, effectiefBox1, marginalKortingen, marginalToeslagen };
+    prevNetK = netK1;
+    prevNetT = netT1;
   }
 
   return points;

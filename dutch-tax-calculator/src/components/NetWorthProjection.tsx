@@ -116,58 +116,106 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
 
   const points = useMemo<ProjectionPoint[]>(() => {
     const bankDataSafe = data.bankData ?? { spaarrekeningen: [], betaalrekeningen: [] };
-    const initSavings =
-      data.waardes.spaarrekeningen.reduce((s, r) => s + r.saldoJan1, 0) +
-      data.waardes.betaalrekeningen.reduce((s, r) => s + r.saldoJan1, 0) +
-      bankDataSafe.spaarrekeningen.reduce((s, r) => s + (r.saldoJan1 ?? r.saldoHuidig), 0) +
-      bankDataSafe.betaalrekeningen.reduce((s, r) => s + (r.saldoJan1 ?? r.saldoHuidig), 0);
+
+    // Initial savings — single pass over each source
+    let initSavings = 0;
+    for (const r of data.waardes.spaarrekeningen)   initSavings += r.saldoJan1;
+    for (const r of data.waardes.betaalrekeningen)  initSavings += r.saldoJan1;
+    for (const r of bankDataSafe.spaarrekeningen)   initSavings += r.saldoJan1 ?? r.saldoHuidig;
+    for (const r of bankDataSafe.betaalrekeningen)  initSavings += r.saldoJan1 ?? r.saldoHuidig;
+
     const positions = computePositions(data.portfolio.holdings, data.portfolio.transactions);
-    const portfolioValue = positions.reduce((s, p) => s + p.currentValue, 0);
-    const jan1Investments = data.waardes.beleggingen.reduce((s, r) => s + r.waardeJan1, 0);
+    let portfolioValue = 0;
+    for (const p of positions) portfolioValue += p.currentValue;
+    let jan1Investments = 0;
+    for (const r of data.waardes.beleggingen) jan1Investments += r.waardeJan1;
     const initInvestments = portfolioValue > 0 ? portfolioValue : jan1Investments;
-    const startInkomen = data.income.grossSalary + data.income.freelanceIncome;
+    const startInkomen     = data.income.grossSalary + data.income.freelanceIncome;
     const inkomensstijging = (config.inkomensstijging ?? 2) / 100;
-    const isPartner = data.personal.filingStatus === 'partner';
+    const isPartner        = data.personal.filingStatus === 'partner';
 
     // WOZ: only included if the user owns the property; stays constant over years
     const wozWaarde = data.woon.woningType === 'hypotheek' ? (data.woon.wozWaarde ?? 0) : 0;
 
-    // Pre-collect all afschrijving items for reserve projection
-    const afschrijvingItems = data.afschrijvingen.categorieen.flatMap(c => c.items);
-    const afschrijvingRate  = data.afschrijvingen.rentePercentage / 100;
+    // Pre-collect afschrijving items once (was implicit flatMap per year)
+    const afschrijvingItems: typeof data.afschrijvingen.categorieen[number]['items'] = [];
+    for (const cat of data.afschrijvingen.categorieen) {
+      for (const item of cat.items) afschrijvingItems.push(item);
+    }
+    const afschrijvingRate = data.afschrijvingen.rentePercentage / 100;
 
     // Annual income phases (bruto used as rough proxy for net reduction in withdrawal)
-    const aowJaar = aowBedragMaand * 12;
-    const pensioenJaar = pensioenBedragMaand * 12;
-    const aowCalendarYear = currentYear + Math.max(0, aowLeeftijd - leeftijd);
+    const aowJaar              = aowBedragMaand * 12;
+    const pensioenJaar         = pensioenBedragMaand * 12;
+    const aowCalendarYear      = currentYear + Math.max(0, aowLeeftijd - leeftijd);
     const pensioenCalendarYear = currentYear + Math.max(0, pensioenLeeftijd - leeftijd);
 
-    // Compute annual expenses for withdrawal modelling
+    // Annual expenses for withdrawal modelling
     const e = data.expenses;
-    const annualExp = (e.groceries + e.transport + e.insurance + e.healthcare + e.education + e.leisure + e.other) * 12;
+    const annualExp  = (e.groceries + e.transport + e.insurance + e.healthcare + e.education + e.leisure + e.other) * 12;
     const swrDecimal = swr / 100;
     const heffingsvrij = isPartner ? 114_000 : 57_000;
-    const taxableW = Math.max(0, annualExp / swrDecimal - heffingsvrij);
-    const box3Drag = taxableW * 0.0588 * 0.36;
-    const fireNum = (annualExp + box3Drag) / swrDecimal;
+    const taxableW   = Math.max(0, annualExp / swrDecimal - heffingsvrij);
+    const box3Drag   = taxableW * 0.0588 * 0.36;
+    const fireNum    = (annualExp + box3Drag) / swrDecimal;
 
-    const duoBalanceByYear = new Map<number, number>();
+    // Cache growth factors (was recomputed each iteration)
+    const savingsGrowth = 1 + config.spaarrente / 100;
+    const investGrowth  = 1 + config.rendementBeleggingen / 100;
+
+    // ── Pre-compute per-year debt schedules outside the main loop ──
+    const numYears = config.jaren;
+    const duoByYear = new Float64Array(numYears + 1);
     for (const duo of data.schulden.duo) {
       const sim = simuleerDuo(duo, startInkomen, inkomensstijging, currentYear, isPartner);
       for (const punt of sim.punten) {
-        duoBalanceByYear.set(punt.jaar, (duoBalanceByYear.get(punt.jaar) ?? 0) + punt.balans);
+        const idx = punt.jaar - currentYear;
+        if (idx >= 0 && idx <= numYears) duoByYear[idx] += punt.balans;
       }
     }
 
-    const result: ProjectionPoint[] = [];
-    let fired = false; // whether FIRE has been reached
+    // Hypotheek restschuld per projection year (was computed inside the loop with .reduce)
+    const hypByYear = new Float64Array(numYears + 1);
+    for (let i = 0; i <= numYears; i++) {
+      const y = currentYear + i;
+      let s = 0;
+      for (const h of data.woon.hypotheken) s += berekenHypotheek(h, y).restschuldBegin;
+      hypByYear[i] = s;
+    }
 
-    for (let i = 0; i <= config.jaren; i++) {
+    // Beleggingsschulden — straight-line, can be expressed analytically per year
+    const overigByYear = new Float64Array(numYears + 1);
+    for (let i = 0; i <= numYears; i++) {
+      const y = currentYear + i;
+      let s = 0;
+      for (const schuld of data.schulden.beleggingen) {
+        const elapsed = y - schuld.startJaar;
+        if (elapsed < 0)                  s += schuld.bedrag;
+        else if (elapsed >= schuld.looptijd) { /* paid off */ }
+        else                              s += schuld.bedrag * (1 - elapsed / schuld.looptijd);
+      }
+      overigByYear[i] = s;
+    }
+
+    // Afschrijvingen reserve per year (was reduce inside loop)
+    const afschrByYear = new Float64Array(numYears + 1);
+    for (let i = 0; i <= numYears; i++) {
+      const y = currentYear + i;
+      let s = 0;
+      for (const item of afschrijvingItems) s += gereserveerdTotNu(item, afschrijvingRate, y);
+      afschrByYear[i] = s;
+    }
+
+    const result: ProjectionPoint[] = [];
+    let fired = false;
+    let prevSavings = initSavings;
+    let prevInvestments = initInvestments;
+
+    for (let i = 0; i <= numYears; i++) {
       const year = currentYear + i;
 
       // FIRE uses only liquid (investable) assets — WOZ is excluded
-      const prevLiquid = i > 0 ? result[i-1].savings + result[i-1].investments : (initSavings + initInvestments);
-      if (!fired && i > 0 && prevLiquid >= fireNum) {
+      if (!fired && i > 0 && (prevSavings + prevInvestments) >= fireNum) {
         fired = true;
       }
 
@@ -177,51 +225,39 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
       if (i === 0) {
         savings = initSavings;
         investments = initInvestments;
+      } else if (!fired) {
+        savings     = prevSavings     * savingsGrowth + jaarlijksSparen;
+        investments = prevInvestments * investGrowth  + jaarlijksBeleggen;
       } else {
-        const prev = result[i - 1];
-        if (!fired) {
-          // Accumulation phase: grow and add contributions
-          savings     = prev.savings     * (1 + config.spaarrente / 100) + jaarlijksSparen;
-          investments = prev.investments * (1 + config.rendementBeleggingen / 100) + jaarlijksBeleggen;
+        const aowIncome      = year > aowCalendarYear      ? aowJaar      : 0;
+        const pensioenIncome = year > pensioenCalendarYear ? pensioenJaar : 0;
+        const required       = Math.max(0, annualExp - aowIncome - pensioenIncome);
+        const grownSavings     = prevSavings     * savingsGrowth;
+        const grownInvestments = prevInvestments * investGrowth;
+        if (grownSavings >= required) {
+          savings     = grownSavings - required;
+          investments = grownInvestments;
         } else {
-          // Withdrawal phase: grow assets but subtract required annual withdrawal
-          const aowIncome = year > aowCalendarYear ? aowJaar : 0;
-          const pensioenIncome = year > pensioenCalendarYear ? pensioenJaar : 0;
-          const requiredWithdrawal = Math.max(0, annualExp - aowIncome - pensioenIncome);
-
-          // First grow, then withdraw — draw from savings first, then investments
-          const grownSavings = prev.savings * (1 + config.spaarrente / 100);
-          const grownInvestments = prev.investments * (1 + config.rendementBeleggingen / 100);
-
-          if (grownSavings >= requiredWithdrawal) {
-            savings = grownSavings - requiredWithdrawal;
-            investments = grownInvestments;
-          } else {
-            savings = 0;
-            investments = Math.max(0, grownInvestments - (requiredWithdrawal - grownSavings));
-          }
+          savings     = 0;
+          investments = Math.max(0, grownInvestments - (required - grownSavings));
         }
       }
 
-      const hypotheekDebt = data.woon.hypotheken.reduce((s, h) => s + berekenHypotheek(h, year).restschuldBegin, 0);
-      const duoDebt     = duoBalanceByYear.get(year) ?? 0;
-      const overigeDebt = data.schulden.beleggingen.reduce((s, schuld) => {
-        const elapsed = year - schuld.startJaar;
-        if (elapsed < 0) return s + schuld.bedrag;
-        if (elapsed >= schuld.looptijd) return s;
-        return s + schuld.bedrag * (1 - elapsed / schuld.looptijd);
-      }, 0);
-      const totalDebt = hypotheekDebt + duoDebt + overigeDebt;
-      // Accumulated afschrijvingen reserve earmarked from savings (grows each year)
-      const afschrijvingenReserve = afschrijvingItems.reduce(
-        (sum, item) => sum + gereserveerdTotNu(item, afschrijvingRate, year), 0
-      );
+      const hypotheekDebt = hypByYear[i];
+      const duoDebt       = duoByYear[i];
+      const overigeDebt   = overigByYear[i];
+      const totalDebt     = hypotheekDebt + duoDebt + overigeDebt;
+      const afschrijvingenReserve = afschrByYear[i];
+
       result.push({
         year, savings, investments, wozWaarde,
         hypotheekDebt, duoDebt, overigeDebt, totalDebt,
         afschrijvingenReserve,
         netWorth: savings + investments + wozWaarde - totalDebt - afschrijvingenReserve,
       });
+
+      prevSavings = savings;
+      prevInvestments = investments;
     }
     return result;
   }, [data, config, currentYear, jaarlijksSparen, jaarlijksBeleggen, swr, leeftijd, aowBedragMaand, pensioenBedragMaand, aowLeeftijd, pensioenLeeftijd]);
@@ -276,9 +312,19 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
 
   const hasWoz   = points[0]?.wozWaarde > 0;
   const box3Debt = (p: ProjectionPoint) => p.duoDebt + p.overigeDebt;
-  const allValues = points.flatMap(p => [p.savings, p.investments, p.wozWaarde, -p.hypotheekDebt, -box3Debt(p), p.netWorth]).concat(fireNumber > 0 ? [fireNumber] : []);
-  const dataMin = Math.min(...allValues, 0);
-  const dataMax = Math.max(...allValues);
+  // Single-pass min/max — was flatMap creating O(points × 6) temporary array
+  let dataMin = 0;
+  let dataMax = 0;
+  for (const p of points) {
+    const b3 = p.duoDebt + p.overigeDebt;
+    if (p.savings      < dataMin) dataMin = p.savings;       if (p.savings      > dataMax) dataMax = p.savings;
+    if (p.investments  < dataMin) dataMin = p.investments;   if (p.investments  > dataMax) dataMax = p.investments;
+    if (p.wozWaarde    < dataMin) dataMin = p.wozWaarde;     if (p.wozWaarde    > dataMax) dataMax = p.wozWaarde;
+    if (-p.hypotheekDebt < dataMin) dataMin = -p.hypotheekDebt; if (-p.hypotheekDebt > dataMax) dataMax = -p.hypotheekDebt;
+    if (-b3            < dataMin) dataMin = -b3;             if (-b3            > dataMax) dataMax = -b3;
+    if (p.netWorth     < dataMin) dataMin = p.netWorth;      if (p.netWorth     > dataMax) dataMax = p.netWorth;
+  }
+  if (fireNumber > 0 && fireNumber > dataMax) dataMax = fireNumber;
   const valuePad = (dataMax - dataMin) * 0.08 || 10000;
   const yMin = dataMin - valuePad;
   const yMax = dataMax + valuePad;

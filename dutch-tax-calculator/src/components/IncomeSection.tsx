@@ -29,6 +29,7 @@ export default function IncomeSection({ data, onChange }: Props) {
     { key: 'rentalIncome',         label: t.income.rental,          hint: t.income.rentalHint,          tip: t.income.rentalTip },
     { key: 'otherBox1Income',      label: t.income.otherBox1,       hint: t.income.otherBox1Hint,       tip: t.income.otherBox1Tip },
     { key: 'pensionContributions', label: t.income.pensionContrib,  hint: t.income.pensionContribHint,  tip: t.income.pensionContribTip },
+    { key: 'duoLening',            label: t.income.duoLening,       hint: t.income.duoLeningHint,       tip: t.income.duoLeningTip },
   ];
 
   const set = (key: keyof IncomeData) => (v: number) => onChange({ ...data, [key]: v });

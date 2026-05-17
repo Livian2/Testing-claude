@@ -24,7 +24,7 @@ export default function TaxResults({ result }: Props) {
     box1, box3, toeslagen, totalTax, netDisposableIncome, totalExpenses,
     portfolioGainLoss, portfolioCurrentValue, portfolioJan1Value,
     actualSavingsInterest, currentNetWorth, wozAsset, hypotheekRestschuld, afschrijvingenActueel,
-    duoJaarbetaling, afschrijvingenJaarDeposit,
+    duoJaarbetaling, duoLeningJaar, afschrijvingenJaarDeposit,
     schenkbelasting, schenkNetOntvangen,
   } = result;
 
@@ -308,6 +308,9 @@ export default function TaxResults({ result }: Props) {
               : []),
             ...(schenkNetOntvangen > 0
               ? [{ label: t.resultsExtra.schenkNetOntvangen, value: schenkNetOntvangen, sign: '+', color: 'text-green-600' }]
+              : []),
+            ...(duoLeningJaar > 0
+              ? [{ label: t.resultsExtra.duoLeningInflow, value: duoLeningJaar, sign: '+', color: 'text-blue-500' }]
               : []),
           ].map((row, i) => (
             <div key={i} className="flex justify-between items-center gap-2 py-2 border-b border-slate-100 dark:border-slate-700 last:border-0 text-sm">

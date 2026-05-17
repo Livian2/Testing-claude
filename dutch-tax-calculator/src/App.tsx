@@ -1,7 +1,9 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef, lazy, Suspense } from 'react';
 import { Flag, RefreshCw, Users, Download, Upload, Home, Moon, Sun, HelpCircle, Sparkles, BookOpen } from 'lucide-react';
 import WelcomeModal from './components/WelcomeModal';
-import AboutPage    from './components/AboutPage';
+// AboutPage is large (~800 lines) and only shown to first-time users or on demand —
+// lazy-load it so the initial JS bundle excludes it.
+const AboutPage = lazy(() => import('./components/AboutPage'));
 import type { TaxFormData, FilingStatus, PrognoseConfig } from './types';
 import { calculateTaxes } from './utils/taxCalculations';
 import { useLanguage } from './i18n/LanguageContext';
@@ -36,7 +38,7 @@ const DEFAULT_DATA: TaxFormData = {
   },
   income: {
     grossSalary: 0, freelanceIncome: 0, rentalIncome: 0,
-    otherBox1Income: 0, pensionContributions: 0,
+    otherBox1Income: 0, pensionContributions: 0, duoLening: 0,
   },
   expenses: {
     groceries: 0, transport: 0, insurance: 0,
@@ -53,7 +55,7 @@ const DEFAULT_DATA: TaxFormData = {
   schenkingen: { schenkingen: [] },
 };
 
-const APP_VERSION         = 'v1.12.6';
+const APP_VERSION         = 'v1.12.7';
 
 const STORAGE_KEY         = 'nl-belasting-data-v1';
 const PROGNOSE_STORAGE_KEY = 'nl-belasting-prognose-v1';
@@ -191,7 +193,7 @@ export default function App() {
     });
   };
 
-  const ALL_TABS: TabMeta[] = [
+  const ALL_TABS = useMemo<TabMeta[]>(() => [
     { id: 'income',         emoji: '💼', description: t.tabDescriptions.income },
     { id: 'woon',           emoji: '🏠', description: t.tabDescriptions.woon },
     { id: 'waardes',        emoji: '📋', description: t.tabDescriptions.waardes },
@@ -205,11 +207,14 @@ export default function App() {
     { id: 'prognose',       emoji: '🔮', description: t.tabDescriptions.prognose },
     { id: 'results',        emoji: '🧮', description: t.tabDescriptions.results },
     { id: 'marginale',      emoji: '📊', description: t.tabDescriptions.marginale },
-  ];
+  ], [t]);
 
-  const visibleTabs = ALL_TABS.filter(tab => enabledTabs.has(tab.id));
+  const visibleTabs = useMemo(
+    () => ALL_TABS.filter(tab => enabledTabs.has(tab.id)),
+    [ALL_TABS, enabledTabs],
+  );
 
-  const TAB_LABELS: Record<Tab, string> = {
+  const TAB_LABELS = useMemo<Record<Tab, string>>(() => ({
     income:         t.tabs.income,
     woon:           t.tabs.housing,
     waardes:        t.tabs.values,
@@ -223,7 +228,7 @@ export default function App() {
     prognose:       t.tabs.forecast,
     results:        t.tabs.results,
     marginale:      t.tabs.marginale,
-  };
+  }), [t]);
 
   const handleExport = () => {
     const payload = JSON.stringify({ data, prognose }, null, 2);
@@ -267,14 +272,18 @@ export default function App() {
     e.target.value = '';
   };
 
-  // Persist to localStorage 500 ms after every change
+  // Persist to localStorage 1s after every change (was 500ms — typing latency dominated by stringify)
   useEffect(() => {
-    const t = setTimeout(() => localStorage.setItem(STORAGE_KEY, JSON.stringify(data)), 500);
+    const t = setTimeout(() => {
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch { /* quota */ }
+    }, 1000);
     return () => clearTimeout(t);
   }, [data]);
 
   useEffect(() => {
-    const t = setTimeout(() => localStorage.setItem(PROGNOSE_STORAGE_KEY, JSON.stringify(prognose)), 500);
+    const t = setTimeout(() => {
+      try { localStorage.setItem(PROGNOSE_STORAGE_KEY, JSON.stringify(prognose)); } catch { /* quota */ }
+    }, 1000);
     return () => clearTimeout(t);
   }, [prognose]);
 
@@ -289,11 +298,13 @@ export default function App() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200 dark:from-slate-950 dark:via-slate-900 dark:to-slate-900">
       {showWelcome && <WelcomeModal onClose={closeWelcome} />}
       {showAbout && (
-        <AboutPage
-          onClose={() => { markWelcomed(); setShowAbout(false); }}
-          onGetStarted={() => { markWelcomed(); setShowAbout(false); setTab('home'); }}
-          onOpenTab={(t) => { markWelcomed(); setShowAbout(false); setTab(t as Tab); }}
-        />
+        <Suspense fallback={<div className="fixed inset-0 z-50 bg-[#08080b]" />}>
+          <AboutPage
+            onClose={() => { markWelcomed(); setShowAbout(false); }}
+            onGetStarted={() => { markWelcomed(); setShowAbout(false); setTab('home'); }}
+            onOpenTab={(t) => { markWelcomed(); setShowAbout(false); setTab(t as Tab); }}
+          />
+        </Suspense>
       )}
 
       {/* Header */}
