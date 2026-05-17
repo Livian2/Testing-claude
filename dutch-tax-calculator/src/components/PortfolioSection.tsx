@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import {
   TrendingUp, Plus, Trash2, ArrowUpCircle, ArrowDownCircle,
-  LayoutList, RefreshCw, AlertCircle, CheckCircle2, FileUp, Clock,
+  LayoutList, RefreshCw, AlertCircle, CheckCircle2, FileUp, Clock, Globe,
 } from 'lucide-react';
 import type { PortfolioData, Holding, Transaction, AssetType, TransactionType } from '../types';
 import { computePositions } from '../utils/taxCalculations';
@@ -41,7 +41,7 @@ function uid() { return Math.random().toString(36).slice(2); }
 const nl  = new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR', maximumFractionDigits: 2 });
 const nl0 = new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
 
-type InnerTab = 'holdings' | 'transactions' | 'import' | 'overview';
+type InnerTab = 'holdings' | 'transactions' | 'import' | 'overview' | 'geography';
 type FetchState = 'idle' | 'loading' | 'ok' | 'error';
 
 const fmtDate = (iso: string): string =>
@@ -370,6 +370,7 @@ export default function PortfolioSection({ data, onChange }: Props) {
           dividendYield:       q.dividendYield,
           exDivDate:           q.exDivDate,
           divPayDate:          q.divPayDate,
+          country:             q.country ?? h.country,
         };
       });
       onChange({ ...data, holdings: updated });
@@ -428,6 +429,7 @@ export default function PortfolioSection({ data, onChange }: Props) {
     { id: 'transactions' as InnerTab, label: t.portfolioExtra.tabTransactions,  icon: <ArrowUpCircle size={13} /> },
     { id: 'import' as InnerTab,       label: t.portfolioExtra.tabImport,        icon: <FileUp size={13} /> },
     { id: 'overview' as InnerTab,     label: t.portfolioExtra.tabOverview,      icon: <LayoutList size={13} /> },
+    { id: 'geography' as InnerTab,    label: 'Geografie',                       icon: <Globe size={13} /> },
   ];
 
   const hasTickers = data.holdings.some(h => h.ticker);
@@ -976,6 +978,141 @@ export default function PortfolioSection({ data, onChange }: Props) {
           )}
         </div>
       )}
+
+      {tab === 'geography' && (
+        <GeographyTab holdings={data.holdings} />
+      )}
     </SectionCard>
+  );
+}
+
+// ── Country flag helper ────────────────────────────────────────────────────
+const COUNTRY_CODE: Record<string, string> = {
+  'United States': 'US', 'Netherlands': 'NL', 'United Kingdom': 'GB',
+  'Germany': 'DE', 'France': 'FR', 'Ireland': 'IE', 'Luxembourg': 'LU',
+  'Japan': 'JP', 'China': 'CN', 'Taiwan': 'TW', 'South Korea': 'KR',
+  'Canada': 'CA', 'Australia': 'AU', 'Switzerland': 'CH', 'Sweden': 'SE',
+  'Denmark': 'DK', 'Belgium': 'BE', 'Spain': 'ES', 'Italy': 'IT',
+  'Norway': 'NO', 'Finland': 'FI', 'Portugal': 'PT', 'Austria': 'AT',
+  'Singapore': 'SG', 'Hong Kong': 'HK', 'India': 'IN', 'Brazil': 'BR',
+};
+
+function countryFlag(country: string): string {
+  const code = COUNTRY_CODE[country] ?? '';
+  if (!code) return '🌐';
+  return String.fromCodePoint(...[...code].map(c => 0x1F1E6 + c.charCodeAt(0) - 65));
+}
+
+const PIE_COLORS = [
+  '#7c3aed', '#2563eb', '#059669', '#d97706', '#dc2626',
+  '#0891b2', '#9333ea', '#16a34a', '#ea580c', '#0284c7',
+  '#c026d3', '#65a30d',
+];
+
+function DonutChart({ slices }: { slices: { pct: number; color: string }[] }) {
+  const cx = 80, cy = 80, R = 64, r = 36;
+  let angle = -Math.PI / 2;
+  return (
+    <svg viewBox="0 0 160 160" className="w-full h-full">
+      {slices.map((s, i) => {
+        const sweep = s.pct * Math.PI * 2;
+        const ea = angle + sweep;
+        const large = sweep > Math.PI ? 1 : 0;
+        const cos0 = Math.cos(angle), sin0 = Math.sin(angle);
+        const cos1 = Math.cos(ea),    sin1 = Math.sin(ea);
+        const path = [
+          `M ${cx + r * cos0} ${cy + r * sin0}`,
+          `L ${cx + R * cos0} ${cy + R * sin0}`,
+          `A ${R} ${R} 0 ${large} 1 ${cx + R * cos1} ${cy + R * sin1}`,
+          `L ${cx + r * cos1} ${cy + r * sin1}`,
+          `A ${r} ${r} 0 ${large} 0 ${cx + r * cos0} ${cy + r * sin0}`,
+          'Z',
+        ].join(' ');
+        angle = ea;
+        return <path key={i} d={path} fill={s.color} stroke="white" strokeWidth={1.5} />;
+      })}
+    </svg>
+  );
+}
+
+const nl0geo = new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
+
+function GeographyTab({ holdings }: { holdings: import('../types').Holding[] }) {
+  // Aggregate value by country (only holdings with a price and country)
+  const byCountry = new Map<string, number>();
+  let unknown = 0;
+
+  for (const h of holdings) {
+    if (!h.currentPrice || !h.quantity) continue;
+    const val = h.quantity * h.currentPrice;
+    if (h.country) {
+      byCountry.set(h.country, (byCountry.get(h.country) ?? 0) + val);
+    } else {
+      unknown += val;
+    }
+  }
+  if (unknown > 0) byCountry.set('Onbekend', unknown);
+
+  const total = [...byCountry.values()].reduce((a, b) => a + b, 0);
+  if (total === 0) {
+    return (
+      <div className="py-16 text-center text-slate-400 dark:text-slate-500 text-sm">
+        Geen koersdata beschikbaar — ververs prijzen eerst.
+      </div>
+    );
+  }
+
+  // Sort by value desc
+  const entries = [...byCountry.entries()].sort((a, b) => b[1] - a[1]);
+
+  // Group small slices (<2%) into "Overig"
+  const THRESHOLD = 0.02;
+  const main: { country: string; value: number; color: string }[] = [];
+  let other = 0;
+  entries.forEach(([country, value], i) => {
+    if (value / total >= THRESHOLD || i < 3) {
+      main.push({ country, value, color: PIE_COLORS[i % PIE_COLORS.length] });
+    } else {
+      other += value;
+    }
+  });
+  if (other > 0) main.push({ country: 'Overig', value: other, color: '#94a3b8' });
+
+  const slices = main.map(m => ({ pct: m.value / total, color: m.color }));
+
+  return (
+    <div className="p-4">
+      <div className="flex flex-col sm:flex-row gap-6 items-start">
+        {/* Donut chart */}
+        <div className="w-40 h-40 flex-shrink-0">
+          <DonutChart slices={slices} />
+        </div>
+
+        {/* Legend */}
+        <div className="flex-1 space-y-1.5">
+          {main.map((m, i) => (
+            <div key={i} className="flex items-center gap-2.5 text-sm">
+              <span className="inline-block w-3 h-3 rounded-full flex-shrink-0" style={{ background: m.color }} />
+              <span className="text-lg leading-none">{m.country !== 'Overig' && m.country !== 'Onbekend' ? countryFlag(m.country) : (m.country === 'Overig' ? '📦' : '❓')}</span>
+              <span className="text-slate-700 dark:text-slate-200 flex-1">{m.country}</span>
+              <span className="text-slate-500 dark:text-slate-400 text-xs tabular-nums">{nl0geo.format(m.value)}</span>
+              <span className="text-slate-400 dark:text-slate-500 text-xs tabular-nums w-10 text-right">{(m.value / total * 100).toFixed(1)}%</span>
+            </div>
+          ))}
+          <div className="pt-2 border-t border-slate-200 dark:border-slate-700 flex items-center gap-2.5 text-sm font-semibold">
+            <span className="inline-block w-3 h-3 flex-shrink-0" />
+            <span className="w-6" />
+            <span className="text-slate-700 dark:text-slate-200 flex-1">Totaal</span>
+            <span className="text-slate-700 dark:text-slate-200 tabular-nums">{nl0geo.format(total)}</span>
+            <span className="w-10" />
+          </div>
+          {byCountry.has('Onbekend') && (
+            <p className="text-xs text-slate-400 dark:text-slate-500 pt-1">
+              ❓ Onbekend = holdings zonder landdata — ververs prijzen om landdata op te halen.
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }

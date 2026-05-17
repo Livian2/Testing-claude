@@ -23,6 +23,7 @@ export interface Holding {
   dividendYield?: number;       // decimal, e.g. 0.025 = 2.5%
   exDivDate?: string | null;    // ISO date of next/last ex-dividend date
   divPayDate?: string | null;   // ISO date of next/last payment date
+  country?: string;             // company/ETF domicile from Yahoo Finance assetProfile
 }
 
 export interface Transaction {

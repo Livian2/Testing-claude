@@ -27,10 +27,11 @@ export interface QuoteData {
   priceLocal: number;      // original exchange price
   currency: string;        // e.g. "USD", "GBp", "EUR"
   rate: number;            // 1 local unit = rate EUR (1.0 for EUR)
-  dividendPerShareEur?: number;  // annual div per share converted to EUR (undefined = accumulating/no div)
-  dividendYield?: number;         // decimal (e.g. 0.025 = 2.5%)
-  exDivDate?: string | null;      // ISO date YYYY-MM-DD
-  divPayDate?: string | null;     // ISO date YYYY-MM-DD
+  dividendPerShareEur?: number;  // annual div per share converted to EUR (undefined = no div)
+  dividendYield?: number;        // decimal (e.g. 0.025 = 2.5%)
+  exDivDate?: string | null;     // ISO date YYYY-MM-DD
+  divPayDate?: string | null;    // ISO date YYYY-MM-DD
+  country?: string;              // company/ETF domicile from assetProfile
 }
 
 export interface FetchResult {
@@ -39,35 +40,22 @@ export interface FetchResult {
   timestamp: string;                  // ISO timestamp
 }
 
+// The v8 chart meta includes dividend fields alongside price data
 interface ChartMeta {
   symbol: string;
   regularMarketPrice: number;
   currency: string;
+  // Dividend fields (present for distributing equities/ETFs)
+  dividendRate?: number;
+  dividendYield?: number;
+  trailingAnnualDividendRate?: number;
+  trailingAnnualDividendYield?: number;
 }
 
-interface DividendInfo {
-  divRateLocal: number;  // annual dividend in local exchange currency
-  divYield: number;      // decimal
+interface QuoteSummaryResult {
   exDivDate: string | null;
   divPayDate: string | null;
-}
-
-interface QuoteSummaryResponse {
-  quoteSummary?: {
-    result?: Array<{
-      summaryDetail?: {
-        trailingAnnualDividendRate?: { raw?: number };
-        trailingAnnualDividendYield?: { raw?: number };
-        dividendRate?: { raw?: number };
-        dividendYield?: { raw?: number };
-        exDividendDate?: { raw?: number };
-      };
-      calendarEvents?: {
-        exDividendDate?: { raw?: number };
-        dividendDate?: { raw?: number };
-      };
-    }>;
-  };
+  country: string | null;
 }
 
 /** Fetch a single ticker via the v8/finance/chart endpoint (no crumb needed). */
@@ -85,39 +73,59 @@ async function fetchChart(ticker: string): Promise<ChartMeta | null> {
   }
 }
 
-/** Fetch dividend data via the v11/quoteSummary endpoint (no crumb needed). */
-async function fetchDividendInfo(ticker: string): Promise<DividendInfo | null> {
-  try {
-    const url = `/api/finance/v11/finance/quoteSummary/${encodeURIComponent(ticker)}?modules=summaryDetail%2CcalendarEvents`;
-    const res = await fetch(url, { headers: { Accept: 'application/json' } });
-    if (!res.ok) return null;
-    const json = await res.json() as QuoteSummaryResponse;
-    const result = json?.quoteSummary?.result?.[0];
-    if (!result) return null;
+/**
+ * Fetch ex-div date, pay date and country via quoteSummary.
+ * Tries v11 first, falls back gracefully. Dividend rate is taken from chart meta.
+ */
+async function fetchQuoteSummary(ticker: string): Promise<QuoteSummaryResult | null> {
+  const tryFetch = async (base: string): Promise<QuoteSummaryResult | null> => {
+    try {
+      const url = `${base}${encodeURIComponent(ticker)}?modules=summaryDetail%2CcalendarEvents%2CassetProfile&formatted=false`;
+      const res = await fetch(url, { headers: { Accept: 'application/json' } });
+      if (!res.ok) return null;
+      const json = await res.json() as {
+        quoteSummary?: {
+          result?: Array<{
+            summaryDetail?: {
+              exDividendDate?: { raw?: number } | number;
+            };
+            calendarEvents?: {
+              exDividendDate?: { raw?: number } | number;
+              dividendDate?: { raw?: number } | number;
+            };
+            assetProfile?: { country?: string };
+          }>;
+        };
+      };
+      const r = json?.quoteSummary?.result?.[0];
+      if (!r) return null;
 
-    const sd = result.summaryDetail ?? {};
-    const ce = result.calendarEvents ?? {};
+      const sd = r.summaryDetail ?? {};
+      const ce = r.calendarEvents ?? {};
+      const ap = r.assetProfile ?? {};
 
-    const divRateLocal = sd.dividendRate?.raw ?? sd.trailingAnnualDividendRate?.raw ?? 0;
-    const divYield     = sd.dividendYield?.raw ?? sd.trailingAnnualDividendYield?.raw ?? 0;
+      const tsToDate = (v?: { raw?: number } | number): string | null => {
+        const ts = typeof v === 'number' ? v : v?.raw;
+        return ts ? new Date(ts * 1000).toISOString().split('T')[0] : null;
+      };
 
-    if (divRateLocal === 0 && divYield === 0) return null;
+      const exDivDate  = tsToDate(ce.exDividendDate ?? sd.exDividendDate);
+      const divPayDate = tsToDate(ce.dividendDate);
+      const country    = ap.country ?? null;
 
-    const tsToDate = (ts?: number): string | null =>
-      ts ? new Date(ts * 1000).toISOString().split('T')[0] : null;
+      return { exDivDate, divPayDate, country };
+    } catch {
+      return null;
+    }
+  };
 
-    const exDivDate = tsToDate(ce.exDividendDate?.raw ?? sd.exDividendDate?.raw);
-    const divPayDate = tsToDate(ce.dividendDate?.raw);
-
-    return { divRateLocal, divYield, exDivDate, divPayDate };
-  } catch {
-    return null;
-  }
+  return (
+    (await tryFetch('/api/finance/v11/finance/quoteSummary/')) ??
+    (await tryFetch('/api/finance/v10/finance/quoteSummary/'))
+  );
 }
 
 // Preferred exchange suffixes for European investors, in priority order.
-// ISIN resolution picks the earliest match so e.g. TDIV resolves to TDIV.AS
-// (Euronext Amsterdam) instead of a random US OTC listing.
 const EXCHANGE_PRIORITY = [
   '.AS',  // Euronext Amsterdam
   '.L',   // London Stock Exchange
@@ -165,7 +173,6 @@ export async function resolveIsins(isins: string[]): Promise<Record<string, stri
 /**
  * Resolve bare ticker symbols (no exchange suffix) to exchange-specific Yahoo Finance
  * symbols via the search endpoint, using European exchange priority.
- * e.g. "TDIV" → "TDIV.AS", "VWRL" → "VWRL.AS"
  */
 export async function resolveBareTickers(tickers: string[]): Promise<Record<string, string>> {
   const unique = [...new Set(tickers.filter(t => t && !t.includes('.')))];
@@ -178,8 +185,6 @@ export async function resolveBareTickers(tickers: string[]): Promise<Record<stri
       const res = await fetch(url, { headers: { Accept: 'application/json' } });
       if (!res.ok) return;
       const json = await res.json() as { quotes?: { symbol: string; quoteType?: string }[] };
-      // Only accept results whose symbol starts with our ticker followed by a dot
-      // (avoids false matches like TDIVX for query "TDIV")
       const quotes = (json?.quotes ?? [])
         .filter(q => q.quoteType === 'ETF' || q.quoteType === 'EQUITY')
         .filter(q => q.symbol === ticker || q.symbol.startsWith(ticker + '.'));
@@ -203,11 +208,11 @@ export async function fetchPricesWithFX(tickers: string[]): Promise<FetchResult>
   const unique = [...new Set(tickers.filter(Boolean))];
   if (unique.length === 0) return { quotes: {}, rates: { EUR: 1 }, timestamp: new Date().toISOString() };
 
-  // Fetch chart data (prices + FX) and dividend info in parallel
+  // Fetch chart (price + dividend from meta) and quoteSummary (dates + country) in parallel
   const allTickers = [...unique, ...FX_TICKERS];
-  const [chartResults, divResults] = await Promise.all([
+  const [chartResults, summaryResults] = await Promise.all([
     Promise.all(allTickers.map(t => fetchChart(t))),
-    Promise.all(unique.map(t => fetchDividendInfo(t))),
+    Promise.all(unique.map(t => fetchQuoteSummary(t))),
   ]);
 
   // Build FX rate map: currency → EUR
@@ -215,7 +220,6 @@ export async function fetchPricesWithFX(tickers: string[]): Promise<FetchResult>
   FX_TICKERS.forEach((fx, i) => {
     const meta = chartResults[unique.length + i];
     if (!meta?.regularMarketPrice) return;
-    // "USDEUR=X" → key "USD"
     const key = fx.replace('EUR=X', '');
     if (key && key !== fx) rates[key] = meta.regularMarketPrice;
   });
@@ -234,7 +238,6 @@ export async function fetchPricesWithFX(tickers: string[]): Promise<FetchResult>
     if (currency === 'EUR') {
       rate = 1;
     } else if (currency === 'GBp' || currency === 'GBX') {
-      // British pence: 100 GBp = 1 GBP
       const gbpRate = rates['GBP'] ?? 1;
       rate     = gbpRate / 100;
       priceEur = price * rate;
@@ -246,21 +249,31 @@ export async function fetchPricesWithFX(tickers: string[]): Promise<FetchResult>
       }
     }
 
-    // Convert dividend rate to EUR using the same FX rate as the price
-    const div = divResults[i];
-    let dividendPerShareEur: number | undefined;
-    let dividendYield: number | undefined;
-    let exDivDate: string | null | undefined;
-    let divPayDate: string | null | undefined;
+    // Dividend: prefer forward rate, fall back to trailing (both from chart meta)
+    const divRateLocal = meta.dividendRate ?? meta.trailingAnnualDividendRate ?? 0;
+    const divYield     = meta.dividendYield ?? meta.trailingAnnualDividendYield ?? 0;
 
-    if (div) {
-      dividendYield       = div.divYield;
-      exDivDate           = div.exDivDate;
-      divPayDate          = div.divPayDate;
-      dividendPerShareEur = div.divRateLocal * rate;
+    let dividendPerShareEur: number | undefined;
+    let dividendYieldOut: number | undefined;
+
+    if (divRateLocal > 0 || divYield > 0) {
+      dividendYieldOut     = divYield || undefined;
+      dividendPerShareEur  = divRateLocal > 0 ? divRateLocal * rate : undefined;
     }
 
-    quotes[ticker] = { priceEur, priceLocal: price, currency, rate, dividendPerShareEur, dividendYield, exDivDate, divPayDate };
+    const summary = summaryResults[i];
+
+    quotes[ticker] = {
+      priceEur,
+      priceLocal: price,
+      currency,
+      rate,
+      dividendPerShareEur,
+      dividendYield: dividendYieldOut,
+      exDivDate:  summary?.exDivDate  ?? null,
+      divPayDate: summary?.divPayDate ?? null,
+      country:    summary?.country    ?? undefined,
+    };
   });
 
   return { quotes, rates, timestamp: new Date().toISOString() };
