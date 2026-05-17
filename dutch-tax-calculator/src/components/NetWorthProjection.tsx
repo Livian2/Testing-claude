@@ -33,7 +33,7 @@ function fmtK(value: number): string {
   const abs = Math.abs(value);
   const sign = value < 0 ? '-' : '';
   if (abs >= 1_000_000) return `${sign}€${(abs / 1_000_000).toFixed(1).replace('.', ',')}m`;
-  if (abs >= 1_000)     return `${sign}€${Math.round(abs / 1_000)}k`;
+  if (abs >= 1_000)     return `${sign}€${(abs / 1_000).toFixed(1).replace('.', ',')}k`;
   return `${sign}€${abs.toFixed(0)}`;
 }
 
