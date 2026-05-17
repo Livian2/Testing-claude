@@ -1,4 +1,5 @@
-const YAHOO_BASE = 'https://query2.finance.yahoo.com';
+const YAHOO_BASE  = 'https://query2.finance.yahoo.com';
+const AUTOC_BASE  = 'https://autoc.finance.yahoo.com';
 const FC_URL     = 'https://fc.yahoo.com/';
 const CRUMB_URL  = 'https://query2.finance.yahoo.com/v1/test/getcrumb';
 
@@ -109,7 +110,25 @@ export async function onRequest(context: PagesContext): Promise<Response> {
   const pathSegments = Array.isArray(params.path) ? params.path : [params.path ?? ''];
   const yahooPath    = '/' + pathSegments.join('/');
   const incomingUrl  = new URL(request.url);
-  const targetUrl    = new URL(`${YAHOO_BASE}${yahooPath}${incomingUrl.search}`);
+
+  // Route /autoc to the separate autoc host (works without crumb auth)
+  if (yahooPath.startsWith('/autoc')) {
+    const autcUrl = new URL(`${AUTOC_BASE}${yahooPath}${incomingUrl.search}`);
+    const autcRes = await fetch(autcUrl.toString(), { headers: BROWSER_HEADERS }).catch(() => null);
+    if (!autcRes) {
+      return new Response(JSON.stringify({ error: 'upstream fetch failed' }), {
+        status: 502, headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
+      });
+    }
+    const ct   = autcRes.headers.get('Content-Type') ?? 'application/json';
+    const body = await autcRes.arrayBuffer();
+    return new Response(body, {
+      status: autcRes.status,
+      headers: { 'Content-Type': ct, ...CORS_HEADERS },
+    });
+  }
+
+  const targetUrl = new URL(`${YAHOO_BASE}${yahooPath}${incomingUrl.search}`);
 
   // Attempt 1 – no crumb (works for chart/v8 endpoints)
   let yahooRes = await fetch(targetUrl.toString(), {

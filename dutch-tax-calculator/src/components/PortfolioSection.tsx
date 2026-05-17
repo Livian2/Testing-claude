@@ -70,6 +70,15 @@ interface SearchResultItem {
   exchDisp?: string;
 }
 
+interface AutocItem {
+  symbol: string;
+  name: string;
+  exch: string;
+  type: string;
+  exchDisp: string;
+  typeDisp: string;
+}
+
 interface FondsSearchProps {
   value: string;
   holdings: Holding[];
@@ -123,21 +132,43 @@ function FondsSearch({ value, holdings, onChange }: FondsSearchProps) {
     timerRef.current = setTimeout(async () => {
       setLoading(true);
       try {
-        // Primary: Yahoo Finance search API (requires crumb on server side)
-        const res = await fetch(
-          `/api/finance/v1/finance/search?q=${encodeURIComponent(raw)}&quotesCount=15&newsCount=0&enableFuzzyQuery=false`,
-          { headers: { Accept: 'application/json' } }
-        );
-        if (res.ok) {
-          const json = await res.json() as { quotes?: SearchResultItem[] };
-          const found = (json.quotes ?? []).filter(q =>
-            q.quoteType === 'ETF' || q.quoteType === 'EQUITY' || q.quoteType === 'MUTUALFUND'
+        // Layer 1: Yahoo Finance search API (requires crumb — handled server-side)
+        try {
+          const res = await fetch(
+            `/api/finance/v1/finance/search?q=${encodeURIComponent(raw)}&quotesCount=15&newsCount=0&enableFuzzyQuery=false`,
+            { headers: { Accept: 'application/json' } }
           );
-          if (found.length > 0) { setResults(found); setOpen(true); return; }
-        }
+          if (res.ok) {
+            const json = await res.json() as { quotes?: SearchResultItem[] };
+            const found = (json.quotes ?? []).filter(q =>
+              q.quoteType === 'ETF' || q.quoteType === 'EQUITY' || q.quoteType === 'MUTUALFUND'
+            );
+            if (found.length > 0) { setResults(found); setOpen(true); return; }
+          }
+        } catch { /* fall through */ }
 
-        // Fallback: resolve the query as a bare ticker via the v8/chart endpoint
-        // (works without crumb). Tries the most common European exchange suffixes.
+        // Layer 2: autoc endpoint (works without auth, supports text queries like "vanguard")
+        try {
+          const autcRes = await fetch(
+            `/api/finance/autoc?query=${encodeURIComponent(raw)}&region=1&lang=en`,
+            { headers: { Accept: 'application/json' } }
+          );
+          if (autcRes.ok) {
+            const autcJson = await autcRes.json() as { ResultSet?: { Result?: AutocItem[] } };
+            const found = (autcJson.ResultSet?.Result ?? [])
+              .filter(r => r.type === 'ETF' || r.type === 'S' || r.type === 'M')
+              .map(r => ({
+                symbol: r.symbol,
+                shortname: r.name,
+                quoteType: r.type === 'ETF' ? 'ETF' : r.type === 'M' ? 'MUTUALFUND' : 'EQUITY',
+                exchDisp: r.exchDisp,
+              } as SearchResultItem));
+            if (found.length > 0) { setResults(found); setOpen(true); return; }
+          }
+        } catch { /* fall through */ }
+
+        // Layer 3: exact ticker validation via v8/chart (no auth needed)
+        // Only runs when query looks like a ticker symbol
         const upper = raw.trim().toUpperCase();
         if (/^[A-Z0-9]{2,12}(\.[A-Z]{1,3})?$/.test(upper)) {
           const suffixes = upper.includes('.')
