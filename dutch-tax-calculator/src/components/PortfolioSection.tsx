@@ -155,8 +155,9 @@ function FondsSearch({ value, holdings, onChange }: FondsSearchProps) {
 
         // Layer 3: exact ticker probe via v8/chart (no auth, ticker-pattern only)
         const upper = raw.trim().toUpperCase();
-        if (/^[A-Z0-9]{2,12}(\.[A-Z]{1,3})?$/.test(upper)) {
-          const suffixes = upper.includes('.')
+        // Allow standard tickers, exchange suffixes (.AS, .L, …) and futures (GC=F, ES=F)
+        if (/^[A-Z0-9]{1,12}(=[A-Z]{1,2})?(\.[A-Z]{1,3})?$/.test(upper)) {
+          const suffixes = (upper.includes('.') || upper.includes('='))
             ? ['']
             : ['', '.AS', '.L', '.DE', '.PA', '.MI', '.F'];
           const hits = (
@@ -280,11 +281,11 @@ export default function PortfolioSection({ data, onChange }: Props) {
     setHoldings(data.holdings.map(h => h.id === id ? { ...h, ...p } : h));
 
   const addTx = () =>
-    setTxs([...data.transactions, {
+    setTxs([{
       id: uid(), holdingName: '', type: txType,
       date: new Date().toISOString().split('T')[0],
       quantity: 0, pricePerUnit: 0, broker: '',
-    }]);
+    }, ...data.transactions]);
   const removeTx = (id: string) => setTxs(data.transactions.filter(t => t.id !== id));
   const updateTx = (id: string, p: Partial<Transaction>) =>
     setTxs(data.transactions.map(t => t.id === id ? { ...t, ...p } : t));
@@ -638,27 +639,36 @@ export default function PortfolioSection({ data, onChange }: Props) {
       {/* ── Transactions ── */}
       {tab === 'transactions' && (
         <div>
-          <div className="flex gap-1 mb-4">
-            {(['buy', 'sell'] as TransactionType[]).map(type => (
-              <button key={type} onClick={() => setTxType(type)}
-                className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors cursor-pointer ${
-                  txType === type
-                    ? type === 'buy' ? 'bg-green-600 text-white border-green-600' : 'bg-red-600 text-white border-red-600'
-                    : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700'
-                }`}
-              >
-                {type === 'buy' ? <ArrowUpCircle size={13} /> : <ArrowDownCircle size={13} />}
-                {type === 'buy' ? t.portfolioExtra.buysLabel : t.portfolioExtra.sellsLabel}
-              </button>
-            ))}
+          <div className="flex items-center justify-between gap-2 mb-4">
+            <div className="flex gap-1">
+              {(['buy', 'sell'] as TransactionType[]).map(type => (
+                <button key={type} onClick={() => setTxType(type)}
+                  className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors cursor-pointer ${
+                    txType === type
+                      ? type === 'buy' ? 'bg-green-600 text-white border-green-600' : 'bg-red-600 text-white border-red-600'
+                      : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700'
+                  }`}
+                >
+                  {type === 'buy' ? <ArrowUpCircle size={13} /> : <ArrowDownCircle size={13} />}
+                  {type === 'buy' ? t.portfolioExtra.buysLabel : t.portfolioExtra.sellsLabel}
+                </button>
+              ))}
+            </div>
+            <button onClick={addTx}
+              className={`flex items-center gap-1 text-xs text-white px-3 py-1.5 rounded-lg cursor-pointer border-0 ${
+                txType === 'buy' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'
+              }`}
+            >
+              <Plus size={13} /> {t.portfolioExtra.addTx}
+            </button>
           </div>
 
           {data.transactions.filter(tx => tx.type === txType).length === 0 ? (
-            <div className="text-center py-6 text-slate-400 dark:text-slate-500 text-sm border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl mb-3">
+            <div className="text-center py-6 text-slate-400 dark:text-slate-500 text-sm border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl">
               {txType === 'buy' ? t.portfolioExtra.noBuys : t.portfolioExtra.noSells}
             </div>
           ) : (
-            <div className="space-y-2 mb-3">
+            <div className="space-y-2">
               {data.transactions.filter(t => t.type === txType).map(tx => (
                 <div key={tx.id} className="grid grid-cols-12 gap-2 items-end p-3 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700">
                   <div className="col-span-12 sm:col-span-3 flex flex-col gap-1">
@@ -729,13 +739,6 @@ export default function PortfolioSection({ data, onChange }: Props) {
             </div>
           )}
 
-          <button onClick={addTx}
-            className={`flex items-center gap-1 text-xs text-white px-3 py-1.5 rounded-lg cursor-pointer border-0 ${
-              txType === 'buy' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'
-            }`}
-          >
-            <Plus size={13} /> {t.portfolioExtra.addTx}
-          </button>
         </div>
       )}
 
