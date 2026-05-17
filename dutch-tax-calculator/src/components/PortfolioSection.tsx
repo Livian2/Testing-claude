@@ -91,9 +91,7 @@ function FondsSearch({ value, holdings, onChange }: FondsSearchProps) {
   const [results, setResults] = useState<SearchResultItem[]>([]);
   const [open, setOpen]       = useState(false);
   const [loading, setLoading] = useState(false);
-  const [dropPos, setDropPos] = useState<{ top: number; left: number; width: number } | null>(null);
   const timerRef              = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const inputRef              = useRef<HTMLInputElement>(null);
   const wrapperRef            = useRef<HTMLDivElement>(null);
 
   useEffect(() => { setQuery(value); }, [value]);
@@ -108,31 +106,19 @@ function FondsSearch({ value, holdings, onChange }: FondsSearchProps) {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  // Recalculate fixed position when dropdown opens or window scrolls/resizes
-  useEffect(() => {
-    if (!open || !inputRef.current) return;
-    const update = () => {
-      const r = inputRef.current!.getBoundingClientRect();
-      setDropPos({ top: r.bottom + 4, left: r.left, width: r.width });
-    };
-    update();
-    window.addEventListener('scroll', update, true);
-    window.addEventListener('resize', update);
-    return () => {
-      window.removeEventListener('scroll', update, true);
-      window.removeEventListener('resize', update);
-    };
-  }, [open]);
-
   const handleInput = (raw: string) => {
     setQuery(raw);
     onChange(raw);
     if (timerRef.current) clearTimeout(timerRef.current);
     if (raw.length < 2) { setResults([]); setOpen(false); return; }
+
+    // Open immediately so the loading spinner is visible while debouncing
+    setOpen(true);
+
     timerRef.current = setTimeout(async () => {
       setLoading(true);
       try {
-        // Layer 1: Yahoo Finance search API (requires crumb — handled server-side)
+        // Layer 1: Yahoo Finance search API (crumb handled server-side)
         try {
           const res = await fetch(
             `/api/finance/v1/finance/search?q=${encodeURIComponent(raw)}&quotesCount=15&newsCount=0&enableFuzzyQuery=false`,
@@ -143,11 +129,11 @@ function FondsSearch({ value, holdings, onChange }: FondsSearchProps) {
             const found = (json.quotes ?? []).filter(q =>
               q.quoteType === 'ETF' || q.quoteType === 'EQUITY' || q.quoteType === 'MUTUALFUND'
             );
-            if (found.length > 0) { setResults(found); setOpen(true); return; }
+            if (found.length > 0) { setResults(found); return; }
           }
         } catch { /* fall through */ }
 
-        // Layer 2: autoc endpoint (works without auth, supports text queries like "vanguard")
+        // Layer 2: autoc endpoint (no auth needed, supports text like "vanguard")
         try {
           const autcRes = await fetch(
             `/api/finance/autoc?query=${encodeURIComponent(raw)}&region=1&lang=en`,
@@ -163,12 +149,11 @@ function FondsSearch({ value, holdings, onChange }: FondsSearchProps) {
                 quoteType: r.type === 'ETF' ? 'ETF' : r.type === 'M' ? 'MUTUALFUND' : 'EQUITY',
                 exchDisp: r.exchDisp,
               } as SearchResultItem));
-            if (found.length > 0) { setResults(found); setOpen(true); return; }
+            if (found.length > 0) { setResults(found); return; }
           }
         } catch { /* fall through */ }
 
-        // Layer 3: exact ticker validation via v8/chart (no auth needed)
-        // Only runs when query looks like a ticker symbol
+        // Layer 3: exact ticker probe via v8/chart (no auth, ticker-pattern only)
         const upper = raw.trim().toUpperCase();
         if (/^[A-Z0-9]{2,12}(\.[A-Z]{1,3})?$/.test(upper)) {
           const suffixes = upper.includes('.')
@@ -200,7 +185,6 @@ function FondsSearch({ value, holdings, onChange }: FondsSearchProps) {
       } catch { /* ignore */ } finally {
         setLoading(false);
       }
-      setOpen(true);
     }, 400);
   };
 
@@ -215,7 +199,6 @@ function FondsSearch({ value, holdings, onChange }: FondsSearchProps) {
   return (
     <div ref={wrapperRef} className="relative">
       <input
-        ref={inputRef}
         className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1.5 text-sm bg-white dark:bg-slate-700 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-400"
         placeholder={t.portfolioExtra.searchPlaceholder}
         value={query}
@@ -227,11 +210,8 @@ function FondsSearch({ value, holdings, onChange }: FondsSearchProps) {
       {loading && (
         <span className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 text-xs">…</span>
       )}
-      {hasDropdown && dropPos && (
-        <div
-          className="fixed z-[9999] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-xl shadow-xl text-xs overflow-y-auto"
-          style={{ top: dropPos.top, left: dropPos.left, width: dropPos.width, maxHeight: 260 }}
-        >
+      {hasDropdown && (
+        <div className="absolute top-full left-0 mt-1 z-[9999] w-full min-w-[260px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-xl shadow-xl text-xs overflow-y-auto max-h-64">
           {existingMatches.length > 0 && (
             <>
               <div className="px-3 py-1.5 text-slate-400 font-semibold uppercase tracking-wide border-b border-slate-200 dark:border-slate-600 sticky top-0 bg-white dark:bg-slate-800">{t.portfolioExtra.ownPositions}</div>
@@ -242,15 +222,14 @@ function FondsSearch({ value, holdings, onChange }: FondsSearchProps) {
                   className="w-full text-left px-3 py-2 hover:bg-blue-50 dark:hover:bg-slate-700 cursor-pointer border-0 bg-transparent flex items-center justify-between gap-2"
                 >
                   <span className="font-medium text-slate-800 dark:text-slate-100">{h.name}</span>
-                  {h.ticker && <span className="font-mono text-slate-400 dark:text-slate-400">{h.ticker}</span>}
+                  {h.ticker && <span className="font-mono text-slate-400">{h.ticker}</span>}
                 </button>
               ))}
             </>
           )}
           {results.length > 0 && (
             <>
-              <div className="px-3 py-1.5 text-slate-400 font-semibold uppercase tracking-wide border-b border-slate-200 dark:border-slate-600 border-t border-slate-200 dark:border-slate-600 sticky top-0 bg-white dark:bg-slate-800">Yahoo Finance</div>
-
+              <div className="px-3 py-1.5 text-slate-400 font-semibold uppercase tracking-wide border-b border-slate-200 dark:border-slate-600 sticky top-0 bg-white dark:bg-slate-800">Yahoo Finance</div>
               {results.map(r => (
                 <button
                   key={r.symbol}
@@ -269,7 +248,7 @@ function FondsSearch({ value, holdings, onChange }: FondsSearchProps) {
               ))}
             </>
           )}
-          {loading && (
+          {loading && results.length === 0 && existingMatches.length === 0 && (
             <div className="px-3 py-3 text-slate-400 text-center">{t.portfolioExtra.searching}</div>
           )}
         </div>
