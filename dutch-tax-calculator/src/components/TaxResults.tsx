@@ -9,9 +9,9 @@ function Row({ label, value, bold, green, red, indent }: {
   label: string; value: string; bold?: boolean; green?: boolean; red?: boolean; indent?: boolean;
 }) {
   return (
-    <div className={`flex justify-between items-center gap-2 py-1.5 text-sm ${bold ? 'font-semibold border-t border-slate-200 dark:border-slate-700 mt-1 pt-2' : 'border-b border-slate-50 dark:border-slate-700'}`}>
-      <span className={`min-w-0 flex-1 ${indent ? 'pl-3 text-slate-500 dark:text-slate-400' : 'text-slate-700 dark:text-slate-200'}`}>{label}</span>
-      <span className={`shrink-0 text-right ${bold ? (red ? 'text-red-600' : green ? 'text-green-600' : 'text-slate-800 dark:text-slate-100') : (green ? 'text-green-600' : red ? 'text-red-500' : 'text-slate-700 dark:text-slate-200')}`}>
+    <div className={`flex items-center gap-3 py-1.5 text-sm ${bold ? 'font-semibold border-t border-slate-200 dark:border-slate-700 mt-1 pt-2' : 'border-b border-slate-50 dark:border-slate-700'}`}>
+      <span className={`min-w-0 ${indent ? 'pl-3 text-slate-500 dark:text-slate-400' : 'text-slate-700 dark:text-slate-200'}`}>{label}</span>
+      <span className={`ml-auto shrink-0 tabular-nums ${bold ? (red ? 'text-red-600' : green ? 'text-green-600' : 'text-slate-800 dark:text-slate-100') : (green ? 'text-green-600' : red ? 'text-red-500' : 'text-slate-700 dark:text-slate-200')}`}>
         {value}
       </span>
     </div>
@@ -313,21 +313,21 @@ export default function TaxResults({ result }: Props) {
               ? [{ label: t.resultsExtra.duoLeningInflow, value: duoLeningJaar, sign: '+', color: 'text-blue-500' }]
               : []),
           ].map((row, i) => (
-            <div key={i} className="flex justify-between items-center gap-2 py-2 border-b border-slate-100 dark:border-slate-700 last:border-0 text-sm">
-              <span className="min-w-0 flex-1 text-slate-600 dark:text-slate-300">{row.label}</span>
-              <span className={`shrink-0 font-medium ${row.color}`}>{row.sign} {fmt(Math.abs(row.value))}</span>
+            <div key={i} className="flex items-center gap-3 py-2 border-b border-slate-100 dark:border-slate-700 last:border-0 text-sm">
+              <span className="text-slate-600 dark:text-slate-300">{row.label}</span>
+              <span className={`ml-auto shrink-0 font-medium tabular-nums ${row.color}`}>{row.sign} {fmt(Math.abs(row.value))}</span>
             </div>
           ))}
-          <div className="flex justify-between items-center gap-2 pt-3 border-t-2 border-slate-200 dark:border-slate-700">
-            <span className="min-w-0 flex-1 font-semibold text-slate-700 dark:text-slate-200">{t.results.netDisposable}</span>
-            <span className={`shrink-0 text-lg font-bold ${netDisposableIncome >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+          <div className="flex items-center gap-3 pt-3 border-t-2 border-slate-200 dark:border-slate-700">
+            <span className="font-semibold text-slate-700 dark:text-slate-200">{t.results.netDisposable}</span>
+            <span className={`ml-auto shrink-0 text-lg font-bold tabular-nums ${netDisposableIncome >= 0 ? 'text-green-600' : 'text-red-600'}`}>
               {fmt(netDisposableIncome)}
             </span>
           </div>
           {portfolioGainLoss !== 0 && (
-            <div className="flex justify-between items-center gap-2 mt-2 text-sm pt-2 border-t border-slate-100 dark:border-slate-700">
-              <span className="min-w-0 flex-1 text-slate-500 dark:text-slate-400">{t.resultsExtra.gainLossInfo}</span>
-              <span className={`shrink-0 font-medium ${portfolioGainLoss >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+            <div className="flex items-center gap-3 mt-2 text-sm pt-2 border-t border-slate-100 dark:border-slate-700">
+              <span className="text-slate-500 dark:text-slate-400">{t.resultsExtra.gainLossInfo}</span>
+              <span className={`ml-auto shrink-0 font-medium tabular-nums ${portfolioGainLoss >= 0 ? 'text-green-600' : 'text-red-500'}`}>
                 {portfolioGainLoss >= 0 ? '+' : '−'}{fmt(Math.abs(portfolioGainLoss))}
               </span>
             </div>

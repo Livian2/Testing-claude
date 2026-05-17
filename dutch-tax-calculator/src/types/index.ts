@@ -24,6 +24,7 @@ export interface Holding {
   exDivDate?: string | null;    // ISO date of next/last ex-dividend date
   divPayDate?: string | null;   // ISO date of next/last payment date
   country?: string;             // company/ETF domicile from Yahoo Finance assetProfile
+  sector?: string;              // sector from Yahoo Finance assetProfile (e.g. "Technology")
 }
 
 export interface Transaction {

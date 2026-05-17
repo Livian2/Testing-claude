@@ -32,6 +32,7 @@ export interface QuoteData {
   exDivDate?: string | null;     // ISO date YYYY-MM-DD
   divPayDate?: string | null;    // ISO date YYYY-MM-DD
   country?: string;              // company/ETF domicile from assetProfile
+  sector?: string;               // sector from assetProfile (e.g. "Technology")
 }
 
 export interface FetchResult {
@@ -56,6 +57,7 @@ interface QuoteSummaryResult {
   exDivDate: string | null;
   divPayDate: string | null;
   country: string | null;
+  sector: string | null;
 }
 
 /**
@@ -160,7 +162,7 @@ async function fetchQuoteSummary(ticker: string): Promise<QuoteSummaryResult | n
             result?: Array<{
               summaryDetail?: { exDividendDate?: RawNum };
               calendarEvents?: { exDividendDate?: RawNum; dividendDate?: RawNum };
-              assetProfile?: { country?: RawStr };
+              assetProfile?: { country?: RawStr; sector?: RawStr };
             }>;
             error?: unknown;
           };
@@ -176,8 +178,9 @@ async function fetchQuoteSummary(ticker: string): Promise<QuoteSummaryResult | n
         const exDivDate  = tsToDate(ce.exDividendDate ?? sd.exDividendDate);
         const divPayDate = tsToDate(ce.dividendDate);
         const country    = toStr(ap.country) ?? countryFromSuffix(ticker);
+        const sector     = toStr(ap.sector) ?? null;
 
-        return { exDivDate, divPayDate, country };
+        return { exDivDate, divPayDate, country, sector };
       } catch {
         continue;
       }
@@ -185,7 +188,7 @@ async function fetchQuoteSummary(ticker: string): Promise<QuoteSummaryResult | n
   }
 
   // All endpoints failed: at least provide exchange-inferred country
-  return { exDivDate: null, divPayDate: null, country: countryFromSuffix(ticker) };
+  return { exDivDate: null, divPayDate: null, country: countryFromSuffix(ticker), sector: null };
 }
 
 // Preferred exchange suffixes for European investors, in priority order.
@@ -334,6 +337,7 @@ export async function fetchPricesWithFX(tickers: string[]): Promise<FetchResult>
       exDivDate:  summary?.exDivDate  ?? null,
       divPayDate: summary?.divPayDate ?? null,
       country:    summary?.country    ?? countryFromSuffix(ticker) ?? undefined,
+      sector:     summary?.sector     ?? undefined,
     };
   });
 

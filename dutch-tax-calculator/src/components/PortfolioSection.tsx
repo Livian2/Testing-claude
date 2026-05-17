@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo, lazy, Suspense } from 'react';
 import {
   TrendingUp, Plus, Trash2, ArrowUpCircle, ArrowDownCircle,
-  LayoutList, RefreshCw, AlertCircle, CheckCircle2, FileUp, Clock, Globe,
+  LayoutList, RefreshCw, AlertCircle, CheckCircle2, FileUp, Clock, Globe, Layers,
 } from 'lucide-react';
 import type { PortfolioData, Holding, Transaction, AssetType, TransactionType } from '../types';
 import { computePositions } from '../utils/taxCalculations';
@@ -42,7 +42,7 @@ function uid() { return Math.random().toString(36).slice(2); }
 const nl  = new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR', maximumFractionDigits: 2 });
 const nl0 = new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
 
-type InnerTab = 'holdings' | 'transactions' | 'import' | 'overview' | 'geography';
+type InnerTab = 'holdings' | 'transactions' | 'import' | 'overview' | 'geography' | 'sector';
 type FetchState = 'idle' | 'loading' | 'ok' | 'error';
 
 const fmtDate = (iso: string): string =>
@@ -372,6 +372,7 @@ export default function PortfolioSection({ data, onChange }: Props) {
           exDivDate:           q.exDivDate,
           divPayDate:          q.divPayDate,
           country:             q.country ?? h.country,
+          sector:              q.sector  ?? h.sector,
         };
       });
       onChange({ ...data, holdings: updated });
@@ -470,7 +471,8 @@ export default function PortfolioSection({ data, onChange }: Props) {
     { id: 'transactions' as InnerTab, label: t.portfolioExtra.tabTransactions,  icon: <ArrowUpCircle size={13} /> },
     { id: 'import' as InnerTab,       label: t.portfolioExtra.tabImport,        icon: <FileUp size={13} /> },
     { id: 'overview' as InnerTab,     label: t.portfolioExtra.tabOverview,      icon: <LayoutList size={13} /> },
-    { id: 'geography' as InnerTab,    label: 'Geografie',                       icon: <Globe size={13} /> },
+    { id: 'geography' as InnerTab,    label: 'Geografie',   icon: <Globe size={13} /> },
+    { id: 'sector' as InnerTab,       label: 'Sectoren',    icon: <Layers size={13} /> },
   ];
 
   const hasTickers = data.holdings.some(h => h.ticker);
@@ -1017,6 +1019,10 @@ export default function PortfolioSection({ data, onChange }: Props) {
       {tab === 'geography' && (
         <GeographyTab positions={positions} holdings={data.holdings} />
       )}
+
+      {tab === 'sector' && (
+        <SectorTab positions={positions} holdings={data.holdings} />
+      )}
     </SectionCard>
   );
 }
@@ -1072,6 +1078,52 @@ function DonutChart({ slices }: { slices: { pct: number; color: string }[] }) {
 
 const nl0geo = new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
 
+// Shared compact breakdown table used by Geography and Sector tabs
+function BreakdownChart({ rows, total, hasPrefix = false, unknownNote }: {
+  rows: { label: string; prefix?: string; value: number; color: string }[];
+  total: number;
+  hasPrefix?: boolean;
+  unknownNote?: string;
+}) {
+  const slices = rows.map(r => ({ pct: r.value / total, color: r.color }));
+  return (
+    <div className="p-4">
+      <div className="flex flex-col sm:flex-row gap-6 items-start">
+        <div className="w-36 h-36 flex-shrink-0">
+          <DonutChart slices={slices} />
+        </div>
+        <div className="min-w-0">
+          <table className="text-sm border-separate border-spacing-y-1">
+            <tbody>
+              {rows.map((r, i) => (
+                <tr key={i}>
+                  <td className="pr-2 align-middle">
+                    <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: r.color }} />
+                  </td>
+                  {hasPrefix && (
+                    <td className="pr-1.5 align-middle text-base leading-none">{r.prefix ?? ''}</td>
+                  )}
+                  <td className="pr-5 align-middle text-slate-700 dark:text-slate-200 whitespace-nowrap">{r.label}</td>
+                  <td className="pr-3 align-middle text-right tabular-nums text-slate-600 dark:text-slate-300 font-medium whitespace-nowrap">{nl0geo.format(r.value)}</td>
+                  <td className="align-middle text-right tabular-nums text-slate-400 dark:text-slate-500 text-xs w-12">{(r.value / total * 100).toFixed(1)}%</td>
+                </tr>
+              ))}
+              <tr>
+                <td className="pt-2 border-t border-slate-200 dark:border-slate-700" colSpan={hasPrefix ? 3 : 2} />
+                <td className="pt-2 border-t border-slate-200 dark:border-slate-700 text-right tabular-nums font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap">{nl0geo.format(total)}</td>
+                <td className="pt-2 border-t border-slate-200 dark:border-slate-700" />
+              </tr>
+            </tbody>
+          </table>
+          {unknownNote && (
+            <p className="text-xs text-slate-400 dark:text-slate-500 mt-2">{unknownNote}</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function GeographyTab({ positions, holdings }: { positions: import('../types').Position[]; holdings: import('../types').Holding[] }) {
   // Aggregate value by country — use positions for value (combines holdings + transactions),
   // look up country from the matching holding by name or ticker.
@@ -1121,41 +1173,70 @@ function GeographyTab({ positions, holdings }: { positions: import('../types').P
   });
   if (other > 0) main.push({ country: 'Overig', value: other, color: '#94a3b8' });
 
-  const slices = main.map(m => ({ pct: m.value / total, color: m.color }));
+  return (
+    <BreakdownChart
+      hasPrefix
+      rows={main.map(m => ({
+        label: m.country,
+        prefix: m.country !== 'Overig' && m.country !== 'Onbekend' ? countryFlag(m.country) : (m.country === 'Overig' ? '📦' : '❓'),
+        value: m.value,
+        color: m.color,
+      }))}
+      total={total}
+      unknownNote={byCountry.has('Onbekend') ? '❓ Onbekend = holdings zonder landdata — ververs prijzen om landdata op te halen.' : undefined}
+    />
+  );
+}
+
+function SectorTab({ positions, holdings }: { positions: import('../types').Position[]; holdings: import('../types').Holding[] }) {
+  const sectorByName: Record<string, string | undefined>   = {};
+  const sectorByTicker: Record<string, string | undefined> = {};
+  for (const h of holdings) {
+    if (h.name)   sectorByName[h.name]     = h.sector;
+    if (h.ticker) sectorByTicker[h.ticker] = h.sector;
+  }
+
+  const bySector = new Map<string, number>();
+  let unknown = 0;
+
+  for (const p of positions) {
+    if (p.currentValue <= 0) continue;
+    const sector = (p.ticker && sectorByTicker[p.ticker]) || (p.name && sectorByName[p.name]) || undefined;
+    if (sector) {
+      bySector.set(sector, (bySector.get(sector) ?? 0) + p.currentValue);
+    } else {
+      unknown += p.currentValue;
+    }
+  }
+  if (unknown > 0) bySector.set('Onbekend', unknown);
+
+  const total = [...bySector.values()].reduce((a, b) => a + b, 0);
+  if (total === 0) {
+    return (
+      <div className="py-16 text-center text-slate-400 dark:text-slate-500 text-sm">
+        Geen sectordata beschikbaar — ververs prijzen eerst.
+      </div>
+    );
+  }
+
+  const entries = [...bySector.entries()].sort((a, b) => b[1] - a[1]);
+  const THRESHOLD = 0.02;
+  const main: { sector: string; value: number; color: string }[] = [];
+  let other = 0;
+  entries.forEach(([sector, value], i) => {
+    if (value / total >= THRESHOLD || i < 3) {
+      main.push({ sector, value, color: PIE_COLORS[i % PIE_COLORS.length] });
+    } else {
+      other += value;
+    }
+  });
+  if (other > 0) main.push({ sector: 'Overig', value: other, color: '#94a3b8' });
 
   return (
-    <div className="p-4">
-      <div className="flex flex-col sm:flex-row gap-6 items-start">
-        {/* Donut chart */}
-        <div className="w-40 h-40 flex-shrink-0">
-          <DonutChart slices={slices} />
-        </div>
-
-        {/* Legend */}
-        <div className="flex-1 space-y-1.5">
-          {main.map((m, i) => (
-            <div key={i} className="flex items-center gap-2.5 text-sm">
-              <span className="inline-block w-3 h-3 rounded-full flex-shrink-0" style={{ background: m.color }} />
-              <span className="text-lg leading-none">{m.country !== 'Overig' && m.country !== 'Onbekend' ? countryFlag(m.country) : (m.country === 'Overig' ? '📦' : '❓')}</span>
-              <span className="text-slate-700 dark:text-slate-200 flex-1">{m.country}</span>
-              <span className="text-slate-500 dark:text-slate-400 text-xs tabular-nums">{nl0geo.format(m.value)}</span>
-              <span className="text-slate-400 dark:text-slate-500 text-xs tabular-nums w-10 text-right">{(m.value / total * 100).toFixed(1)}%</span>
-            </div>
-          ))}
-          <div className="pt-2 border-t border-slate-200 dark:border-slate-700 flex items-center gap-2.5 text-sm font-semibold">
-            <span className="inline-block w-3 h-3 flex-shrink-0" />
-            <span className="w-6" />
-            <span className="text-slate-700 dark:text-slate-200 flex-1">Totaal</span>
-            <span className="text-slate-700 dark:text-slate-200 tabular-nums">{nl0geo.format(total)}</span>
-            <span className="w-10" />
-          </div>
-          {byCountry.has('Onbekend') && (
-            <p className="text-xs text-slate-400 dark:text-slate-500 pt-1">
-              ❓ Onbekend = holdings zonder landdata — ververs prijzen om landdata op te halen.
-            </p>
-          )}
-        </div>
-      </div>
-    </div>
+    <BreakdownChart
+      rows={main.map(m => ({ label: m.sector, value: m.value, color: m.color }))}
+      total={total}
+      unknownNote={bySector.has('Onbekend') ? '❓ Onbekend = holdings zonder sectordata — ververs prijzen om sectordata op te halen.' : undefined}
+    />
   );
 }
