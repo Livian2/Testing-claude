@@ -118,45 +118,52 @@ function FondsSearch({ value, holdings, onChange }: FondsSearchProps) {
     timerRef.current = setTimeout(async () => {
       setLoading(true);
       try {
-        // Layer 1: Yahoo Finance search API (crumb handled server-side)
-        try {
-          const res = await fetch(
-            `/api/finance/v1/finance/search?q=${encodeURIComponent(raw)}&quotesCount=15&newsCount=0&enableFuzzyQuery=false`,
-            { headers: { Accept: 'application/json' } }
-          );
-          if (res.ok) {
-            const json = await res.json() as { quotes?: SearchResultItem[] };
-            const found = (json.quotes ?? []).filter(q =>
-              q.quoteType === 'ETF' || q.quoteType === 'EQUITY' || q.quoteType === 'MUTUALFUND'
-            );
-            if (found.length > 0) { setResults(found); return; }
-          }
-        } catch { /* fall through */ }
+        const upper = raw.trim().toUpperCase();
+        const isExactTicker = /^[A-Z0-9]{1,12}(=[A-Z]{1,2})?(\.[A-Z]{1,3})?$/.test(upper);
+        // If query looks like an exact ticker (especially futures like GC=F), go straight to
+        // Layer 3 so Layer 1/2 text-search results don't shadow the correct match.
+        const skipTextSearch = isExactTicker && (upper.includes('=') || upper.includes('.'));
 
-        // Layer 2: autoc endpoint (no auth needed, supports text like "vanguard")
-        try {
-          const autcRes = await fetch(
-            `/api/finance/autoc?query=${encodeURIComponent(raw)}&region=1&lang=en`,
-            { headers: { Accept: 'application/json' } }
-          );
-          if (autcRes.ok) {
-            const autcJson = await autcRes.json() as { ResultSet?: { Result?: AutocItem[] } };
-            const found = (autcJson.ResultSet?.Result ?? [])
-              .filter(r => r.type === 'ETF' || r.type === 'S' || r.type === 'M')
-              .map(r => ({
-                symbol: r.symbol,
-                shortname: r.name,
-                quoteType: r.type === 'ETF' ? 'ETF' : r.type === 'M' ? 'MUTUALFUND' : 'EQUITY',
-                exchDisp: r.exchDisp,
-              } as SearchResultItem));
-            if (found.length > 0) { setResults(found); return; }
-          }
-        } catch { /* fall through */ }
+        if (!skipTextSearch) {
+          // Layer 1: Yahoo Finance search API (crumb handled server-side)
+          try {
+            const res = await fetch(
+              `/api/finance/v1/finance/search?q=${encodeURIComponent(raw)}&quotesCount=15&newsCount=0&enableFuzzyQuery=false`,
+              { headers: { Accept: 'application/json' } }
+            );
+            if (res.ok) {
+              const json = await res.json() as { quotes?: SearchResultItem[] };
+              const found = (json.quotes ?? []).filter(q =>
+                q.quoteType === 'ETF' || q.quoteType === 'EQUITY' ||
+                q.quoteType === 'MUTUALFUND' || q.quoteType === 'FUTURE'
+              );
+              if (found.length > 0) { setResults(found); return; }
+            }
+          } catch { /* fall through */ }
+
+          // Layer 2: autoc endpoint (no auth needed, supports text like "vanguard")
+          try {
+            const autcRes = await fetch(
+              `/api/finance/autoc?query=${encodeURIComponent(raw)}&region=1&lang=en`,
+              { headers: { Accept: 'application/json' } }
+            );
+            if (autcRes.ok) {
+              const autcJson = await autcRes.json() as { ResultSet?: { Result?: AutocItem[] } };
+              const found = (autcJson.ResultSet?.Result ?? [])
+                .filter(r => r.type === 'ETF' || r.type === 'S' || r.type === 'M' || r.type === 'F')
+                .map(r => ({
+                  symbol: r.symbol,
+                  shortname: r.name,
+                  quoteType: r.type === 'ETF' ? 'ETF' : r.type === 'M' ? 'MUTUALFUND' : r.type === 'F' ? 'FUTURE' : 'EQUITY',
+                  exchDisp: r.exchDisp,
+                } as SearchResultItem));
+              if (found.length > 0) { setResults(found); return; }
+            }
+          } catch { /* fall through */ }
+        }
 
         // Layer 3: exact ticker probe via v8/chart (no auth, ticker-pattern only)
-        const upper = raw.trim().toUpperCase();
-        // Allow standard tickers, exchange suffixes (.AS, .L, …) and futures (GC=F, ES=F)
-        if (/^[A-Z0-9]{1,12}(=[A-Z]{1,2})?(\.[A-Z]{1,3})?$/.test(upper)) {
+        if (isExactTicker) {
           const suffixes = (upper.includes('.') || upper.includes('='))
             ? ['']
             : ['', '.AS', '.L', '.DE', '.PA', '.MI', '.F'];
