@@ -5,7 +5,7 @@ import {
   ChevronRight, BookOpen, BarChart2,
 } from 'lucide-react';
 
-type Tab = 'income' | 'woon' | 'waardes' | 'expenses' | 'schulden' | 'bank' | 'portfolio' | 'afschrijvingen' | 'jaarruimte' | 'prognose' | 'results' | 'marginale';
+type Tab = 'income' | 'woon' | 'waardes' | 'expenses' | 'schulden' | 'bank' | 'portfolio' | 'afschrijvingen' | 'schenkingen' | 'jaarruimte' | 'prognose' | 'results' | 'marginale';
 
 interface ExampleStep { label: string; value: string; accent?: boolean }
 interface ModuleDetail {
@@ -248,6 +248,34 @@ const MODULES: ModuleDetail[] = [
     tip: 'Voeg ook ketel, dak en witgoed toe. Een gemiddeld huishouden heeft €300–500/m aan sinking fund nodig voor realistisch vermogensbeheer.',
   },
   {
+    id: 'schenkingen',
+    icon: Gift,
+    name: 'Schenkingen',
+    emoji: '🎁',
+    accentColor: 'text-purple-400',
+    glowColor: 'bg-purple-500/10',
+    tagline: 'Ontvangen schenkingen en schenkbelasting berekening.',
+    description: [
+      'Voeg schenkingen toe die je hebt ontvangen van ouders of anderen. De tool berekent per schenking hoeveel is vrijgesteld, wat belastbaar is en hoeveel schenkbelasting je betaalt.',
+      'Vrijstellingen 2026: van ouders ontvang je jaarlijks tot €6.908 belastingvrij. Er is ook een eenmalig verhoogde vrijstelling van €33.241 (vrij besteedbaar) of €69.225 (dure studie) voor ontvangers tussen 18 en 40 jaar.',
+    ],
+    inputs: ['Ontvangen bedrag', 'Relatie (ouder / overig)', 'Type vrijstelling', 'Omschrijving'],
+    example: {
+      scenario: 'Schenking €40.000 van ouders, eenmalig verhoogde vrijstelling',
+      steps: [
+        { label: 'Ontvangen bedrag',           value: '€ 40.000' },
+        { label: '− Eenmalig vrij (ouder)',     value: '− € 33.241' },
+        { label: 'Belastbaar deel',             value: '€ 6.759' },
+        { label: 'Schenkbelasting (10%)',       value: '€ 676', accent: true },
+        { label: 'Netto ontvangen',             value: '€ 39.324' },
+      ],
+      result: 'Door de eenmalig verhoogde vrijstelling betaal je slechts €676 in plaats van €3.329.',
+    },
+    formula: 'belasting = schijf1: 10% over ≤€144.948  |  schijf2: 20% daarboven  (ouder→kind)',
+    formulaColor: 'text-purple-300/80 bg-purple-500/[0.05] border-purple-500/10',
+    tip: 'De eenmalig verhoogde vrijstelling kan slechts één keer in je leven worden gebruikt en vervangt de jaarlijkse vrijstelling. De jubelton (eigen woning) is per 2024 afgeschaft.',
+  },
+  {
     id: 'jaarruimte',
     icon: BookOpen,
     name: 'Jaarruimte',
@@ -472,7 +500,7 @@ export default function AboutPage({ onClose, onGetStarted, onOpenTab }: Props) {
           <div className="max-w-2xl mb-14">
             <div className="text-[11px] uppercase tracking-wider text-orange-400 font-medium mb-3">Modules</div>
             <h2 className="text-3xl lg:text-4xl font-semibold tracking-tight text-white">
-              Twaalf tabs. Eén consistent model.
+              Dertien tabs. Eén consistent model.
             </h2>
             <p className="mt-4 text-slate-400 leading-relaxed">
               Elke tab voedt dezelfde berekeningsmotor — geen losse spreadsheets,
