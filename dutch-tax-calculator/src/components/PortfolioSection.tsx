@@ -438,13 +438,20 @@ export default function PortfolioSection({ data, onChange }: Props) {
   }, [positions, assetLabels]);
 
   const totalAnnualDiv = useMemo(() => {
-    let s = 0;
+    const divByName: Record<string, number | undefined>   = {};
+    const divByTicker: Record<string, number | undefined> = {};
     for (const h of data.holdings) {
-      if (!h.dividendPerShareEur || h.quantity <= 0) continue;
-      s += h.quantity * h.dividendPerShareEur;
+      if (h.name)   divByName[h.name]     = h.dividendPerShareEur;
+      if (h.ticker) divByTicker[h.ticker] = h.dividendPerShareEur;
+    }
+    let s = 0;
+    for (const p of positions) {
+      if (p.quantity <= 0) continue;
+      const dps = (p.ticker && divByTicker[p.ticker]) || (p.name && divByName[p.name]) || 0;
+      if (dps) s += p.quantity * dps;
     }
     return s;
-  }, [data.holdings]);
+  }, [data.holdings, positions]);
 
   // O(1) lookup of Holding by either name or ticker — was data.holdings.find() per row (O(N²))
   const holdingByKey = useMemo(() => {
@@ -1008,7 +1015,7 @@ export default function PortfolioSection({ data, onChange }: Props) {
       )}
 
       {tab === 'geography' && (
-        <GeographyTab holdings={data.holdings} />
+        <GeographyTab positions={positions} holdings={data.holdings} />
       )}
     </SectionCard>
   );
@@ -1065,18 +1072,26 @@ function DonutChart({ slices }: { slices: { pct: number; color: string }[] }) {
 
 const nl0geo = new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
 
-function GeographyTab({ holdings }: { holdings: import('../types').Holding[] }) {
-  // Aggregate value by country (only holdings with a price and country)
+function GeographyTab({ positions, holdings }: { positions: import('../types').Position[]; holdings: import('../types').Holding[] }) {
+  // Aggregate value by country — use positions for value (combines holdings + transactions),
+  // look up country from the matching holding by name or ticker.
+  const countryByName: Record<string, string | undefined> = {};
+  const countryByTicker: Record<string, string | undefined> = {};
+  for (const h of holdings) {
+    if (h.name)   countryByName[h.name]     = h.country;
+    if (h.ticker) countryByTicker[h.ticker] = h.country;
+  }
+
   const byCountry = new Map<string, number>();
   let unknown = 0;
 
-  for (const h of holdings) {
-    if (!h.currentPrice || !h.quantity) continue;
-    const val = h.quantity * h.currentPrice;
-    if (h.country) {
-      byCountry.set(h.country, (byCountry.get(h.country) ?? 0) + val);
+  for (const p of positions) {
+    if (p.currentValue <= 0) continue;
+    const country = (p.ticker && countryByTicker[p.ticker]) || (p.name && countryByName[p.name]) || undefined;
+    if (country) {
+      byCountry.set(country, (byCountry.get(country) ?? 0) + p.currentValue);
     } else {
-      unknown += val;
+      unknown += p.currentValue;
     }
   }
   if (unknown > 0) byCountry.set('Onbekend', unknown);
