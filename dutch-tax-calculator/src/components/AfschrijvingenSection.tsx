@@ -1,13 +1,8 @@
-import { useState } from 'react';
+import { useState, useMemo, memo, useCallback } from 'react';
 import { Plus, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
 import type { AfschrijvingenData, AfschrijvingCategorie, AfschrijvingItem } from '../types';
 import { useLanguage } from '../i18n/LanguageContext';
-import {
-  getReplacementDate,
-  jaarDeposit,
-  totalVervanging,
-  gereserveerdTotNu,
-} from '../utils/afschrijvingen';
+import { parseAfschrijvingDate, jaarDeposit } from '../utils/afschrijvingen';
 import InfoTooltip from './InfoTooltip';
 
 interface Props {
@@ -21,40 +16,46 @@ const nl0 = new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR',
 
 function uid() { return Math.random().toString(36).slice(2); }
 
-// ─── Category row component ──────────────────────────────────────────────────
+interface ItemComputed {
+  replDate: Date | null;
+  replYear: number | null;
+  deposits: number[];  // one entry per year, aligned to `years` array
+  reserved: number;
+  target: number;
+}
 
 interface CatRowProps {
   cat: AfschrijvingCategorie;
-  rate: number;
   taxYear: number;
   years: number[];
-  onUpdate: (c: AfschrijvingCategorie) => void;
-  onRemove: () => void;
+  catDeposits: number[];
+  itemComputed: Map<string, ItemComputed>;
+  onUpdate: (id: string, c: AfschrijvingCategorie) => void;
+  onRemove: (id: string) => void;
 }
 
-function CatRow({ cat, rate, taxYear, years, onUpdate, onRemove }: CatRowProps) {
+const CatRow = memo(function CatRow({
+  cat, taxYear, years, catDeposits, itemComputed, onUpdate, onRemove,
+}: CatRowProps) {
   const [open, setOpen] = useState(true);
   const [editingName, setEditingName] = useState(false);
   const { t } = useLanguage();
 
-  const addItem = () => {
+  const addItem = useCallback(() => {
     const today = new Date().toISOString().slice(0, 10);
     const newItem: AfschrijvingItem = {
       id: uid(), naam: '', aankoopprijs: 0, aankoopdatum: today, looptijdJaren: 3,
     };
-    onUpdate({ ...cat, items: [...cat.items, newItem] });
-  };
+    onUpdate(cat.id, { ...cat, items: [...cat.items, newItem] });
+  }, [cat, onUpdate]);
 
-  const updateItem = (id: string, patch: Partial<AfschrijvingItem>) =>
-    onUpdate({ ...cat, items: cat.items.map(it => it.id === id ? { ...it, ...patch } : it) });
+  const updateItem = useCallback((id: string, patch: Partial<AfschrijvingItem>) =>
+    onUpdate(cat.id, { ...cat, items: cat.items.map(it => it.id === id ? { ...it, ...patch } : it) }),
+  [cat, onUpdate]);
 
-  const removeItem = (id: string) =>
-    onUpdate({ ...cat, items: cat.items.filter(it => it.id !== id) });
-
-  // Category-level year totals
-  const catYearTotals = years.map(y =>
-    cat.items.reduce((s, it) => s + jaarDeposit(it, rate, y), 0)
-  );
+  const removeItem = useCallback((id: string) =>
+    onUpdate(cat.id, { ...cat, items: cat.items.filter(it => it.id !== id) }),
+  [cat, onUpdate]);
 
   return (
     <tbody>
@@ -73,7 +74,7 @@ function CatRow({ cat, rate, taxYear, years, onUpdate, onRemove }: CatRowProps) 
                 autoFocus
                 className="text-xs font-semibold bg-white dark:bg-slate-700 dark:text-slate-100 border border-slate-300 dark:border-slate-600 rounded px-2 py-0.5 outline-none"
                 value={cat.naam}
-                onChange={e => onUpdate({ ...cat, naam: e.target.value })}
+                onChange={e => onUpdate(cat.id, { ...cat, naam: e.target.value })}
                 onBlur={() => setEditingName(false)}
                 onKeyDown={e => e.key === 'Enter' && setEditingName(false)}
               />
@@ -92,16 +93,16 @@ function CatRow({ cat, rate, taxYear, years, onUpdate, onRemove }: CatRowProps) 
               <Plus size={12} /> {t.depreciationExtra.addProductLabel}
             </button>
             <button
-              onClick={onRemove}
+              onClick={() => onRemove(cat.id)}
               className="ml-auto text-red-300 hover:text-red-500 bg-transparent border-0 cursor-pointer p-0"
             >
               <Trash2 size={12} />
             </button>
           </div>
         </td>
-        {years.map((y, i) => (
-          <td key={y} className="px-2 py-1 text-right text-xs font-semibold text-slate-600 dark:text-slate-300">
-            {catYearTotals[i] > 0 ? nl2.format(catYearTotals[i]) : ''}
+        {catDeposits.map((total, i) => (
+          <td key={years[i]} className="px-2 py-1 text-right text-xs font-semibold text-slate-600 dark:text-slate-300">
+            {total > 0 ? nl2.format(total) : ''}
           </td>
         ))}
         <td />
@@ -109,10 +110,12 @@ function CatRow({ cat, rate, taxYear, years, onUpdate, onRemove }: CatRowProps) 
 
       {/* Item rows */}
       {open && cat.items.map(item => {
-        const replDate  = getReplacementDate(item);
-        const replYear  = replDate ? replDate.getFullYear() : null;
-        const target    = item.aankoopprijs > 0 ? totalVervanging(item, rate) : 0;
-        const reserved  = item.aankoopprijs > 0 ? gereserveerdTotNu(item, rate, taxYear) : 0;
+        const comp = itemComputed.get(item.id);
+        const replDate  = comp?.replDate  ?? null;
+        const replYear  = comp?.replYear  ?? null;
+        const deposits  = comp?.deposits  ?? [];
+        const reserved  = comp?.reserved  ?? 0;
+        const target    = comp?.target    ?? 0;
 
         return (
           <tr key={item.id} className="border-b border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700">
@@ -168,26 +171,25 @@ function CatRow({ cat, rate, taxYear, years, onUpdate, onRemove }: CatRowProps) 
                 <span className="ml-1 text-red-500 font-semibold">!</span>
               )}
             </td>
-            {/* Reserved so far / total target (sum of all year deposits) */}
+            {/* Reserved / target */}
             <td className="px-2 py-1.5 text-xs text-right">
               {item.aankoopprijs > 0 ? (
                 <span className="text-slate-500 dark:text-slate-400">{nl0.format(reserved)} / {nl0.format(target)}</span>
               ) : '—'}
             </td>
-            {/* Year cells */}
-            {years.map(y => {
-              const dep = jaarDeposit(item, rate, y);
-              const isOverdue  = replYear !== null && y > replYear;
-              const isPast     = y < taxYear;
-              const isCurrent  = y === taxYear;
-              const isFuture   = y > taxYear;
+            {/* Year cells — O(1) array lookup, no recalculation */}
+            {years.map((y, i) => {
+              const dep = deposits[i] ?? 0;
+              const isOverdue = replYear !== null && y > replYear;
+              const isPast    = y < taxYear;
+              const isCurrent = y === taxYear;
 
               let bg = '';
               let textColor = 'text-slate-300';
               if (dep > 0 && !isOverdue) {
-                if (isPast)    { bg = 'bg-red-50';    textColor = 'text-red-500'; }
-                else if (isCurrent) { bg = 'bg-amber-50'; textColor = 'text-amber-700 font-semibold'; }
-                else if (isFuture)  { bg = 'bg-green-50'; textColor = 'text-green-700'; }
+                if (isPast)         { bg = 'bg-red-50';    textColor = 'text-red-500'; }
+                else if (isCurrent) { bg = 'bg-amber-50';  textColor = 'text-amber-700 font-semibold'; }
+                else                { bg = 'bg-green-50';  textColor = 'text-green-700'; }
               }
 
               return (
@@ -210,7 +212,7 @@ function CatRow({ cat, rate, taxYear, years, onUpdate, onRemove }: CatRowProps) 
       })}
     </tbody>
   );
-}
+});
 
 // ─── Main section ────────────────────────────────────────────────────────────
 
@@ -218,47 +220,92 @@ export default function AfschrijvingenSection({ data, taxYear, onChange }: Props
   const { t } = useLanguage();
   const rate = data.rentePercentage / 100;
 
-  // Determine year range: from earliest purchase year, up to max replacement year (or taxYear+8)
-  const allPurchaseYears = data.categorieen
-    .flatMap(c => c.items)
-    .map(it => { const d = getReplacementDate(it); return d ? d.getFullYear() - it.looptijdJaren : 0; })
-    .filter(y => y > 0);
-  const allReplYears = data.categorieen
-    .flatMap(c => c.items)
-    .map(it => getReplacementDate(it)?.getFullYear() ?? 0)
-    .filter(y => y > 0);
-  const minYear = allPurchaseYears.length > 0
-    ? Math.min(...allPurchaseYears)
-    : taxYear - 2;
-  const maxYear = allReplYears.length > 0
-    ? Math.max(taxYear + 8, Math.max(...allReplYears))
-    : taxYear + 8;
-  const years: number[] = [];
-  for (let y = minYear; y <= maxYear; y++) years.push(y);
+  // Year range — memoized
+  const years = useMemo<number[]>(() => {
+    const allItems = data.categorieen.flatMap(c => c.items);
+    let minYear = taxYear - 2;
+    let maxYear = taxYear + 8;
+    for (const it of allItems) {
+      const purchase = parseAfschrijvingDate(it.aankoopdatum);
+      if (!purchase) continue;
+      const py = purchase.getFullYear();
+      const ry = py + (it.looptijdJaren || 0);
+      if (py < minYear) minYear = py;
+      if (ry > maxYear) maxYear = ry;
+    }
+    const arr: number[] = [];
+    for (let y = minYear; y <= maxYear; y++) arr.push(y);
+    return arr;
+  }, [data.categorieen, taxYear]);
 
-  const addCategorie = () => {
-    const newCat: AfschrijvingCategorie = {
-      id: uid(), naam: t.depreciation.defaultCategory, items: [],
-    };
-    onChange({ ...data, categorieen: [...data.categorieen, newCat] });
-  };
+  // Pre-compute the full deposit matrix once — O(items × years) — so renders are O(1) lookups
+  const { itemComputed, catDeposits, yearTotals, maandBedrag } = useMemo(() => {
+    const itemComputed = new Map<string, ItemComputed>();
+    const catDeposits  = new Map<string, number[]>();
+    const yearTotals   = new Array<number>(years.length).fill(0);
 
-  const updateCat = (id: string, cat: AfschrijvingCategorie) =>
-    onChange({ ...data, categorieen: data.categorieen.map(c => c.id === id ? cat : c) });
+    for (const cat of data.categorieen) {
+      const catDeps = new Array<number>(years.length).fill(0);
 
-  const removeCat = (id: string) =>
-    onChange({ ...data, categorieen: data.categorieen.filter(c => c.id !== id) });
+      for (const item of cat.items) {
+        // Parse date once
+        const purchase = parseAfschrijvingDate(item.aankoopdatum);
+        const replDate = purchase && item.looptijdJaren
+          ? (() => {
+              const d = new Date(purchase);
+              d.setFullYear(d.getFullYear() + item.looptijdJaren);
+              return d;
+            })()
+          : null;
+        const replYear = replDate?.getFullYear() ?? null;
 
-  // Monthly savings summary for current year
-  const allItems = data.categorieen.flatMap(c => c.items);
-  const maandBedrag = allItems.reduce((s, it) => s + jaarDeposit(it, rate, taxYear), 0) / 12;
+        // Compute deposits for all years in one pass
+        const deposits = years.map(y => jaarDeposit(item, rate, y));
+
+        // Accumulate category and grand totals
+        let reserved = 0;
+        let target = 0;
+        for (let i = 0; i < years.length; i++) {
+          const d = deposits[i];
+          catDeps[i]    += d;
+          yearTotals[i] += d;
+          target += d;
+          if (years[i] <= taxYear) reserved += d;
+        }
+
+        itemComputed.set(item.id, { replDate, replYear, deposits, reserved, target });
+      }
+
+      catDeposits.set(cat.id, catDeps);
+    }
+
+    // Monthly savings for current year (from grand totals)
+    const currentYearIdx = years.indexOf(taxYear);
+    const maandBedrag = currentYearIdx >= 0 ? yearTotals[currentYearIdx] / 12 : 0;
+
+    return { itemComputed, catDeposits, yearTotals, maandBedrag };
+  }, [data.categorieen, rate, years, taxYear]);
+
+  const updateCat = useCallback((id: string, cat: AfschrijvingCategorie) =>
+    onChange({ ...data, categorieen: data.categorieen.map(c => c.id === id ? cat : c) }),
+  [data, onChange]);
+
+  const removeCat = useCallback((id: string) =>
+    onChange({ ...data, categorieen: data.categorieen.filter(c => c.id !== id) }),
+  [data, onChange]);
+
+  const addCategorie = useCallback(() => {
+    onChange({ ...data, categorieen: [...data.categorieen, { id: uid(), naam: t.depreciation.defaultCategory, items: [] }] });
+  }, [data, onChange, t]);
 
   return (
     <div className="space-y-4">
       {/* Settings bar */}
       <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 flex flex-wrap items-center gap-4">
         <div className="flex items-center gap-2">
-          <label className="text-sm font-medium text-slate-700 dark:text-slate-200 whitespace-nowrap flex items-center gap-1">{t.depreciation.sectionTitle} <InfoTooltip tip={t.depreciationExtra.sinkingFundTip} /> · {t.depreciation.sinkingRate} <InfoTooltip tip={t.depreciation.sinkingRateHint} /></label>
+          <label className="text-sm font-medium text-slate-700 dark:text-slate-200 whitespace-nowrap flex items-center gap-1">
+            {t.depreciation.sectionTitle} <InfoTooltip tip={t.depreciationExtra.sinkingFundTip} /> · {t.depreciation.sinkingRate} <InfoTooltip tip={t.depreciation.sinkingRateHint} />
+          </label>
           <div className="flex items-center border border-slate-300 dark:border-slate-600 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-orange-400 bg-white dark:bg-slate-700">
             <input
               type="number" step="0.1" min="0" max="20"
@@ -271,7 +318,9 @@ export default function AfschrijvingenSection({ data, taxYear, onChange }: Props
         </div>
         <div className="ml-auto flex items-center gap-3">
           <div className="text-right">
-            <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center justify-end gap-1">{t.depreciationExtra.monthlySavingYear} ({taxYear}) <InfoTooltip tip={t.depreciationExtra.sinkingFundTip} /></p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center justify-end gap-1">
+              {t.depreciationExtra.monthlySavingYear} ({taxYear}) <InfoTooltip tip={t.depreciationExtra.sinkingFundTip} />
+            </p>
             <p className="text-base font-bold text-orange-700">{nl2.format(maandBedrag)}</p>
           </div>
           <button
@@ -289,11 +338,19 @@ export default function AfschrijvingenSection({ data, taxYear, onChange }: Props
           <thead>
             <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900">
               <th className="text-left px-2 py-2 font-medium text-slate-600 dark:text-slate-300">{t.depreciation.product}</th>
-              <th className="text-left px-2 py-2 font-medium text-slate-600 dark:text-slate-300"><span className="flex items-center gap-1">{t.depreciation.purchasePrice} <InfoTooltip tip={t.depreciation.purchasePriceTip} /></span></th>
-              <th className="text-left px-2 py-2 font-medium text-slate-600 dark:text-slate-300"><span className="flex items-center gap-1">{t.depreciation.purchaseDate} <InfoTooltip tip={t.depreciation.purchaseDateTip} /></span></th>
-              <th className="text-left px-2 py-2 font-medium text-slate-600 dark:text-slate-300"><span className="flex items-center gap-1">{t.depreciation.lifetimeYears} <InfoTooltip tip={t.depreciation.lifetimeTip} /></span></th>
+              <th className="text-left px-2 py-2 font-medium text-slate-600 dark:text-slate-300">
+                <span className="flex items-center gap-1">{t.depreciation.purchasePrice} <InfoTooltip tip={t.depreciation.purchasePriceTip} /></span>
+              </th>
+              <th className="text-left px-2 py-2 font-medium text-slate-600 dark:text-slate-300">
+                <span className="flex items-center gap-1">{t.depreciation.purchaseDate} <InfoTooltip tip={t.depreciation.purchaseDateTip} /></span>
+              </th>
+              <th className="text-left px-2 py-2 font-medium text-slate-600 dark:text-slate-300">
+                <span className="flex items-center gap-1">{t.depreciation.lifetimeYears} <InfoTooltip tip={t.depreciation.lifetimeTip} /></span>
+              </th>
               <th className="text-left px-2 py-2 font-medium text-slate-600 dark:text-slate-300">{t.depreciation.replacementDate}</th>
-              <th className="text-right px-2 py-2 font-medium text-slate-600 dark:text-slate-300"><span className="flex items-center justify-end gap-1">{t.depreciation.reserved} <InfoTooltip tip={t.depreciation.reservedTip} /></span></th>
+              <th className="text-right px-2 py-2 font-medium text-slate-600 dark:text-slate-300">
+                <span className="flex items-center justify-end gap-1">{t.depreciation.reserved} <InfoTooltip tip={t.depreciation.reservedTip} /></span>
+              </th>
               {years.map(y => (
                 <th
                   key={y}
@@ -325,22 +382,23 @@ export default function AfschrijvingenSection({ data, taxYear, onChange }: Props
               <CatRow
                 key={cat.id}
                 cat={cat}
-                rate={rate}
                 taxYear={taxYear}
                 years={years}
-                onUpdate={updated => updateCat(cat.id, updated)}
-                onRemove={() => removeCat(cat.id)}
+                catDeposits={catDeposits.get(cat.id) ?? []}
+                itemComputed={itemComputed}
+                onUpdate={updateCat}
+                onRemove={removeCat}
               />
             ))
           )}
 
-          {/* Grand total row */}
+          {/* Grand total row — uses pre-computed yearTotals, no recalculation */}
           {data.categorieen.length > 0 && (
             <tfoot>
               <tr className="border-t-2 border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 font-semibold">
                 <td colSpan={6} className="px-2 py-2 text-sm text-slate-700 dark:text-slate-200">{t.depreciation.totalPerYear}</td>
-                {years.map(y => {
-                  const total = allItems.reduce((s, it) => s + jaarDeposit(it, rate, y), 0);
+                {yearTotals.map((total, i) => {
+                  const y = years[i];
                   const isCurrent = y === taxYear;
                   return (
                     <td
