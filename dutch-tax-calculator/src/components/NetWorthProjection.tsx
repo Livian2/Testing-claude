@@ -115,9 +115,12 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
   const jaarlijksBeleggen = data.savings.maandelijksBeleggen * 12;
 
   const points = useMemo<ProjectionPoint[]>(() => {
+    const bankDataSafe = data.bankData ?? { spaarrekeningen: [], betaalrekeningen: [] };
     const initSavings =
       data.waardes.spaarrekeningen.reduce((s, r) => s + r.saldoJan1, 0) +
-      data.waardes.betaalrekeningen.reduce((s, r) => s + r.saldoJan1, 0);
+      data.waardes.betaalrekeningen.reduce((s, r) => s + r.saldoJan1, 0) +
+      bankDataSafe.spaarrekeningen.reduce((s, r) => s + (r.saldoJan1 ?? r.saldoHuidig), 0) +
+      bankDataSafe.betaalrekeningen.reduce((s, r) => s + (r.saldoJan1 ?? r.saldoHuidig), 0);
     const positions = computePositions(data.portfolio.holdings, data.portfolio.transactions);
     const portfolioValue = positions.reduce((s, p) => s + p.currentValue, 0);
     const jan1Investments = data.waardes.beleggingen.reduce((s, r) => s + r.waardeJan1, 0);
