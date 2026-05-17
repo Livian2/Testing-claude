@@ -56,6 +56,8 @@ interface QuoteSummaryResult {
   exDivDate: string | null;
   divPayDate: string | null;
   country: string | null;
+  dividendRate: number | null;   // annual dividend per share in local currency
+  dividendYield: number | null;  // decimal, e.g. 0.025
 }
 
 /** Fetch a single ticker via the v8/finance/chart endpoint (no crumb needed). */
@@ -73,56 +75,115 @@ async function fetchChart(ticker: string): Promise<ChartMeta | null> {
   }
 }
 
+// Maps exchange suffix to country name (fallback when assetProfile unavailable)
+const SUFFIX_COUNTRY: Record<string, string> = {
+  '.AS': 'Netherlands', '.PA': 'France',      '.DE': 'Germany',
+  '.MI': 'Italy',       '.MC': 'Spain',        '.L':  'United Kingdom',
+  '.BR': 'Belgium',     '.LS': 'Portugal',     '.ST': 'Sweden',
+  '.CO': 'Denmark',     '.OL': 'Norway',       '.HE': 'Finland',
+  '.VX': 'Switzerland', '.VI': 'Austria',      '.WA': 'Poland',
+  '.PR': 'Czech Republic',
+};
+
+/** Infer country from a ticker's exchange suffix. Returns null if no suffix known. */
+function countryFromSuffix(ticker: string): string | null {
+  for (const [sfx, country] of Object.entries(SUFFIX_COUNTRY)) {
+    if (ticker.endsWith(sfx)) return country;
+  }
+  // No dot = US market
+  if (!ticker.includes('.')) return 'United States';
+  return null;
+}
+
+type RawNum = { raw?: number } | number | null | undefined;
+type RawStr = { raw?: string } | string | null | undefined;
+
+const toNum = (v: RawNum): number | null => {
+  if (v == null) return null;
+  const n = typeof v === 'number' ? v : (v as { raw?: number }).raw;
+  return (n != null && n > 0) ? n : null;
+};
+const tsToDate = (v: RawNum): string | null => {
+  const ts = typeof v === 'number' ? v : (v as { raw?: number })?.raw;
+  return ts ? new Date(ts * 1000).toISOString().split('T')[0] : null;
+};
+const toStr = (v: RawStr): string | null => {
+  if (v == null) return null;
+  return typeof v === 'string' ? v : (v as { raw?: string }).raw ?? null;
+};
+
 /**
- * Fetch ex-div date, pay date and country via quoteSummary.
- * Tries v11 first, falls back gracefully. Dividend rate is taken from chart meta.
+ * Fetch dividend data + country via quoteSummary.
+ * Tries v10 on query2, then v10 on query1, with a summaryDetail-only fallback.
+ * Country falls back to exchange-suffix inference if assetProfile is unavailable.
  */
 async function fetchQuoteSummary(ticker: string): Promise<QuoteSummaryResult | null> {
-  const tryFetch = async (base: string): Promise<QuoteSummaryResult | null> => {
-    try {
-      const url = `${base}${encodeURIComponent(ticker)}?modules=summaryDetail%2CcalendarEvents%2CassetProfile&formatted=false`;
-      const res = await fetch(url, { headers: { Accept: 'application/json' } });
-      if (!res.ok) return null;
-      const json = await res.json() as {
-        quoteSummary?: {
-          result?: Array<{
-            summaryDetail?: {
-              exDividendDate?: { raw?: number } | number;
-            };
-            calendarEvents?: {
-              exDividendDate?: { raw?: number } | number;
-              dividendDate?: { raw?: number } | number;
-            };
-            assetProfile?: { country?: string };
-          }>;
+  const BASES = [
+    '/api/finance/v10/finance/quoteSummary/',
+    '/api/finance2/v10/finance/quoteSummary/',
+    '/api/finance/v11/finance/quoteSummary/',
+  ];
+  const MODULE_SETS = [
+    'summaryDetail%2CcalendarEvents%2CassetProfile',
+    'summaryDetail%2CcalendarEvents',
+    'summaryDetail',
+  ];
+
+  for (const base of BASES) {
+    for (const modules of MODULE_SETS) {
+      try {
+        const url = `${base}${encodeURIComponent(ticker)}?modules=${modules}&formatted=false&lang=en-US&region=US`;
+        const res = await fetch(url, {
+          headers: {
+            'Accept': 'application/json',
+            'Accept-Language': 'en-US,en;q=0.9',
+          },
+        });
+        if (!res.ok) continue;
+        const json = await res.json() as {
+          quoteSummary?: {
+            result?: Array<{
+              summaryDetail?: {
+                exDividendDate?: RawNum;
+                dividendRate?:   RawNum;
+                dividendYield?:  RawNum;
+              };
+              calendarEvents?: {
+                exDividendDate?: RawNum;
+                dividendDate?:   RawNum;
+              };
+              assetProfile?: { country?: RawStr };
+            }>;
+            error?: unknown;
+          };
         };
-      };
-      const r = json?.quoteSummary?.result?.[0];
-      if (!r) return null;
+        if (json?.quoteSummary?.error) continue;
+        const r = json?.quoteSummary?.result?.[0];
+        if (!r) continue;
 
-      const sd = r.summaryDetail ?? {};
-      const ce = r.calendarEvents ?? {};
-      const ap = r.assetProfile ?? {};
+        const sd = r.summaryDetail  ?? {};
+        const ce = r.calendarEvents ?? {};
+        const ap = r.assetProfile   ?? {};
 
-      const tsToDate = (v?: { raw?: number } | number): string | null => {
-        const ts = typeof v === 'number' ? v : v?.raw;
-        return ts ? new Date(ts * 1000).toISOString().split('T')[0] : null;
-      };
+        const dividendRate  = toNum(sd.dividendRate);
+        const dividendYield = toNum(sd.dividendYield);
+        const exDivDate     = tsToDate(ce.exDividendDate ?? sd.exDividendDate);
+        const divPayDate    = tsToDate(ce.dividendDate);
+        const country       = toStr(ap.country) ?? countryFromSuffix(ticker);
 
-      const exDivDate  = tsToDate(ce.exDividendDate ?? sd.exDividendDate);
-      const divPayDate = tsToDate(ce.dividendDate);
-      const country    = ap.country ?? null;
-
-      return { exDivDate, divPayDate, country };
-    } catch {
-      return null;
+        return { exDivDate, divPayDate, country, dividendRate, dividendYield };
+      } catch {
+        continue;
+      }
     }
-  };
+  }
 
-  return (
-    (await tryFetch('/api/finance/v11/finance/quoteSummary/')) ??
-    (await tryFetch('/api/finance/v10/finance/quoteSummary/'))
-  );
+  // All endpoints failed: at least provide exchange-inferred country
+  return {
+    exDivDate: null, divPayDate: null,
+    country: countryFromSuffix(ticker),
+    dividendRate: null, dividendYield: null,
+  };
 }
 
 // Preferred exchange suffixes for European investors, in priority order.
@@ -249,19 +310,28 @@ export async function fetchPricesWithFX(tickers: string[]): Promise<FetchResult>
       }
     }
 
-    // Dividend: prefer forward rate, fall back to trailing (both from chart meta)
-    const divRateLocal = meta.dividendRate ?? meta.trailingAnnualDividendRate ?? 0;
-    const divYield     = meta.dividendYield ?? meta.trailingAnnualDividendYield ?? 0;
+    const summary = summaryResults[i];
+
+    // Dividend: quoteSummary summaryDetail is primary (more reliable than chart meta).
+    // Fall back to chart meta trailing fields if quoteSummary didn't return values.
+    const divRateLocal =
+      summary?.dividendRate ??
+      meta.dividendRate ??
+      meta.trailingAnnualDividendRate ??
+      0;
+    const divYield =
+      summary?.dividendYield ??
+      meta.dividendYield ??
+      meta.trailingAnnualDividendYield ??
+      0;
 
     let dividendPerShareEur: number | undefined;
     let dividendYieldOut: number | undefined;
 
     if (divRateLocal > 0 || divYield > 0) {
-      dividendYieldOut     = divYield || undefined;
-      dividendPerShareEur  = divRateLocal > 0 ? divRateLocal * rate : undefined;
+      dividendYieldOut    = divYield   > 0 ? divYield    : undefined;
+      dividendPerShareEur = divRateLocal > 0 ? divRateLocal * rate : undefined;
     }
-
-    const summary = summaryResults[i];
 
     quotes[ticker] = {
       priceEur,
