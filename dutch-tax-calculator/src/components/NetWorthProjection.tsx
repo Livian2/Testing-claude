@@ -309,7 +309,7 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
   const last = points[points.length - 1];
   const breakEvenYear = now.netWorth < 0 ? (points.find(p => p.netWorth >= 0)?.year ?? null) : null;
 
-  const periodOptions = [10, 20, 30];
+  const periodOptions = [10, 20, 30, 40, 50];
 
   // ── SVG hover handling ──────────────────────────────────────────────────────
   const onSvgMouseMove = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
