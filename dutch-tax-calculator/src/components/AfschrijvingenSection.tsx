@@ -350,6 +350,13 @@ export default function AfschrijvingenSection({ data, taxYear, onChange }: Props
                       </tr>
                     );
                   })}
+
+                  {/* Category subtotal row (left panel — label only for alignment) */}
+                  <tr className="border-b border-slate-200 dark:border-slate-600 bg-slate-100/60 dark:bg-slate-800/60">
+                    <td colSpan={7} className="px-3 py-1 text-xs font-semibold text-slate-500 dark:text-slate-400 italic text-right">
+                      {cat.naam}
+                    </td>
+                  </tr>
                 </tbody>
               );
             })}
@@ -387,12 +394,10 @@ export default function AfschrijvingenSection({ data, taxYear, onChange }: Props
               const catDeps = catDeposits.get(cat.id) ?? new Float64Array(years.length);
               return (
                 <tbody key={cat.id}>
-                  {/* Category header — year totals */}
+                  {/* Category header — empty (name is in left panel) */}
                   <tr className={ROW_CAT}>
-                    {years.map((y, i) => (
-                      <td key={y} className="px-2 py-1 text-right text-xs font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800">
-                        {(catDeps[i] ?? 0) > 0 ? nl2.format(catDeps[i]) : ''}
-                      </td>
+                    {years.map(y => (
+                      <td key={y} className="px-2 py-1 bg-slate-100 dark:bg-slate-800" />
                     ))}
                   </tr>
 
@@ -424,6 +429,19 @@ export default function AfschrijvingenSection({ data, taxYear, onChange }: Props
                       </tr>
                     );
                   })}
+
+                  {/* Category subtotal row */}
+                  <tr className="border-b border-slate-200 dark:border-slate-600 bg-slate-100/60 dark:bg-slate-800/60">
+                    {years.map((y, i) => {
+                      const val = catDeps[i] ?? 0;
+                      const isCurrent = y === taxYear;
+                      return (
+                        <td key={y} className={`px-2 py-1 text-right text-xs font-semibold ${isCurrent ? 'text-orange-700' : 'text-slate-600 dark:text-slate-300'}`}>
+                          {val > 0 ? nl2.format(val) : ''}
+                        </td>
+                      );
+                    })}
+                  </tr>
                 </tbody>
               );
             })}

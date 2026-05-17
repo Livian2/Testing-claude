@@ -51,7 +51,7 @@ const DEFAULT_DATA: TaxFormData = {
   },
 };
 
-const APP_VERSION         = 'v1.11.2';
+const APP_VERSION         = 'v1.11.3';
 
 const STORAGE_KEY         = 'nl-belasting-data-v1';
 const PROGNOSE_STORAGE_KEY = 'nl-belasting-prognose-v1';
