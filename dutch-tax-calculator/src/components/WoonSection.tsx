@@ -173,8 +173,8 @@ function HypotheekCard({
   const [open, setOpen] = useState(true);
 
   const HYPOTHEEK_TYPES: { value: HypotheekType; label: string; desc: string; tip: string }[] = [
-    { value: 'annuiteit',        label: t.housing.annuity,       desc: t.housing.annuityDesc,      tip: 'Vaste maandlast gedurende de hele looptijd. Aan het begin betaalt u vooral rente, aan het einde vooral aflossing.' },
-    { value: 'lineair',          label: t.housing.linear,        desc: t.housing.linearDesc,       tip: 'Elke maand lost u een vast bedrag af. De rente daalt elk jaar, dus uw maandlast wordt steeds lager.' },
+    { value: 'annuiteit',        label: t.housing.annuity,       desc: t.housing.annuityDesc,      tip: t.housing.annuityTip },
+    { value: 'lineair',          label: t.housing.linear,        desc: t.housing.linearDesc,       tip: t.housing.linearTip },
     { value: 'aflossingsvrijij', label: t.housing.interestOnly,  desc: t.housing.interestOnlyDesc, tip: t.housing.interestOnlyTip },
   ];
 
@@ -243,14 +243,13 @@ function HypotheekCard({
           {/* Inputs */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <CurrencyInput
-              label="Leningbedrag"
-              hint="Oorspronkelijke hoofdsom"
+              label={t.housing.loanAmount}
               value={hyp.leningBedrag}
               onChange={v => onUpdate({ leningBedrag: v })}
-              tooltip={<InfoTooltip tip="Het oorspronkelijk geleende bedrag van de hypotheek." />}
+              tooltip={<InfoTooltip tip={t.housing.loanAmountTip} />}
             />
             <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-slate-700 dark:text-slate-200 flex items-center gap-1">Rentepercentage <InfoTooltip tip="Het jaarlijkse rentepercentage dat u betaalt over de hypotheekschuld." /></label>
+              <label className="text-sm font-medium text-slate-700 dark:text-slate-200 flex items-center gap-1">{t.housing.interestRate} <InfoTooltip tip={t.housing.interestRateTip} /></label>
               <div className="relative">
                 <input type="number" min="0" max="20" step="0.01" value={hyp.rentePercentage || ''}
                   onChange={e => onUpdate({ rentePercentage: parseFloat(e.target.value) || 0 })}
@@ -261,7 +260,7 @@ function HypotheekCard({
               </div>
             </div>
             <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-slate-700 dark:text-slate-200 flex items-center gap-1">Rentevaste periode <InfoTooltip tip="Het aantal jaren dat uw rente vaststaat. Na deze periode wordt de rente opnieuw vastgesteld op basis van de marktrente." /></label>
+              <label className="text-sm font-medium text-slate-700 dark:text-slate-200 flex items-center gap-1">{t.housing.fixedRatePeriod} <InfoTooltip tip={t.housing.fixedRatePeriodTip} /></label>
               <div className="relative">
                 <input type="number" min="1" max="30" step="1" value={hyp.rentevastePeriode || ''}
                   onChange={e => onUpdate({ rentevastePeriode: parseInt(e.target.value) || 0 })}
@@ -272,7 +271,7 @@ function HypotheekCard({
               </div>
             </div>
             <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-slate-700 dark:text-slate-200 flex items-center gap-1">Looptijd lening <InfoTooltip tip="De totale duur van de hypotheek in maanden. Standaard is 360 maanden (30 jaar)." /></label>
+              <label className="text-sm font-medium text-slate-700 dark:text-slate-200 flex items-center gap-1">{t.housing.duration} <InfoTooltip tip={t.housing.durationTip} /></label>
               <div className="relative">
                 <input type="number" min="1" max="480" step="1" value={hyp.looptijd || ''}
                   onChange={e => onUpdate({ looptijd: parseInt(e.target.value) || 0 })}
@@ -296,12 +295,12 @@ function HypotheekCard({
               />
             </div>
             <CurrencyInput
-              label="Extra aflossing per maand"
-              hint="Wordt op de 15de van elke maand betaald (optioneel)"
+              label={t.housing.extraRepayment}
+              hint={t.housing.extraRepaymentHint}
               value={hyp.extraAflossingMaandelijks ?? 0}
               onChange={v => onUpdate({ extraAflossingMaandelijks: v > 0 ? v : undefined })}
               suffix="/mnd"
-              tooltip={<InfoTooltip tip="Een extra bedrag dat u bovenop uw normale maandlast aflost. Dit versnelt de aflossing en bespaart rentekosten." />}
+              tooltip={<InfoTooltip tip={t.housing.extraRepaymentTip} />}
             />
           </div>
 
@@ -381,7 +380,7 @@ export default function WoonSection({ data, taxYear, onChange }: Props) {
   return (
     <div className="space-y-4">
       {/* Woningtype */}
-      <SectionCard title={<span className="flex items-center gap-1.5">{t.housing.sectionTitle} <InfoTooltip tip="Kies 'Huur' als u een huurwoning heeft. Kies 'Hypotheek' als u een eigen woning bezit met een lening." /></span>} icon={<Home size={20} />} accent="border-teal-400">
+      <SectionCard title={<span className="flex items-center gap-1.5">{t.housing.sectionTitle} <InfoTooltip tip={t.housing.sectionTip} /></span>} icon={<Home size={20} />} accent="border-teal-400">
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-2">
             {(['huur', 'hypotheek'] as WoningType[]).map(woningType => (
@@ -402,7 +401,7 @@ export default function WoonSection({ data, taxYear, onChange }: Props) {
             <div className="space-y-3">
               <CurrencyInput label={t.housing.monthlyRent} hint={t.housing.monthlyRentHint}
                 value={data.maandhuur} onChange={v => onChange({ ...data, maandhuur: v })}
-                tooltip={<InfoTooltip tip="De kale huurprijs per maand zonder servicekosten of gas/water/licht." />}
+                tooltip={<InfoTooltip tip={t.housing.monthlyRentTip} />}
               />
               <label className="flex items-center gap-2.5 cursor-pointer select-none py-2 px-3 bg-teal-50 dark:bg-teal-900/20 border border-teal-200 dark:border-teal-800 rounded-xl">
                 <input
@@ -514,11 +513,11 @@ export default function WoonSection({ data, taxYear, onChange }: Props) {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <CurrencyInput label={t.housing.gasWaterElec} hint={t.housing.gasWaterElecHint}
             value={data.gwe} onChange={v => onChange({ ...data, gwe: v })}
-            tooltip={<InfoTooltip tip="Uw gemiddelde maandelijkse energiekosten (gas, elektriciteit, water)." />}
+            tooltip={<InfoTooltip tip={t.housing.gasWaterElecTip} />}
           />
           <CurrencyInput label={t.housing.vve} hint={t.housing.vveHint}
             value={data.vve} onChange={v => onChange({ ...data, vve: v })}
-            tooltip={<InfoTooltip tip="Maandelijkse bijdrage aan de Vereniging van Eigenaren. Alleen van toepassing bij een appartement." />}
+            tooltip={<InfoTooltip tip={t.housing.vveTip} />}
           />
           <CurrencyInput label={t.housing.other} hint={t.housing.otherHint}
             value={data.overig} onChange={v => onChange({ ...data, overig: v })} />

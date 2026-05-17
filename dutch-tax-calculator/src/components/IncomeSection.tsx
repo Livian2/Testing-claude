@@ -25,10 +25,10 @@ export default function IncomeSection({ data, onChange }: Props) {
   const [open, setOpen] = useState<Set<keyof IncomeData>>(new Set());
 
   const OPTIONAL_FIELDS: ToggleField[] = [
-    { key: 'freelanceIncome',      label: t.income.freelance,       hint: t.income.freelanceHint,       tip: 'Netto winst uit uw onderneming (omzet minus zakelijke kosten). Vul de winst vóór inkomstenbelasting in.' },
-    { key: 'rentalIncome',         label: t.income.rental,          hint: t.income.rentalHint,          tip: 'Inkomsten uit verhuur van een deel van uw eigen woning (bijv. een kamer). Verhuur van een tweede woning valt in Box 3.' },
-    { key: 'otherBox1Income',      label: t.income.otherBox1,       hint: t.income.otherBox1Hint,       tip: 'Andere inkomsten die in Box 1 vallen: AOW, pensioen, WW-uitkering, ziektewet, etc.' },
-    { key: 'pensionContributions', label: t.income.pensionContrib,  hint: t.income.pensionContribHint,  tip: 'Betalingen op een lijfrentepolis of bankspaarrekening die u mag aftrekken van uw Box 1 inkomen. Raadpleeg uw jaaropgave.' },
+    { key: 'freelanceIncome',      label: t.income.freelance,       hint: t.income.freelanceHint,       tip: t.income.freelanceTip },
+    { key: 'rentalIncome',         label: t.income.rental,          hint: t.income.rentalHint,          tip: t.income.rentalTip },
+    { key: 'otherBox1Income',      label: t.income.otherBox1,       hint: t.income.otherBox1Hint,       tip: t.income.otherBox1Tip },
+    { key: 'pensionContributions', label: t.income.pensionContrib,  hint: t.income.pensionContribHint,  tip: t.income.pensionContribTip },
   ];
 
   const set = (key: keyof IncomeData) => (v: number) => onChange({ ...data, [key]: v });
@@ -54,7 +54,7 @@ export default function IncomeSection({ data, onChange }: Props) {
           hint={t.income.grossSalaryHint}
           value={data.grossSalary}
           onChange={set('grossSalary')}
-          tooltip={<InfoTooltip tip="Uw totale brutoloon van uw werkgever vóór belastingaftrek en premies. Dit staat op uw loonstrook als 'Bruto loon'." />}
+          tooltip={<InfoTooltip tip={t.income.grossSalaryTip} />}
         />
 
         <div className="space-y-2 pt-1">

@@ -86,7 +86,7 @@ function SchuldCard({ item, taxYear, onUpdate, onRemove, canRemove, accent, isDu
               hint={isDuo ? t.debts.debtAtRenteStart : t.debts.balanceLabel}
               value={item.bedrag}
               onChange={v => onUpdate({ bedrag: v })}
-              tooltip={<InfoTooltip tip="Het uitstaande schuldbedrag op het moment dat de rente begint te lopen (startJaar). Voor DUO is dit het totaal geleende bedrag bij afstuderen." />}
+              tooltip={<InfoTooltip tip={t.debts.debtAtRenteStartTip} />}
             />
           </div>
 
@@ -127,7 +127,7 @@ function SchuldCard({ item, taxYear, onUpdate, onRemove, canRemove, accent, isDu
               {/* Lening start — when borrowing began (before interest) */}
               <div className="flex flex-col gap-1">
                 <label className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                  {t.debts.loanStart} <span className="text-slate-400 dark:text-slate-500 font-normal">— {t.debts.loanStartHint}</span> <InfoTooltip tip="Het jaar waarin u de lening heeft afgesloten en geld begon te lenen. Vóór de startjaar rente loopt er nog geen rente." />
+                  {t.debts.loanStart} <span className="text-slate-400 dark:text-slate-500 font-normal">— {t.debts.loanStartHint}</span> <InfoTooltip tip={t.debts.loanStartTip} />
                 </label>
                 <input
                   type="number" min={1990} max={2100}
@@ -144,7 +144,7 @@ function SchuldCard({ item, taxYear, onUpdate, onRemove, canRemove, accent, isDu
               {/* Aflossing start — 15/35-year clock */}
               <div className="flex flex-col gap-1">
                 <label className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                  {t.debts.repaymentStart} <span className="text-slate-400 dark:text-slate-500 font-normal">— {t.debts.repaymentStartHint}</span> <InfoTooltip tip="Het jaar waarvanaf de 15- of 35-jaar terugbetalingstermijn begint. Na deze termijn wordt de restschuld kwijtgescholden." />
+                  {t.debts.repaymentStart} <span className="text-slate-400 dark:text-slate-500 font-normal">— {t.debts.repaymentStartHint}</span> <InfoTooltip tip={t.debts.repaymentStartTip} />
                 </label>
                 <input
                   type="number" min={1990} max={2100}

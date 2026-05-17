@@ -49,6 +49,11 @@ export const translations = {
       otherBox1Hint:       'AOW, pensioen, uitkering, etc.',
       pensionContrib:      'Lijfrentepremies (aftrekbaar)',
       pensionContribHint:  'Storting op lijfrentepolis of banksparen',
+      grossSalaryTip:      'Uw totale brutoloon van uw werkgever vóór belastingaftrek en premies. Staat op uw loonstrook als \'Bruto loon\'.',
+      freelanceTip:        'Netto winst uit uw onderneming (omzet minus zakelijke kosten). Vul de winst vóór inkomstenbelasting in.',
+      rentalTip:           'Inkomsten uit verhuur van een deel van uw eigen woning (bijv. een kamer). Verhuur van een tweede woning valt in Box 3.',
+      otherBox1Tip:        'Andere inkomsten die in Box 1 vallen: AOW, pensioen, WW-uitkering, ziektewet, etc.',
+      pensionContribTip:   'Betalingen op een lijfrentepolis of bankspaarrekening die u mag aftrekken van uw Box 1 inkomen. Raadpleeg uw jaaropgave.',
     },
 
     // ── Housing ─────────────────────────────────────────────────────────────
@@ -95,6 +100,17 @@ export const translations = {
       ewfHigherWarning:   'Let op: uw EWF ({ewf}) is hoger dan uw rente ({rente}). Er is geen HRA-voordeel; het positieve eigenwoninginkomen wordt gedeeltelijk belast (Wet Hillen afbouw).',
       otherCostsTitle:    'Overige woonlasten — per maand',
       otherHint:          'Onderhoud, gemeentelijke heffingen',
+      sectionTip:          'Kies \'Huur\' als u een huurwoning heeft. Kies \'Hypotheek\' als u een eigen woning bezit met een lening.',
+      annuityTip:          'Vaste maandlast gedurende de hele looptijd. Aan het begin betaalt u vooral rente, aan het einde vooral aflossing.',
+      linearTip:           'Elke maand lost u een vast bedrag af. De rente daalt elk jaar, dus uw maandlast wordt steeds lager.',
+      loanAmountTip:       'Het oorspronkelijk geleende bedrag van de hypotheek.',
+      interestRateTip:     'Het jaarlijkse rentepercentage dat u betaalt over de hypotheekschuld.',
+      fixedRatePeriodTip:  'Het aantal jaren dat uw rente vaststaat. Na deze periode wordt de rente opnieuw vastgesteld op basis van de marktrente.',
+      durationTip:         'De totale duur van de hypotheek in maanden. Standaard is 360 maanden (30 jaar).',
+      extraRepaymentTip:   'Een extra bedrag dat u bovenop uw normale maandlast aflost. Dit versnelt de aflossing en bespaart rentekosten.',
+      monthlyRentTip:      'De kale huurprijs per maand zonder servicekosten of gas/water/licht.',
+      gasWaterElecTip:     'Uw gemiddelde maandelijkse energiekosten (gas, elektriciteit, water).',
+      vveTip:              'Maandelijkse bijdrage aan de Vereniging van Eigenaren. Alleen van toepassing bij een appartement.',
     },
 
     // ── Values (Box 3) ──────────────────────────────────────────────────────
@@ -208,6 +224,9 @@ export const translations = {
       summaryThresholdTip:     'De eerste €3.700 aan schulden per persoon is niet aftrekbaar in Box 3. Alleen het bedrag daarboven verlaagt uw belastbare vermogen.',
       perYear:                 '/jr',
       underThresholdFull:      'Uw inkomen ({income}) ligt onder de draagkrachtvrije voet ({drempel}). U betaalt momenteel niets aan DUO.',
+      debtAtRenteStartTip:     'Het uitstaande schuldbedrag op het moment dat de rente begint te lopen (startjaar). Voor DUO is dit het totaal geleende bedrag bij afstuderen.',
+      loanStartTip:            'Het jaar waarin u de lening heeft afgesloten en geld begon te lenen. Vóór het startjaar rente loopt er nog geen rente.',
+      repaymentStartTip:       'Het jaar waarvanaf de 15- of 35-jaar terugbetalingstermijn begint. Na deze termijn wordt de restschuld kwijtgescholden.',
     },
 
     // ── Portfolio ─────────────────────────────────────────────────────────────
@@ -299,6 +318,15 @@ export const translations = {
       savingsPerMonth:  'Sparen/mnd',
       investPerMonth:   'Beleggen/mnd',
       totalOutPerYear:  'Totaal uitgaand/jr',
+      groceriesTooltip:   'Alle uitgaven aan supermarkt, restaurantbezoek, afhaal en andere voeding per maand.',
+      transportTooltip:   'Maandelijkse kosten voor auto (brandstof, verzekering, wegenbelasting), openbaar vervoer, fiets of taxi.',
+      insuranceTooltip:   'Al uw verzekeringspremies: zorgverzekering eigen risico, aansprakelijkheid, inboedel, woonhuis, etc.',
+      healthcareTooltip:  'Zorgkosten die u zelf betaalt boven het vergoede deel: eigen risico, brillen, tandarts, fysiotherapie, etc.',
+      educationTooltip:   'Kosten voor cursussen, studieboeken, streamingdiensten, software-abonnementen, kranten, etc.',
+      leisureTooltip:     'Uitgaven aan sport, hobby\'s, vakantie, uit eten gaan, bioscoop en overige recreatie.',
+      monthlySavingsTip:  'Het bedrag dat u maandelijks overmaakt naar uw spaarrekening. Telt mee als \'sparen\' in uw maandbudget.',
+      monthlyInvestTip:   'Het bedrag dat u maandelijks inlegt in uw beleggingsportefeuille (bijv. automatisch aankoopplan bij een broker).',
+      savingsContribDesc: 'Deze bijdragen worden ook gebruikt in de Prognose om uw toekomstig vermogen te berekenen.',
     },
 
     // ── Savings ──────────────────────────────────────────────────────────────
@@ -810,6 +838,11 @@ export const translations = {
       otherBox1Hint:       'State pension, private pension, benefits, etc.',
       pensionContrib:      'Annuity premiums (deductible)',
       pensionContribHint:  'Contributions to an annuity policy or bank savings',
+      grossSalaryTip:      'Your total gross salary from your employer before tax deductions and contributions. Appears on your payslip as \'Gross salary\'.',
+      freelanceTip:        'Net profit from your business (revenue minus business costs). Enter the profit before income tax.',
+      rentalTip:           'Income from renting out part of your own home (e.g. a room). Renting out a second property falls under Box 3.',
+      otherBox1Tip:        'Other Box 1 income: state pension (AOW), private pension, unemployment benefit, sick pay, etc.',
+      pensionContribTip:   'Contributions to an annuity policy or bank savings account deductible from your Box 1 income. Check your annual income statement.',
     },
 
     // ── Housing ─────────────────────────────────────────────────────────────
@@ -856,6 +889,17 @@ export const translations = {
       ewfHigherWarning:   'Note: your EWF ({ewf}) exceeds your interest ({rente}). No mortgage interest deduction applies; the positive owner-occupied income is partially taxed (Wet Hillen phase-out).',
       otherCostsTitle:    'Other housing costs — per month',
       otherHint:          'Maintenance, municipal levies',
+      sectionTip:          'Choose \'Rental\' if you rent your home. Choose \'Mortgage\' if you own a property with a loan.',
+      annuityTip:          'Fixed monthly payment for the full term. Initially you mostly pay interest; towards the end mostly principal.',
+      linearTip:           'You repay a fixed principal amount each month. The interest decreases yearly, so your monthly payment gets lower over time.',
+      loanAmountTip:       'The original amount borrowed for the mortgage.',
+      interestRateTip:     'The annual interest rate you pay on the mortgage debt.',
+      fixedRatePeriodTip:  'The number of years your interest rate is fixed. After this period the rate is reset based on the market rate.',
+      durationTip:         'The total duration of the mortgage in months. Default is 360 months (30 years).',
+      extraRepaymentTip:   'An extra amount you repay on top of your regular monthly payment. This speeds up repayment and saves interest.',
+      monthlyRentTip:      'The base rent per month excluding service charges or gas/water/electricity.',
+      gasWaterElecTip:     'Your average monthly energy costs (gas, electricity, water).',
+      vveTip:              'Monthly contribution to the homeowners association (VVE). Only applicable for an apartment.',
     },
 
     // ── Values (Box 3) ──────────────────────────────────────────────────────
@@ -967,6 +1011,9 @@ export const translations = {
       investmentDebtsTitle:    'Investment debts',
       summaryThresholdNote:    'Debts reduce your Box 3 wealth. The first €3,700 per person is non-deductible (threshold). Fictitious return on debts:',
       summaryThresholdTip:     'The first €3,700 in debts per person is non-deductible in Box 3. Only the amount above this reduces your taxable wealth.',
+      debtAtRenteStartTip:     'The outstanding debt at the point when interest starts accruing (interest start year). For DUO this is the total borrowed at graduation.',
+      loanStartTip:            'The year you took out the loan and started borrowing. No interest accrues before the interest start year.',
+      repaymentStartTip:       'The year from which the 15- or 35-year repayment term starts. Any remaining debt is written off after this term.',
       perYear:                 '/yr',
       underThresholdFull:      'Your income ({income}) is below the income-free threshold ({drempel}). You currently pay nothing to DUO.',
     },
@@ -1060,6 +1107,15 @@ export const translations = {
       savingsPerMonth:  'Savings/mo',
       investPerMonth:   'Invest/mo',
       totalOutPerYear:  'Total out/yr',
+      groceriesTooltip:   'All monthly spending on supermarkets, restaurants, takeaway and other food.',
+      transportTooltip:   'Monthly costs for car (fuel, insurance, road tax), public transport, bicycle or taxi.',
+      insuranceTooltip:   'All insurance premiums: health deductible, liability, contents, home insurance, etc.',
+      healthcareTooltip:  'Healthcare costs above covered amounts: deductible, glasses, dentist, physiotherapy, etc.',
+      educationTooltip:   'Costs for courses, textbooks, streaming services, software subscriptions, newspapers, etc.',
+      leisureTooltip:     'Spending on sports, hobbies, holidays, dining out, cinema and other leisure activities.',
+      monthlySavingsTip:  'The amount you transfer monthly to your savings account. Counts as \'savings\' in your monthly budget.',
+      monthlyInvestTip:   'The amount you invest monthly in your portfolio (e.g. via an automatic purchase plan at a broker).',
+      savingsContribDesc: 'These contributions are also used in the Forecast tab to calculate your future net worth.',
     },
 
     // ── Savings ──────────────────────────────────────────────────────────────

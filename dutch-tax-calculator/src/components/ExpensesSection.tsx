@@ -19,12 +19,12 @@ export default function ExpensesSection({ data, onChange, savings, onSavingsChan
   const set = (key: keyof ExpensesData) => (v: number) => onChange({ ...data, [key]: v });
 
   const FIELDS: { key: keyof ExpensesData; label: string; tip?: string }[] = [
-    { key: 'groceries',  label: t.expenses.groceries,  tip: 'Alle uitgaven aan supermarkt, restaurantbezoek, afhaal en andere voeding per maand.' },
-    { key: 'transport',  label: t.expenses.transport,  tip: 'Maandelijkse kosten voor auto (brandstof, verzekering, wegenbelasting), openbaar vervoer, fiets of taxi.' },
-    { key: 'insurance',  label: t.expenses.insurance,  tip: 'Al uw verzekeringspremies: zorgverzekering eigen risico, aansprakelijkheid, inboedel, woonhuis, etc.' },
-    { key: 'healthcare', label: t.expenses.healthcare, tip: 'Zorgkosten die u zelf betaalt boven het vergoede deel, zoals het eigen risico, brillen, tandarts of fysiotherapie.' },
-    { key: 'education',  label: t.expenses.education,  tip: 'Kosten voor cursussen, studieboeken, streamingdiensten, software-abonnementen, kranten, etc.' },
-    { key: 'leisure',    label: t.expenses.leisure,    tip: 'Uitgaven aan sport, hobby\'s, vakantie, uit eten gaan, bioscoop en overige recreatie.' },
+    { key: 'groceries',  label: t.expenses.groceries,  tip: t.expenses.groceriesTooltip },
+    { key: 'transport',  label: t.expenses.transport,  tip: t.expenses.transportTooltip },
+    { key: 'insurance',  label: t.expenses.insurance,  tip: t.expenses.insuranceTooltip },
+    { key: 'healthcare', label: t.expenses.healthcare, tip: t.expenses.healthcareTooltip },
+    { key: 'education',  label: t.expenses.education,  tip: t.expenses.educationTooltip },
+    { key: 'leisure',    label: t.expenses.leisure,    tip: t.expenses.leisureTooltip },
     { key: 'other',      label: t.expenses.other },
   ];
 
@@ -56,7 +56,7 @@ export default function ExpensesSection({ data, onChange, savings, onSavingsChan
 
       <SectionCard title={t.expenses.savingsTitle} icon={<PiggyBank size={20} />} accent="border-emerald-400">
         <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
-          Deze bijdragen worden ook gebruikt in de <strong>Prognose</strong> om uw toekomstig vermogen te berekenen.
+          {t.expenses.savingsContribDesc}
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <CurrencyInput
@@ -65,7 +65,7 @@ export default function ExpensesSection({ data, onChange, savings, onSavingsChan
             value={savings.monthlySavingsContribution}
             onChange={v => onSavingsChange({ ...savings, monthlySavingsContribution: v })}
             suffix="/mnd"
-            tooltip={<InfoTooltip tip="Het bedrag dat u maandelijks overmaakt naar uw spaarrekening. Telt mee als 'sparen' in uw maandbudget." />}
+            tooltip={<InfoTooltip tip={t.expenses.monthlySavingsTip} />}
           />
           <CurrencyInput
             label={t.expenses.monthlyInvest}
@@ -73,7 +73,7 @@ export default function ExpensesSection({ data, onChange, savings, onSavingsChan
             value={savings.maandelijksBeleggen}
             onChange={v => onSavingsChange({ ...savings, maandelijksBeleggen: v })}
             suffix="/mnd"
-            tooltip={<InfoTooltip tip="Het bedrag dat u maandelijks inlegt in uw beleggingsportefeuille (bijv. automatische aankoopplan bij een broker)." />}
+            tooltip={<InfoTooltip tip={t.expenses.monthlyInvestTip} />}
           />
         </div>
         <div className="mt-4 grid grid-cols-3 gap-3">
