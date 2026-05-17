@@ -1,4 +1,4 @@
-export type BrokerFormat = 'degiro' | 'ibkr';
+export type BrokerFormat = 'degiro' | 'ibkr' | 'bux';
 
 export interface ImportedTransaction {
   date: string;       // YYYY-MM-DD
@@ -82,6 +82,9 @@ export function detectBroker(content: string): BrokerFormat | null {
   }
   if (firstLine.includes('Datum') && firstLine.includes('Uitvoeringsplaats') && firstLine.includes('ISIN')) {
     return 'degiro';
+  }
+  if (firstLine.includes('Transaction Time (CET)') && firstLine.includes('Transfer Type')) {
+    return 'bux';
   }
   return null;
 }
@@ -243,6 +246,112 @@ export function parseIBKR(content: string, brokerName: string): ParseResult {
   return { transactions, skipped, errors, detectedBroker: 'ibkr' };
 }
 
+// ─── BUX parser ──────────────────────────────────────────────────────────────
+// BUX exports a CSV where each trade produces TWO rows with the same Order Partial Id:
+//   ASSET_TRADE_BUY  — the asset side  (positive amount = shares received)
+//   CASH_DEBIT       — the cash side   (negative amount = EUR paid)
+//
+// We process only the CASH_DEBIT rows (category=trades) to get one transaction per
+// order with the actual EUR cost. Fees (category=fees) are skipped.
+//
+// Column layout from header row:
+//   Transaction Time (CET), Transaction Category, Transaction Type, Transfer Type,
+//   Transaction Amount, Transaction Currency, Cash Balance Amount, Asset Id, Asset Name,
+//   Asset Quantity, Asset Price, Asset Currency, Currency Pair, Exchange Rate, ...
+//   Transaction Description
+export function parseBux(content: string, brokerName: string): ParseResult {
+  const rows = parseCSV(content);
+  if (rows.length < 2) return { transactions: [], skipped: 0, errors: ['Geen data gevonden in CSV.'] };
+
+  const headers = rows[0].map(h => h.trim());
+  const col = (name: string) => headers.indexOf(name);
+
+  const COL_TIME     = col('Transaction Time (CET)');
+  const COL_CATEGORY = col('Transaction Category');
+  const COL_TX_TYPE  = col('Transaction Type');
+  const COL_TRANSFER = col('Transfer Type');
+  const COL_AMOUNT   = col('Transaction Amount');
+  const COL_CURRENCY = col('Transaction Currency');
+  const COL_ISIN     = col('Asset Id');
+  const COL_NAME     = col('Asset Name');
+  const COL_QTY      = col('Asset Quantity');
+  const COL_RATE     = col('Exchange Rate');
+  const COL_DESC     = col('Transaction Description');
+
+  if (COL_TIME < 0 || COL_AMOUNT < 0 || COL_ISIN < 0) {
+    return { transactions: [], skipped: 0, errors: ['Kolommen niet herkend. Controleer het BUX CSV-formaat.'] };
+  }
+
+  const transactions: ImportedTransaction[] = [];
+  const errors: string[] = [];
+  let skipped = 0;
+
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i];
+    if (row.length < 5) { skipped++; continue; }
+
+    const category = row[COL_CATEGORY]?.trim() ?? '';
+    const transfer = row[COL_TRANSFER]?.trim() ?? '';
+
+    // Only process the cash side of a trade; the asset side and all fees are skipped
+    if (category !== 'trades' || transfer !== 'CASH_DEBIT') { skipped++; continue; }
+
+    try {
+      const timeStr  = row[COL_TIME]?.trim() ?? '';
+      const dateStr  = timeStr.split(' ')[0] ?? '';          // YYYY-MM-DD from "YYYY-MM-DD HH:mm:ss..."
+      const txType   = row[COL_TX_TYPE]?.trim() ?? '';
+      const isin     = row[COL_ISIN]?.trim() ?? '';
+      const name     = row[COL_NAME]?.trim() ?? '';
+      const qtyStr   = row[COL_QTY]?.trim() ?? '';
+      const amtStr   = row[COL_AMOUNT]?.trim() ?? '';
+      const currency = row[COL_CURRENCY]?.trim() || 'EUR';
+      const rateStr  = row[COL_RATE]?.trim() ?? '';
+      const descStr  = row[COL_DESC]?.trim() ?? '';
+
+      if (!name || !isin || !qtyStr || !amtStr) { skipped++; continue; }
+
+      const qty = parseFloat(qtyStr);
+      const amt = parseFloat(amtStr);   // negative for buys, positive for sells
+
+      if (isNaN(qty) || qty === 0 || isNaN(amt)) { skipped++; continue; }
+
+      const type: 'buy' | 'sell' = txType.toLowerCase().includes('sell') ? 'sell' : 'buy';
+      const quantity = Math.abs(qty);
+      const totalEur = Math.abs(amt);
+      const priceEur = quantity > 0 ? totalEur / quantity : 0;
+
+      // Extract UUID from "Order Partial Id: UUID - 1" or "Order Id: UUID"
+      const orderMatch = /Order (?:Partial )?Id: ([0-9a-f-]{36})/i.exec(descStr);
+      const orderId = orderMatch ? orderMatch[1] : `${dateStr}|${isin}|${qtyStr}|${amtStr}`;
+
+      const warnings: string[] = [];
+      if (currency !== 'EUR') {
+        const rate = parseFloat(rateStr);
+        warnings.push(`FX ${currency}/EUR${!isNaN(rate) ? ` @ ${rate}` : ''} — EUR bedrag al verwerkt.`);
+      }
+
+      transactions.push({
+        date: dateStr,
+        holdingName: name,
+        isin,
+        ticker: '',
+        type,
+        quantity,
+        priceEur,
+        currency,
+        broker: brokerName,
+        orderId,
+        warnings,
+      });
+    } catch {
+      errors.push(`Rij ${i + 1} kon niet worden verwerkt.`);
+      skipped++;
+    }
+  }
+
+  return { transactions, skipped, errors, detectedBroker: 'bux' };
+}
+
 // ─── Dispatcher ─────────────────────────────────────────────────────────────
 export function parseBrokerCSV(
   content: string,
@@ -251,5 +360,6 @@ export function parseBrokerCSV(
 ): ParseResult {
   if (broker === 'degiro') return parseDeGiro(content, brokerName);
   if (broker === 'ibkr')   return parseIBKR(content, brokerName);
+  if (broker === 'bux')    return parseBux(content, brokerName);
   return { transactions: [], skipped: 0, errors: [`Broker format '${broker}' niet ondersteund.`] };
 }

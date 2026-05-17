@@ -26,8 +26,9 @@ interface BrokerDef {
 }
 
 const BROKERS: BrokerDef[] = [
-  { id: 'degiro', name: 'DEGIRO',                    description: 'Transacties CSV via "Exporteer"',          available: true, color: 'border-green-500 bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-300' },
-  { id: 'ibkr',   name: 'Interactive Brokers (IBKR)', description: 'Transaction History CSV via Flex Query',  available: true, color: 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300' },
+  { id: 'degiro', name: 'DEGIRO',                    description: 'Transacties CSV via "Exporteer"',                          available: true, color: 'border-green-500 bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-300' },
+  { id: 'ibkr',   name: 'Interactive Brokers (IBKR)', description: 'Transaction History CSV via Flex Query',                  available: true, color: 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300' },
+  { id: 'bux',    name: 'BUX',                        description: 'Transaction history CSV via Account → Transaction history', available: true, color: 'border-orange-500 bg-orange-50 dark:bg-orange-900/20 text-orange-800 dark:text-orange-300' },
 ];
 
 const COMING_SOON = [
@@ -212,6 +213,7 @@ export default function CsvImportPanel({ existingTransactions, existingHoldings,
           <span className="space-y-1 block">
             <span className="block"><strong>DEGIRO:</strong> ga naar <em>Account → Transacties</em> en klik op <em>Exporteer</em> (CSV). Selecteer de gewenste periode en download het bestand.</span>
             <span className="block"><strong>IBKR:</strong> ga naar <em>Reports → Flex Queries</em> en maak een <em>Transaction History</em> rapport aan, of gebruik <em>Activity → Statements → Transaction History</em> en exporteer als CSV.</span>
+            <span className="block"><strong>BUX:</strong> ga naar <em>Account → Transaction history</em>, kies de gewenste periode en klik op het download-icoon (CSV).</span>
           </span>
         </div>
       </div>
