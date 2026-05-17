@@ -5,6 +5,7 @@ import type {
   SchenkingRelatie, SchenkingVrijstelling,
 } from '../types';
 import { berekenSchenking } from '../utils/taxCalculations';
+import { useLanguage } from '../i18n/LanguageContext';
 import SectionCard from './SectionCard';
 import InfoTooltip from './InfoTooltip';
 
@@ -19,13 +20,6 @@ function uid() { return Math.random().toString(36).slice(2); }
 const nl2 = new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const nl0 = new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
 
-const VRIJSTELLING_LABELS: Record<SchenkingVrijstelling, string> = {
-  jaarlijks:       'Jaarlijkse vrijstelling',
-  eenmalig_vrij:   'Eenmalig verhoogd (vrij besteedbaar)',
-  eenmalig_studie: 'Eenmalig verhoogd (dure studie)',
-  geen:            'Geen vrijstelling',
-};
-
 // Tarieven 2026
 const TARIEVEN = {
   ouder:  [{ tot: 144948, pct: 10 }, { pct: 20 }],
@@ -33,6 +27,8 @@ const TARIEVEN = {
 };
 
 export default function SchenkingenSection({ data, taxYear, onChange }: Props) {
+  const { t } = useLanguage();
+  const s = t.schenkingen;
   const [showTips, setShowTips] = useState(false);
 
   const addSchenking = useCallback(() => {
@@ -49,22 +45,29 @@ export default function SchenkingenSection({ data, taxYear, onChange }: Props) {
   const updateItem = useCallback((id: string, patch: Partial<SchenkingItem>) => {
     onChange({
       ...data,
-      schenkingen: data.schenkingen.map(s => s.id === id ? { ...s, ...patch } : s),
+      schenkingen: data.schenkingen.map(item => item.id === id ? { ...item, ...patch } : item),
     });
   }, [data, onChange]);
 
   const removeItem = useCallback((id: string) => {
-    onChange({ ...data, schenkingen: data.schenkingen.filter(s => s.id !== id) });
+    onChange({ ...data, schenkingen: data.schenkingen.filter(item => item.id !== id) });
   }, [data, onChange]);
 
-  const totals = data.schenkingen.map(s => berekenSchenking(s, taxYear));
-  const totalBedrag     = totals.reduce((a, c) => a + c.bedrag,     0);
+  const totals = data.schenkingen.map(item => berekenSchenking(item, taxYear));
+  const totalBedrag      = totals.reduce((a, c) => a + c.bedrag,      0);
   const totalVrijgesteld = totals.reduce((a, c) => a + c.vrijgesteld, 0);
-  const totalBelasting  = totals.reduce((a, c) => a + c.belasting,  0);
-  const totalNetto      = totals.reduce((a, c) => a + c.netOntvangen, 0);
+  const totalBelasting   = totals.reduce((a, c) => a + c.belasting,   0);
+  const totalNetto       = totals.reduce((a, c) => a + c.netOntvangen, 0);
+
+  const vrijstellingLabel = (v: SchenkingVrijstelling) => ({
+    jaarlijks:       s.vrijstellingAnnual,
+    eenmalig_vrij:   s.vrijstellingFree,
+    eenmalig_studie: s.vrijstellingStudy,
+    geen:            s.vrijstellingNone,
+  }[v]);
 
   return (
-    <SectionCard title="Schenkingen" icon={<Gift size={16} />} accent="border-purple-400">
+    <SectionCard title={s.sectionTitle} icon={<Gift size={16} />} accent="border-purple-400">
       <div className="space-y-4">
 
         {/* Tax info box */}
@@ -74,57 +77,54 @@ export default function SchenkingenSection({ data, taxYear, onChange }: Props) {
             onClick={() => setShowTips(v => !v)}
           >
             <Info size={14} />
-            Schenkbelasting {taxYear} — regels &amp; tarieven
+            {s.infoHeader} {taxYear} {s.infoSubtitle}
             <span className="ml-auto text-purple-500">{showTips ? '▲' : '▼'}</span>
           </button>
           {showTips && (
             <div className="space-y-2 pt-1">
-              <p className="font-semibold">Vrijstellingen ({taxYear})</p>
+              <p className="font-semibold">{s.exemptionsTitle} ({taxYear})</p>
               <table className="w-full text-xs border-collapse">
                 <thead>
                   <tr className="border-b border-purple-300 dark:border-purple-700">
-                    <th className="text-left py-1 pr-3">Vrijstelling</th>
-                    <th className="text-right py-1 pr-3">Ouder → kind</th>
-                    <th className="text-right py-1">Overig</th>
+                    <th className="text-left py-1 pr-3">{s.colExemption}</th>
+                    <th className="text-right py-1 pr-3">{s.colParentChild}</th>
+                    <th className="text-right py-1">{s.colOther}</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr>
-                    <td className="py-0.5 pr-3">Jaarlijks</td>
+                    <td className="py-0.5 pr-3">{s.rowAnnual}</td>
                     <td className="text-right pr-3">€ 6.908</td>
                     <td className="text-right">€ 2.784</td>
                   </tr>
                   <tr>
-                    <td className="py-0.5 pr-3">Eenmalig vrij (18–40 jr)</td>
+                    <td className="py-0.5 pr-3">{s.rowOneTimeFree}</td>
                     <td className="text-right pr-3">€ 33.241</td>
-                    <td className="text-right text-purple-400">n.v.t.</td>
+                    <td className="text-right text-purple-400">{s.notApplicable}</td>
                   </tr>
                   <tr>
-                    <td className="py-0.5 pr-3">Eenmalig studie (18–40 jr)</td>
+                    <td className="py-0.5 pr-3">{s.rowOneTimeStudy}</td>
                     <td className="text-right pr-3">€ 69.225</td>
-                    <td className="text-right text-purple-400">n.v.t.</td>
+                    <td className="text-right text-purple-400">{s.notApplicable}</td>
                   </tr>
                 </tbody>
               </table>
-              <p className="font-semibold pt-1">Tarieven schenkbelasting</p>
+              <p className="font-semibold pt-1">{s.ratesTitle}</p>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <p className="font-medium mb-0.5">Ouder → kind (tariefgroep I)</p>
+                  <p className="font-medium mb-0.5">{s.rateParent}</p>
                   {TARIEVEN.ouder.map((r, i) => (
-                    <p key={i}>{r.tot ? `t/m ${nl0.format(r.tot)}` : 'daarboven'}: {r.pct}%</p>
+                    <p key={i}>{r.tot ? `${s.upTo} ${nl0.format(r.tot)}` : s.above}: {r.pct}%</p>
                   ))}
                 </div>
                 <div>
-                  <p className="font-medium mb-0.5">Overig (tariefgroep IA/II)</p>
+                  <p className="font-medium mb-0.5">{s.rateOther}</p>
                   {TARIEVEN.overig.map((r, i) => (
-                    <p key={i}>{r.tot ? `t/m ${nl0.format(r.tot)}` : 'daarboven'}: {r.pct}%</p>
+                    <p key={i}>{r.tot ? `${s.upTo} ${nl0.format(r.tot)}` : s.above}: {r.pct}%</p>
                   ))}
                 </div>
               </div>
-              <p className="text-purple-600 dark:text-purple-300 italic pt-1">
-                Eenmalig vrijstellingen vervangen (niet optellen bij) de jaarlijkse vrijstelling.
-                De jubelton (eigen woning) is per 2024 afgeschaft.
-              </p>
+              <p className="text-purple-600 dark:text-purple-300 italic pt-1">{s.disclaimer}</p>
             </div>
           )}
         </div>
@@ -132,7 +132,7 @@ export default function SchenkingenSection({ data, taxYear, onChange }: Props) {
         {/* Gift rows */}
         {data.schenkingen.length === 0 ? (
           <div className="text-center py-8 text-slate-400 dark:text-slate-500 text-sm">
-            Geen schenkingen toegevoegd.
+            {s.noGifts}
           </div>
         ) : (
           <div className="space-y-3">
@@ -144,7 +144,7 @@ export default function SchenkingenSection({ data, taxYear, onChange }: Props) {
                   <div className="flex items-center gap-3">
                     <input
                       className="flex-1 text-sm border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-purple-400 bg-white dark:bg-slate-700 dark:text-slate-100"
-                      placeholder="Omschrijving (bijv. verjaardag, studie…)"
+                      placeholder={s.descriptionPlaceholder}
                       value={item.omschrijving}
                       onChange={e => updateItem(item.id, { omschrijving: e.target.value })}
                     />
@@ -158,7 +158,7 @@ export default function SchenkingenSection({ data, taxYear, onChange }: Props) {
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     {/* Bedrag */}
                     <div>
-                      <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">Ontvangen bedrag</label>
+                      <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">{s.amountLabel}</label>
                       <div className="flex items-center border border-slate-200 dark:border-slate-600 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-purple-400">
                         <span className="px-2 bg-slate-50 dark:bg-slate-700 text-slate-400 text-sm border-r border-slate-200 dark:border-slate-600 select-none py-2">€</span>
                         <input type="number" min={0} step={100}
@@ -172,13 +172,12 @@ export default function SchenkingenSection({ data, taxYear, onChange }: Props) {
 
                     {/* Relatie */}
                     <div>
-                      <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">Van wie</label>
+                      <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">{s.fromWhom}</label>
                       <select
                         className="w-full text-sm border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-purple-400 bg-white dark:bg-slate-700 dark:text-slate-100"
                         value={item.relatie}
                         onChange={e => {
                           const relatie = e.target.value as SchenkingRelatie;
-                          // reset vrijstelling when switching to overig (no eenmalig options)
                           const vrijstelling: SchenkingVrijstelling =
                             relatie === 'overig' && item.vrijstelling !== 'jaarlijks' && item.vrijstelling !== 'geen'
                               ? 'jaarlijks'
@@ -186,30 +185,30 @@ export default function SchenkingenSection({ data, taxYear, onChange }: Props) {
                           updateItem(item.id, { relatie, vrijstelling });
                         }}
                       >
-                        <option value="ouder">Ouder(s)</option>
-                        <option value="overig">Overig (familie, derden)</option>
+                        <option value="ouder">{s.optionParents}</option>
+                        <option value="overig">{s.optionOther}</option>
                       </select>
                     </div>
 
                     {/* Vrijstelling */}
                     <div>
                       <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1 flex items-center gap-1">
-                        Vrijstelling
-                        <InfoTooltip tip="De eenmalig verhoogde vrijstelling kan slechts één keer in uw leven worden gebruikt en vervangt (niet optelt bij) de jaarlijkse vrijstelling. U moet 18–40 jaar zijn." />
+                        {s.exemptionLabel}
+                        <InfoTooltip tip={s.exemptionTooltip} />
                       </label>
                       <select
                         className="w-full text-sm border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-purple-400 bg-white dark:bg-slate-700 dark:text-slate-100"
                         value={item.vrijstelling}
                         onChange={e => updateItem(item.id, { vrijstelling: e.target.value as SchenkingVrijstelling })}
                       >
-                        <option value="jaarlijks">{VRIJSTELLING_LABELS.jaarlijks}</option>
+                        <option value="jaarlijks">{vrijstellingLabel('jaarlijks')}</option>
                         {item.relatie === 'ouder' && (
                           <>
-                            <option value="eenmalig_vrij">{VRIJSTELLING_LABELS.eenmalig_vrij}</option>
-                            <option value="eenmalig_studie">{VRIJSTELLING_LABELS.eenmalig_studie}</option>
+                            <option value="eenmalig_vrij">{vrijstellingLabel('eenmalig_vrij')}</option>
+                            <option value="eenmalig_studie">{vrijstellingLabel('eenmalig_studie')}</option>
                           </>
                         )}
-                        <option value="geen">{VRIJSTELLING_LABELS.geen}</option>
+                        <option value="geen">{vrijstellingLabel('geen')}</option>
                       </select>
                     </div>
                   </div>
@@ -218,22 +217,22 @@ export default function SchenkingenSection({ data, taxYear, onChange }: Props) {
                   {item.bedrag > 0 && (
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 border-t border-slate-100 dark:border-slate-700">
                       <div>
-                        <p className="text-xs text-slate-400 dark:text-slate-500">Vrijgesteld</p>
+                        <p className="text-xs text-slate-400 dark:text-slate-500">{s.exempt}</p>
                         <p className="text-sm font-medium text-green-600 dark:text-green-400">{nl2.format(calc.vrijgesteld)}</p>
                       </div>
                       <div>
-                        <p className="text-xs text-slate-400 dark:text-slate-500">Belastbaar</p>
+                        <p className="text-xs text-slate-400 dark:text-slate-500">{s.taxable}</p>
                         <p className="text-sm font-medium text-slate-700 dark:text-slate-200">{nl2.format(calc.belastbaar)}</p>
                       </div>
                       <div>
-                        <p className="text-xs text-slate-400 dark:text-slate-500">Schenkbelasting</p>
+                        <p className="text-xs text-slate-400 dark:text-slate-500">{s.giftTax}</p>
                         <p className="text-sm font-medium text-red-500">{nl2.format(calc.belasting)}</p>
                         {calc.effectiefTarief > 0 && (
                           <p className="text-xs text-slate-400">({(calc.effectiefTarief * 100).toFixed(1)}% eff.)</p>
                         )}
                       </div>
                       <div>
-                        <p className="text-xs text-slate-400 dark:text-slate-500">Netto ontvangen</p>
+                        <p className="text-xs text-slate-400 dark:text-slate-500">{s.netReceived}</p>
                         <p className="text-sm font-bold text-purple-700 dark:text-purple-400">{nl2.format(calc.netOntvangen)}</p>
                       </div>
                     </div>
@@ -247,28 +246,28 @@ export default function SchenkingenSection({ data, taxYear, onChange }: Props) {
         {/* Add button */}
         <button onClick={addSchenking}
           className="flex items-center gap-2 text-sm text-purple-600 hover:text-purple-700 dark:text-purple-400 bg-transparent border border-dashed border-purple-300 dark:border-purple-700 hover:border-purple-500 rounded-xl px-4 py-3 w-full cursor-pointer justify-center transition-colors">
-          <Plus size={15} /> Schenking toevoegen
+          <Plus size={15} /> {s.addGift}
         </button>
 
         {/* Totals */}
         {data.schenkingen.length > 0 && (
           <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3">
-            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">Totaal</p>
+            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">{s.totalLabel}</p>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div>
-                <p className="text-xs text-slate-400">Ontvangen</p>
+                <p className="text-xs text-slate-400">{s.totalReceived}</p>
                 <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{nl2.format(totalBedrag)}</p>
               </div>
               <div>
-                <p className="text-xs text-slate-400">Vrijgesteld</p>
+                <p className="text-xs text-slate-400">{s.totalExempt}</p>
                 <p className="text-sm font-semibold text-green-600 dark:text-green-400">{nl2.format(totalVrijgesteld)}</p>
               </div>
               <div>
-                <p className="text-xs text-slate-400">Schenkbelasting</p>
+                <p className="text-xs text-slate-400">{s.totalTax}</p>
                 <p className="text-sm font-semibold text-red-500">{nl2.format(totalBelasting)}</p>
               </div>
               <div>
-                <p className="text-xs text-slate-400">Netto ontvangen</p>
+                <p className="text-xs text-slate-400">{s.totalNet}</p>
                 <p className="text-base font-bold text-purple-700 dark:text-purple-400">{nl2.format(totalNetto)}</p>
               </div>
             </div>

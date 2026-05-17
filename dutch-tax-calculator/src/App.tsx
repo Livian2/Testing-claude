@@ -53,7 +53,7 @@ const DEFAULT_DATA: TaxFormData = {
   schenkingen: { schenkingen: [] },
 };
 
-const APP_VERSION         = 'v1.12.2';
+const APP_VERSION         = 'v1.12.3';
 
 const STORAGE_KEY         = 'nl-belasting-data-v1';
 const PROGNOSE_STORAGE_KEY = 'nl-belasting-prognose-v1';
@@ -200,7 +200,7 @@ export default function App() {
     { id: 'bank',           emoji: '🏦', description: t.tabDescriptions.bank },
     { id: 'portfolio',      emoji: '📈', description: t.tabDescriptions.portfolio },
     { id: 'afschrijvingen', emoji: '🔄', description: t.tabDescriptions.afschrijvingen },
-    { id: 'schenkingen',   emoji: '🎁', description: 'Ontvangen schenkingen en schenkbelasting berekening.' },
+    { id: 'schenkingen',   emoji: '🎁', description: t.tabDescriptions.schenkingen },
     { id: 'jaarruimte',     emoji: '🏛️', description: t.tabDescriptions.jaarruimte },
     { id: 'prognose',       emoji: '🔮', description: t.tabDescriptions.prognose },
     { id: 'results',        emoji: '🧮', description: t.tabDescriptions.results },
@@ -218,7 +218,7 @@ export default function App() {
     bank:           t.tabs.bank,
     portfolio:      t.tabs.portfolio,
     afschrijvingen: t.tabs.depreciation,
-    schenkingen:   'Schenkingen',
+    schenkingen:   t.tabs.gifts,
     jaarruimte:     t.tabs.jaarruimte,
     prognose:       t.tabs.forecast,
     results:        t.tabs.results,
