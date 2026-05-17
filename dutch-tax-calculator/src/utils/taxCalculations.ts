@@ -5,7 +5,7 @@ import type {
 import { berekenHypotheek } from './hypotheek';
 import { berekenDuoJaarbetaling } from './duo';
 import { jaarDeposit } from './afschrijvingen';
-import { totalAfschrijvingenGereserveerd, gereserveerdTotNu } from './afschrijvingen';
+import { totalAfschrijvingenGereserveerd, gereserveerdTotDatum } from './afschrijvingen';
 
 // ─── Eigenwoningforfait (EWF) ──────────────────────────────────────────────
 // 2026: 0% ≤ €12.500; 0,35% up to €1.310.000; 2,35% on excess (villatarief)
@@ -436,11 +436,12 @@ export function calculateTaxes(data: TaxFormData): TaxResult {
     (s, hyp) => s + berekenHypotheek(hyp, personal.taxYear).restschuldBegin, 0,
   );
 
-  // Current-year reserved amount (deposits through taxYear, not taxYear-1)
+  // Reserved amount as of today (for current net worth — not end-of-year)
   const rate = data.afschrijvingen.rentePercentage / 100;
+  const today = new Date();
   const afschrijvingenActueel = data.afschrijvingen.categorieen
     .flatMap(c => c.items)
-    .reduce((sum, item) => sum + gereserveerdTotNu(item, rate, personal.taxYear), 0);
+    .reduce((sum, item) => sum + gereserveerdTotDatum(item, rate, today), 0);
 
   // Annual sinking fund deposits for the current tax year
   const afschrijvingenJaarDeposit = data.afschrijvingen.categorieen

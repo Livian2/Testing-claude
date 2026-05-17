@@ -1,4 +1,7 @@
-import { useState, useMemo, useCallback, useDeferredValue } from 'react';
+import {
+  useState, useMemo, useCallback, useRef, useEffect,
+  useDeferredValue, memo,
+} from 'react';
 import { Plus, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
 import type { AfschrijvingenData, AfschrijvingCategorie, AfschrijvingItem } from '../types';
 import { useLanguage } from '../i18n/LanguageContext';
@@ -15,6 +18,13 @@ const nl2 = new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR',
 const nl0 = new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
 
 function uid() { return Math.random().toString(36).slice(2); }
+
+// Fixed row heights — MUST match between left and right panels
+const H_HEAD = 36;
+const H_CAT  = 34;
+const H_ITEM = 40;
+const H_SUB  = 28;
+const H_FOOT = 40;
 
 interface ItemComputed {
   replDate: Date | null;
@@ -43,76 +53,265 @@ function calcDeposit(
   return daysMJ < 364 ? (365 - daysMJ) * baseDaily * (1 + rate) : 0;
 }
 
-// Shared row-height class — identical on both panels so rows align
-const ROW_CAT  = 'border-y border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800';
-const ROW_ITEM = 'border-b border-slate-100 dark:border-slate-700';
+// ── Local-state text input: only flushes to parent on blur/Enter ──────────
+const LocalText = memo(function LocalText({ value, onCommit, className, placeholder }: {
+  value: string; onCommit: (v: string) => void; className?: string; placeholder?: string;
+}) {
+  const [local, setLocal] = useState(value);
+  const ext = useRef(value);
+  useEffect(() => {
+    if (value !== ext.current) { ext.current = value; setLocal(value); }
+  }, [value]);
+  const flush = useCallback(() => {
+    if (local !== ext.current) { ext.current = local; onCommit(local); }
+  }, [local, onCommit]);
+  return (
+    <input className={className} placeholder={placeholder}
+      value={local}
+      onChange={e => setLocal(e.target.value)}
+      onBlur={flush}
+      onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+    />
+  );
+});
 
+// ── Local-state number input ───────────────────────────────────────────────
+const LocalNum = memo(function LocalNum({ value, onCommit, className, placeholder, min, step }: {
+  value: number; onCommit: (v: number) => void;
+  className?: string; placeholder?: string; min?: number; step?: number;
+}) {
+  const [local, setLocal] = useState(value === 0 ? '' : String(value));
+  const ext = useRef(value);
+  useEffect(() => {
+    if (value !== ext.current) {
+      ext.current = value;
+      setLocal(value === 0 ? '' : String(value));
+    }
+  }, [value]);
+  const flush = useCallback(() => {
+    const n = parseFloat(local) || 0;
+    if (n !== ext.current) { ext.current = n; onCommit(n); }
+  }, [local, onCommit]);
+  return (
+    <input type="number" min={min} step={step} placeholder={placeholder}
+      className={className}
+      value={local}
+      onChange={e => setLocal(e.target.value)}
+      onBlur={flush}
+      onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+    />
+  );
+});
+
+// ── Memoised item row — left fixed panel ──────────────────────────────────
+const ItemLeft = memo(function ItemLeft({
+  item, catId, comp, taxYear, placeholder,
+  onName, onPrice, onDate, onLife, onEnabled, onRemove,
+}: {
+  item: AfschrijvingItem;
+  catId: string;
+  comp: ItemComputed | undefined;
+  taxYear: number;
+  placeholder: string;
+  onName:    (catId: string, id: string, v: string)  => void;
+  onPrice:   (catId: string, id: string, v: number)  => void;
+  onDate:    (catId: string, id: string, v: string)  => void;
+  onLife:    (catId: string, id: string, v: number)  => void;
+  onEnabled: (catId: string, id: string, v: boolean) => void;
+  onRemove:  (catId: string, id: string)             => void;
+}) {
+  const replDate = comp?.replDate ?? null;
+  const replYear = comp?.replYear ?? null;
+  const reserved = comp?.reserved ?? 0;
+  const target   = comp?.target   ?? 0;
+  const active   = item.enabled !== false;
+  const bg = 'bg-white dark:bg-slate-800';
+  return (
+    <tr style={{ height: H_ITEM }} className={`border-b border-slate-100 dark:border-slate-700 ${active ? '' : 'opacity-40'}`}>
+      {/* Product + checkbox */}
+      <td className={`pl-3 pr-2 ${bg}`}>
+        <div className="flex items-center gap-1.5">
+          <input type="checkbox" checked={active}
+            onChange={e => onEnabled(catId, item.id, e.target.checked)}
+            className="w-3.5 h-3.5 accent-orange-500 cursor-pointer flex-shrink-0" />
+          <LocalText
+            className="w-full text-xs border border-transparent hover:border-slate-200 dark:hover:border-slate-600 focus:border-slate-300 dark:focus:border-slate-500 rounded px-1.5 py-1 outline-none focus:ring-1 focus:ring-orange-400 bg-transparent focus:bg-white dark:focus:bg-slate-700 dark:text-slate-100"
+            placeholder={placeholder}
+            value={item.naam}
+            onCommit={v => onName(catId, item.id, v)}
+          />
+        </div>
+      </td>
+      {/* Price */}
+      <td className={`px-2 ${bg}`}>
+        <div className="flex items-center border border-slate-200 dark:border-slate-600 rounded overflow-hidden focus-within:ring-1 focus-within:ring-orange-400">
+          <span className="px-1.5 bg-slate-50 dark:bg-slate-700 text-slate-400 text-xs border-r border-slate-200 dark:border-slate-600 select-none">€</span>
+          <LocalNum
+            className="w-20 text-xs px-2 py-1 outline-none bg-white dark:bg-slate-800 dark:text-slate-100"
+            placeholder="0,00" min={0} step={0.01}
+            value={item.aankoopprijs}
+            onCommit={v => onPrice(catId, item.id, v)}
+          />
+        </div>
+      </td>
+      {/* Date */}
+      <td className={`px-2 ${bg}`}>
+        <input type="date"
+          className="text-xs border border-slate-200 dark:border-slate-600 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-orange-400 bg-white dark:bg-slate-800 dark:text-slate-100"
+          value={item.aankoopdatum}
+          onChange={e => onDate(catId, item.id, e.target.value)}
+        />
+      </td>
+      {/* Lifetime */}
+      <td className={`px-2 ${bg}`}>
+        <div className="flex items-center gap-1">
+          <LocalNum
+            className="w-12 text-xs text-center border border-slate-200 dark:border-slate-600 rounded px-1 py-1 outline-none focus:ring-1 focus:ring-orange-400 bg-white dark:bg-slate-800 dark:text-slate-100"
+            min={1}
+            value={item.looptijdJaren}
+            onCommit={v => onLife(catId, item.id, Math.max(1, Math.round(v)))}
+          />
+          <span className="text-xs text-slate-400 dark:text-slate-500">jr</span>
+        </div>
+      </td>
+      {/* Replacement date */}
+      <td className={`px-2 ${bg} text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap`}>
+        {replDate ? replDate.toLocaleDateString('nl-NL', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—'}
+        {replYear !== null && replYear <= taxYear && <span className="ml-1 text-red-500 font-semibold">!</span>}
+      </td>
+      {/* Reserved / target */}
+      <td className={`px-2 ${bg} text-xs text-right`}>
+        {item.aankoopprijs > 0
+          ? <span className="text-slate-500 dark:text-slate-400">{nl0.format(reserved)} / {nl0.format(target)}</span>
+          : '—'}
+      </td>
+      {/* Delete */}
+      <td className={`px-2 ${bg} text-center`}>
+        <button onClick={() => onRemove(catId, item.id)}
+          className="text-red-300 hover:text-red-500 bg-transparent border-0 cursor-pointer p-0.5">
+          <Trash2 size={12} />
+        </button>
+      </td>
+    </tr>
+  );
+});
+
+// ── Memoised item row — right scrollable panel ────────────────────────────
+const ItemRight = memo(function ItemRight({
+  item, comp, years, taxYear,
+}: {
+  item: AfschrijvingItem;
+  comp: ItemComputed | undefined;
+  years: number[];
+  taxYear: number;
+}) {
+  const replYear = comp?.replYear ?? null;
+  const deposits = comp?.deposits;
+  const active   = item.enabled !== false;
+  return (
+    <tr style={{ height: H_ITEM }} className={`border-b border-slate-100 dark:border-slate-700 ${active ? '' : 'opacity-40'}`}>
+      {years.map((y, i) => {
+        const dep       = deposits?.[i] ?? 0;
+        const isOverdue = replYear !== null && y > replYear;
+        const isPast    = y < taxYear;
+        const isCurrent = y === taxYear;
+        let bg = '', textColor = 'text-slate-300';
+        if (dep > 0 && !isOverdue) {
+          if (isPast)         { bg = 'bg-red-50 dark:bg-red-900/10';     textColor = 'text-red-500'; }
+          else if (isCurrent) { bg = 'bg-amber-50 dark:bg-amber-900/20'; textColor = 'text-amber-700 font-semibold'; }
+          else                { bg = 'bg-green-50 dark:bg-green-900/10'; textColor = 'text-green-700'; }
+        }
+        return (
+          <td key={y} className={`px-2 text-right text-xs ${bg} ${textColor}`}>
+            {dep > 0 && !isOverdue ? nl2.format(dep) : ''}
+          </td>
+        );
+      })}
+    </tr>
+  );
+});
+
+// ── Main component ────────────────────────────────────────────────────────
 export default function AfschrijvingenSection({ data, taxYear, onChange }: Props) {
   const { t } = useLanguage();
 
-  // Open/editing state — hoisted to parent so both panels stay in sync
-  const [openCats,    setOpenCats]    = useState<Set<string>>(() => new Set(data.categorieen.map(c => c.id)));
-  const [editingCat,  setEditingCat]  = useState<string | null>(null);
+  const [openCats,   setOpenCats]   = useState<Set<string>>(() => new Set(data.categorieen.map(c => c.id)));
+  const [editingCat, setEditingCat] = useState<string | null>(null);
 
   const toggleOpen = useCallback((id: string) =>
     setOpenCats(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; }), []);
 
-  // ── Data mutation helpers ──────────────────────────────────────────────────
-  const updateCat = useCallback((updated: AfschrijvingCategorie) =>
-    onChange({ ...data, categorieen: data.categorieen.map(c => c.id === updated.id ? updated : c) }),
-  [data, onChange]);
+  // Stable refs so handlers never change reference (enables React.memo on rows)
+  const dataRef     = useRef(data);
+  const onChangeRef = useRef(onChange);
+  useEffect(() => { dataRef.current = data; onChangeRef.current = onChange; });
 
-  const removeCat = useCallback((id: string) =>
-    onChange({ ...data, categorieen: data.categorieen.filter(c => c.id !== id) }),
-  [data, onChange]);
+  const patchItem = useCallback((catId: string, itemId: string, patch: Partial<AfschrijvingItem>) => {
+    const d = dataRef.current;
+    onChangeRef.current({ ...d, categorieen: d.categorieen.map(c =>
+      c.id === catId ? { ...c, items: c.items.map(it => it.id === itemId ? { ...it, ...patch } : it) } : c
+    )});
+  }, []);
 
-  const addCategorie = useCallback(() => {
-    const cat: AfschrijvingCategorie = { id: uid(), naam: t.depreciation.defaultCategory, items: [] };
-    const s = new Set(openCats); s.add(cat.id);
-    setOpenCats(s);
-    onChange({ ...data, categorieen: [...data.categorieen, cat] });
-  }, [data, onChange, openCats, t]);
+  const onName    = useCallback((catId: string, id: string, v: string)  => patchItem(catId, id, { naam: v }), [patchItem]);
+  const onPrice   = useCallback((catId: string, id: string, v: number)  => patchItem(catId, id, { aankoopprijs: v }), [patchItem]);
+  const onDate    = useCallback((catId: string, id: string, v: string)  => patchItem(catId, id, { aankoopdatum: v }), [patchItem]);
+  const onLife    = useCallback((catId: string, id: string, v: number)  => patchItem(catId, id, { looptijdJaren: v }), [patchItem]);
+  const onEnabled = useCallback((catId: string, id: string, v: boolean) => patchItem(catId, id, { enabled: v }), [patchItem]);
+
+  const removeCat = useCallback((id: string) => {
+    const d = dataRef.current;
+    onChangeRef.current({ ...d, categorieen: d.categorieen.filter(c => c.id !== id) });
+  }, []);
+
+  const updateCat = useCallback((updated: AfschrijvingCategorie) => {
+    const d = dataRef.current;
+    onChangeRef.current({ ...d, categorieen: d.categorieen.map(c => c.id === updated.id ? updated : c) });
+  }, []);
+
+  const removeItem = useCallback((catId: string, itemId: string) => {
+    const d = dataRef.current;
+    onChangeRef.current({ ...d, categorieen: d.categorieen.map(c =>
+      c.id === catId ? { ...c, items: c.items.filter(it => it.id !== itemId) } : c
+    )});
+  }, []);
 
   const addItem = useCallback((catId: string) => {
     const today = new Date().toISOString().slice(0, 10);
     const item: AfschrijvingItem = { id: uid(), naam: '', aankoopprijs: 0, aankoopdatum: today, looptijdJaren: 3 };
-    onChange({ ...data, categorieen: data.categorieen.map(c =>
+    const d = dataRef.current;
+    onChangeRef.current({ ...d, categorieen: d.categorieen.map(c =>
       c.id === catId ? { ...c, items: [...c.items, item] } : c
     )});
-  }, [data, onChange]);
+  }, []);
 
-  const updateItem = useCallback((catId: string, itemId: string, patch: Partial<AfschrijvingItem>) =>
-    onChange({ ...data, categorieen: data.categorieen.map(c =>
-      c.id === catId ? { ...c, items: c.items.map(it => it.id === itemId ? { ...it, ...patch } : it) } : c
-    )}),
-  [data, onChange]);
+  const addCategorie = useCallback(() => {
+    const cat: AfschrijvingCategorie = { id: uid(), naam: t.depreciation.defaultCategory, items: [] };
+    setOpenCats(prev => { const s = new Set(prev); s.add(cat.id); return s; });
+    const d = dataRef.current;
+    onChangeRef.current({ ...d, categorieen: [...d.categorieen, cat] });
+  }, [t]);
 
-  const removeItem = useCallback((catId: string, itemId: string) =>
-    onChange({ ...data, categorieen: data.categorieen.map(c =>
-      c.id === catId ? { ...c, items: c.items.filter(it => it.id !== itemId) } : c
-    )}),
-  [data, onChange]);
-
-  // ── Deferred computation (keeps typing responsive) ─────────────────────────
+  // ── Deferred computation (typing stays instant) ───────────────────────
   const deferred     = useDeferredValue(data);
   const deferredYear = useDeferredValue(taxYear);
   const isStale      = deferred !== data || deferredYear !== taxYear;
   const deferredRate = deferred.rentePercentage / 100;
 
   const years = useMemo<number[]>(() => {
-    let minYear = deferredYear - 2, maxYear = deferredYear + 8;
+    let minY = deferredYear - 2, maxY = deferredYear + 8;
     for (const cat of deferred.categorieen) {
       for (const it of cat.items) {
         if (it.enabled === false) continue;
         const p = parseAfschrijvingDate(it.aankoopdatum);
         if (!p) continue;
         const py = p.getFullYear(), ry = py + (it.looptijdJaren || 0);
-        if (py < minYear) minYear = py;
-        if (ry > maxYear) maxYear = ry;
+        if (py < minY) minY = py;
+        if (ry > maxY) maxY = ry;
       }
     }
     const arr: number[] = [];
-    for (let y = minYear; y <= maxYear; y++) arr.push(y);
+    for (let y = minY; y <= maxY; y++) arr.push(y);
     return arr;
   }, [deferred.categorieen, deferredYear]);
 
@@ -129,10 +328,9 @@ export default function AfschrijvingenSection({ data, taxYear, onChange }: Props
 
     for (const cat of deferred.categorieen) {
       const catDeps = new Float64Array(years.length);
-
       for (const item of cat.items) {
         if (item.enabled === false) {
-          const p = parseAfschrijvingDate(item.aankoopdatum);
+          const p  = parseAfschrijvingDate(item.aankoopdatum);
           const rd = p ? (() => { const d = new Date(p); d.setFullYear(d.getFullYear() + item.looptijdJaren); return d; })() : null;
           itemComputed.set(item.id, { replDate: rd, replYear: rd?.getFullYear() ?? null, deposits: zero(), reserved: 0, target: 0 });
           continue;
@@ -168,11 +366,13 @@ export default function AfschrijvingenSection({ data, taxYear, onChange }: Props
     return { itemComputed, catDeposits, yearTotals, maandBedrag: idx >= 0 ? yearTotals[idx] / 12 : 0 };
   }, [deferred.categorieen, deferredRate, years, yearBounds, deferredYear]);
 
-  // ── Shared cell classnames ─────────────────────────────────────────────────
-  const thFixed = 'text-left px-2 py-2 font-medium text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-900 whitespace-nowrap';
-  const tdItem  = 'px-2 py-1.5 bg-white dark:bg-slate-800 group-hover:bg-slate-50 dark:group-hover:bg-slate-700';
-  const tdCat   = 'px-2 py-1 bg-slate-100 dark:bg-slate-800';
-  const tdFoot  = 'px-2 py-2 bg-slate-50 dark:bg-slate-900';
+  // ── Shared styles ─────────────────────────────────────────────────────
+  const thL = 'text-left px-2 font-medium text-xs text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-900 whitespace-nowrap';
+  const bgCat = 'bg-slate-100 dark:bg-slate-800';
+  const bgSub = 'bg-slate-50 dark:bg-slate-800/60';
+
+  // Column widths (kept in one place for easy tuning)
+  const colW = [160, 130, 122, 78, 128, 115, 32];
 
   return (
     <div className="space-y-4">
@@ -205,29 +405,22 @@ export default function AfschrijvingenSection({ data, taxYear, onChange }: Props
         </div>
       </div>
 
-      {/* ── Two-panel table: fixed left + scrollable right ── */}
+      {/* ── Two-panel table ── */}
       <div className={`flex rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden transition-opacity duration-150 ${isStale ? 'opacity-60' : ''}`}>
 
-        {/* ── Fixed left panel (never scrolls) ── */}
+        {/* Fixed left panel */}
         <div className="flex-shrink-0 z-10" style={{ boxShadow: '3px 0 8px -3px rgba(0,0,0,0.12)' }}>
-          <table className="border-collapse text-xs h-full">
+          <table className="border-collapse text-xs" style={{ tableLayout: 'fixed', width: colW.reduce((a, b) => a + b, 0) }}>
+            <colgroup>{colW.map((w, i) => <col key={i} style={{ width: w }} />)}</colgroup>
             <thead>
-              <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900">
-                <th className={thFixed} style={{ minWidth: 160 }}>{t.depreciation.product}</th>
-                <th className={thFixed} style={{ minWidth: 130 }}>
-                  <span className="flex items-center gap-1">{t.depreciation.purchasePrice} <InfoTooltip tip={t.depreciation.purchasePriceTip} /></span>
-                </th>
-                <th className={thFixed} style={{ minWidth: 122 }}>
-                  <span className="flex items-center gap-1">{t.depreciation.purchaseDate} <InfoTooltip tip={t.depreciation.purchaseDateTip} /></span>
-                </th>
-                <th className={thFixed} style={{ minWidth: 78 }}>
-                  <span className="flex items-center gap-1">{t.depreciation.lifetimeYears} <InfoTooltip tip={t.depreciation.lifetimeTip} /></span>
-                </th>
-                <th className={thFixed} style={{ minWidth: 128 }}>{t.depreciation.replacementDate}</th>
-                <th className={`${thFixed} text-right`} style={{ minWidth: 115 }}>
-                  <span className="flex items-center justify-end gap-1">{t.depreciation.reserved} <InfoTooltip tip={t.depreciation.reservedTip} /></span>
-                </th>
-                <th className="w-8 bg-slate-50 dark:bg-slate-900" />
+              <tr style={{ height: H_HEAD }} className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900">
+                <th className={thL}>{t.depreciation.product}</th>
+                <th className={thL}><span className="flex items-center gap-1">{t.depreciation.purchasePrice} <InfoTooltip tip={t.depreciation.purchasePriceTip} /></span></th>
+                <th className={thL}><span className="flex items-center gap-1">{t.depreciation.purchaseDate} <InfoTooltip tip={t.depreciation.purchaseDateTip} /></span></th>
+                <th className={thL}><span className="flex items-center gap-1">{t.depreciation.lifetimeYears} <InfoTooltip tip={t.depreciation.lifetimeTip} /></span></th>
+                <th className={thL}>{t.depreciation.replacementDate}</th>
+                <th className={`${thL} text-right`}><span className="flex items-center justify-end gap-1">{t.depreciation.reserved} <InfoTooltip tip={t.depreciation.reservedTip} /></span></th>
+                <th className="bg-slate-50 dark:bg-slate-900" />
               </tr>
             </thead>
 
@@ -240,8 +433,8 @@ export default function AfschrijvingenSection({ data, taxYear, onChange }: Props
               return (
                 <tbody key={cat.id}>
                   {/* Category header */}
-                  <tr className={ROW_CAT}>
-                    <td colSpan={7} className={tdCat}>
+                  <tr style={{ height: H_CAT }} className={`border-y border-slate-200 dark:border-slate-700 ${bgCat}`}>
+                    <td colSpan={7} className={`px-2 ${bgCat}`}>
                       <div className="flex items-center gap-2">
                         <button onClick={() => toggleOpen(cat.id)}
                           className="text-slate-600 dark:text-slate-300 bg-transparent border-0 cursor-pointer p-0 flex items-center">
@@ -274,86 +467,20 @@ export default function AfschrijvingenSection({ data, taxYear, onChange }: Props
                   </tr>
 
                   {/* Item rows */}
-                  {isOpen && cat.items.map(item => {
-                    const comp    = itemComputed.get(item.id);
-                    const replDate = comp?.replDate ?? null;
-                    const replYear = comp?.replYear ?? null;
-                    const reserved = comp?.reserved ?? 0;
-                    const target   = comp?.target   ?? 0;
-                    const active   = item.enabled !== false;
-                    return (
-                      <tr key={item.id} className={`${ROW_ITEM} group ${active ? '' : 'opacity-40'}`}>
-                        {/* Product + checkbox */}
-                        <td className={`${tdItem} pl-3 pr-2 py-1.5`}>
-                          <div className="flex items-center gap-1.5">
-                            <input type="checkbox" checked={active}
-                              onChange={e => updateItem(cat.id, item.id, { enabled: e.target.checked })}
-                              className="w-3.5 h-3.5 accent-orange-500 cursor-pointer flex-shrink-0"
-                            />
-                            <input
-                              className="w-full text-xs border border-transparent hover:border-slate-200 dark:hover:border-slate-600 focus:border-slate-300 dark:focus:border-slate-500 rounded px-1.5 py-1 outline-none focus:ring-1 focus:ring-orange-400 bg-transparent focus:bg-white dark:focus:bg-slate-700 dark:text-slate-100"
-                              placeholder={t.depreciation.productPlaceholder}
-                              value={item.naam}
-                              onChange={e => updateItem(cat.id, item.id, { naam: e.target.value })}
-                            />
-                          </div>
-                        </td>
-                        {/* Purchase price */}
-                        <td className={`${tdItem} px-2 py-1.5`}>
-                          <div className="flex items-center border border-slate-200 dark:border-slate-600 rounded overflow-hidden focus-within:ring-1 focus-within:ring-orange-400">
-                            <span className="px-1.5 bg-slate-50 dark:bg-slate-700 text-slate-400 text-xs border-r border-slate-200 dark:border-slate-600 select-none">€</span>
-                            <input type="number" min={0} step={0.01}
-                              className="w-20 text-xs px-2 py-1 outline-none bg-white dark:bg-slate-800 dark:text-slate-100"
-                              placeholder="0,00"
-                              value={item.aankoopprijs || ''}
-                              onChange={e => updateItem(cat.id, item.id, { aankoopprijs: parseFloat(e.target.value) || 0 })}
-                            />
-                          </div>
-                        </td>
-                        {/* Purchase date */}
-                        <td className={`${tdItem} px-2 py-1.5`}>
-                          <input type="date"
-                            className="text-xs border border-slate-200 dark:border-slate-600 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-orange-400 bg-white dark:bg-slate-800 dark:text-slate-100"
-                            value={item.aankoopdatum}
-                            onChange={e => updateItem(cat.id, item.id, { aankoopdatum: e.target.value })}
-                          />
-                        </td>
-                        {/* Lifetime */}
-                        <td className={`${tdItem} px-2 py-1.5`}>
-                          <div className="flex items-center gap-1">
-                            <input type="number" min={1}
-                              className="w-12 text-xs text-center border border-slate-200 dark:border-slate-600 rounded px-1 py-1 outline-none focus:ring-1 focus:ring-orange-400 bg-white dark:bg-slate-800 dark:text-slate-100"
-                              value={item.looptijdJaren || ''}
-                              onChange={e => updateItem(cat.id, item.id, { looptijdJaren: parseInt(e.target.value) || 1 })}
-                            />
-                            <span className="text-xs text-slate-400 dark:text-slate-500">jr</span>
-                          </div>
-                        </td>
-                        {/* Replacement date */}
-                        <td className={`${tdItem} px-2 py-1.5 text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap`}>
-                          {replDate ? replDate.toLocaleDateString('nl-NL', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—'}
-                          {replYear !== null && replYear <= taxYear && <span className="ml-1 text-red-500 font-semibold">!</span>}
-                        </td>
-                        {/* Reserved / target */}
-                        <td className={`${tdItem} px-2 py-1.5 text-xs text-right`}>
-                          {item.aankoopprijs > 0
-                            ? <span className="text-slate-500 dark:text-slate-400">{nl0.format(reserved)} / {nl0.format(target)}</span>
-                            : '—'}
-                        </td>
-                        {/* Delete */}
-                        <td className={`${tdItem} px-2 py-1.5 text-center`}>
-                          <button onClick={() => removeItem(cat.id, item.id)}
-                            className="text-red-300 hover:text-red-500 bg-transparent border-0 cursor-pointer p-0.5">
-                            <Trash2 size={12} />
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  {isOpen && cat.items.map(item => (
+                    <ItemLeft key={item.id}
+                      item={item} catId={cat.id}
+                      comp={itemComputed.get(item.id)}
+                      taxYear={taxYear}
+                      placeholder={t.depreciation.productPlaceholder}
+                      onName={onName} onPrice={onPrice} onDate={onDate}
+                      onLife={onLife} onEnabled={onEnabled} onRemove={removeItem}
+                    />
+                  ))}
 
-                  {/* Category subtotal row (left panel — label only for alignment) */}
-                  <tr className="border-b border-slate-200 dark:border-slate-600 bg-slate-100/60 dark:bg-slate-800/60">
-                    <td colSpan={7} className="px-3 py-1 text-xs font-semibold text-slate-500 dark:text-slate-400 italic text-right">
+                  {/* Category subtotal label */}
+                  <tr style={{ height: H_SUB }} className={`border-b border-slate-200 dark:border-slate-600 ${bgSub}`}>
+                    <td colSpan={7} className={`px-3 text-xs font-semibold text-slate-500 dark:text-slate-400 italic text-right ${bgSub}`}>
                       {cat.naam}
                     </td>
                   </tr>
@@ -363,22 +490,22 @@ export default function AfschrijvingenSection({ data, taxYear, onChange }: Props
 
             {data.categorieen.length > 0 && (
               <tfoot>
-                <tr className="border-t-2 border-slate-300 dark:border-slate-600 font-semibold">
-                  <td colSpan={6} className={`${tdFoot} text-sm text-slate-700 dark:text-slate-200`}>{t.depreciation.totalPerYear}</td>
-                  <td className={tdFoot} />
+                <tr style={{ height: H_FOOT }} className="border-t-2 border-slate-300 dark:border-slate-600">
+                  <td colSpan={6} className="px-2 text-sm font-semibold text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-900">{t.depreciation.totalPerYear}</td>
+                  <td className="bg-slate-50 dark:bg-slate-900" />
                 </tr>
               </tfoot>
             )}
           </table>
         </div>
 
-        {/* ── Scrollable right panel (year columns) ── */}
+        {/* Scrollable right panel */}
         <div className="overflow-x-auto flex-1">
-          <table className="border-collapse text-xs h-full">
+          <table className="border-collapse text-xs">
             <thead>
-              <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900">
+              <tr style={{ height: H_HEAD }} className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900">
                 {years.map(y => (
-                  <th key={y} className={`text-right px-2 py-2 font-medium whitespace-nowrap ${
+                  <th key={y} className={`text-right px-2 font-medium whitespace-nowrap ${
                     y === taxYear   ? 'text-orange-600 bg-amber-50 dark:bg-amber-900/20'
                     : y < taxYear   ? 'text-slate-400 dark:text-slate-500'
                     :                 'text-slate-600 dark:text-slate-300'
@@ -388,55 +515,33 @@ export default function AfschrijvingenSection({ data, taxYear, onChange }: Props
             </thead>
 
             {data.categorieen.length === 0 ? (
-              <tbody><tr><td colSpan={years.length} className="py-10" /></tr></tbody>
+              <tbody><tr style={{ height: H_CAT }}><td colSpan={years.length} /></tr></tbody>
             ) : data.categorieen.map(cat => {
               const isOpen  = openCats.has(cat.id);
               const catDeps = catDeposits.get(cat.id) ?? new Float64Array(years.length);
               return (
                 <tbody key={cat.id}>
-                  {/* Category header — empty (name is in left panel) */}
-                  <tr className={ROW_CAT}>
-                    {years.map(y => (
-                      <td key={y} className="px-2 py-1 bg-slate-100 dark:bg-slate-800" />
-                    ))}
+                  {/* Category header — empty, height must match left */}
+                  <tr style={{ height: H_CAT }} className={`border-y border-slate-200 dark:border-slate-700 ${bgCat}`}>
+                    {years.map(y => <td key={y} className={bgCat} />)}
                   </tr>
 
-                  {/* Item rows — year deposit cells */}
-                  {isOpen && cat.items.map(item => {
-                    const comp    = itemComputed.get(item.id);
-                    const replYear = comp?.replYear ?? null;
-                    const deposits = comp?.deposits;
-                    const active   = item.enabled !== false;
-                    return (
-                      <tr key={item.id} className={`${ROW_ITEM} group ${active ? '' : 'opacity-40'}`}>
-                        {years.map((y, i) => {
-                          const dep       = deposits?.[i] ?? 0;
-                          const isOverdue = replYear !== null && y > replYear;
-                          const isPast    = y < taxYear;
-                          const isCurrent = y === taxYear;
-                          let bg = '', textColor = 'text-slate-300';
-                          if (dep > 0 && !isOverdue) {
-                            if (isPast)         { bg = 'bg-red-50 dark:bg-red-900/10';   textColor = 'text-red-500'; }
-                            else if (isCurrent) { bg = 'bg-amber-50 dark:bg-amber-900/20'; textColor = 'text-amber-700 font-semibold'; }
-                            else                { bg = 'bg-green-50 dark:bg-green-900/10'; textColor = 'text-green-700'; }
-                          }
-                          return (
-                            <td key={y} className={`px-2 py-1.5 text-right text-xs ${bg} ${textColor}`}>
-                              {dep > 0 && !isOverdue ? nl2.format(dep) : ''}
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    );
-                  })}
+                  {/* Item rows */}
+                  {isOpen && cat.items.map(item => (
+                    <ItemRight key={item.id}
+                      item={item}
+                      comp={itemComputed.get(item.id)}
+                      years={years}
+                      taxYear={taxYear}
+                    />
+                  ))}
 
-                  {/* Category subtotal row */}
-                  <tr className="border-b border-slate-200 dark:border-slate-600 bg-slate-100/60 dark:bg-slate-800/60">
+                  {/* Category subtotal values */}
+                  <tr style={{ height: H_SUB }} className={`border-b border-slate-200 dark:border-slate-600 ${bgSub}`}>
                     {years.map((y, i) => {
                       const val = catDeps[i] ?? 0;
-                      const isCurrent = y === taxYear;
                       return (
-                        <td key={y} className={`px-2 py-1 text-right text-xs font-semibold ${isCurrent ? 'text-orange-700' : 'text-slate-600 dark:text-slate-300'}`}>
+                        <td key={y} className={`px-2 text-right text-xs font-semibold ${bgSub} ${y === taxYear ? 'text-orange-700' : 'text-slate-600 dark:text-slate-300'}`}>
                           {val > 0 ? nl2.format(val) : ''}
                         </td>
                       );
@@ -448,11 +553,11 @@ export default function AfschrijvingenSection({ data, taxYear, onChange }: Props
 
             {data.categorieen.length > 0 && (
               <tfoot>
-                <tr className="border-t-2 border-slate-300 dark:border-slate-600 font-semibold">
+                <tr style={{ height: H_FOOT }} className="border-t-2 border-slate-300 dark:border-slate-600">
                   {Array.from(yearTotals).map((total, i) => {
-                    const isCurrent = years[i] === taxYear;
+                    const isCur = years[i] === taxYear;
                     return (
-                      <td key={years[i]} className={`text-right px-2 py-2 text-sm bg-slate-50 dark:bg-slate-900 ${isCurrent ? 'text-orange-700 bg-amber-50 dark:bg-amber-900/20' : 'text-slate-600 dark:text-slate-300'}`}>
+                      <td key={years[i]} className={`text-right px-2 text-sm font-semibold bg-slate-50 dark:bg-slate-900 ${isCur ? 'text-orange-700 bg-amber-50 dark:bg-amber-900/20' : 'text-slate-600 dark:text-slate-300'}`}>
                         {total > 0 ? nl2.format(total) : ''}
                       </td>
                     );

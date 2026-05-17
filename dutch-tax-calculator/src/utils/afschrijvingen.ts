@@ -82,5 +82,49 @@ export function totalAfschrijvingenGereserveerd(data: AfschrijvingenData, taxYea
   const rate = data.rentePercentage / 100;
   return data.categorieen
     .flatMap(c => c.items)
+    .filter(item => item.enabled !== false)
     .reduce((sum, item) => sum + gereserveerdTotNu(item, rate, taxYear - 1), 0);
+}
+
+/**
+ * Reserved amount for a single item as of a specific date (for current net worth).
+ * Respects the enabled flag and counts only deposits accrued up to `asOf`.
+ */
+export function gereserveerdTotDatum(item: AfschrijvingItem, rate: number, asOf: Date): number {
+  if (item.enabled === false) return 0;
+  const purchase = parseAfschrijvingDate(item.aankoopdatum);
+  if (!purchase || !item.aankoopprijs || !item.looptijdJaren) return 0;
+  const replace = getReplacementDate(item);
+  if (!replace) return 0;
+
+  const asOfMs     = asOf.getTime();
+  const purchaseMs = purchase.getTime();
+  if (asOfMs <= purchaseMs) return 0;
+
+  const replaceMs  = replace.getTime();
+  const purchaseYr = purchase.getFullYear();
+  const currentYr  = asOf.getFullYear();
+
+  // Sum full completed years (purchase year up to currentYr - 1)
+  let total = 0;
+  for (let y = purchaseYr; y < currentYr; y++) total += jaarDeposit(item, rate, y);
+
+  // Add partial deposit for the current year (Jan 1, currentYr → asOf)
+  const L3ms      = Date.UTC(currentYr, 0, 1);
+  const baseDaily = item.aankoopprijs / (item.looptijdJaren * 365);
+  const daysMD    = (asOfMs - purchaseMs) / 86400000;
+
+  if (daysMD < 364) {
+    // Still within the first partial year since purchase
+    total += daysMD * baseDaily * (1 + rate);
+  } else if (asOfMs <= replaceMs) {
+    const daysLM       = (asOfMs - L3ms) / 86400000;
+    const yearsElapsed = currentYr - purchaseYr;
+    total += daysLM * baseDaily * Math.pow(1 + rate, yearsElapsed);
+  } else {
+    const daysMJ = (asOfMs - replaceMs) / 86400000;
+    if (daysMJ < 364) total += (365 - daysMJ) * baseDaily * (1 + rate);
+  }
+
+  return total;
 }
