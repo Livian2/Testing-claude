@@ -1,11 +1,72 @@
 import type {
   TaxFormData, TaxResult, Box1Result, Box3Result, Toeslagen,
   Holding, Transaction, Position, AssetType,
+  SchenkingItem,
 } from '../types';
 import { berekenHypotheek } from './hypotheek';
 import { berekenDuoJaarbetaling } from './duo';
 import { jaarDeposit } from './afschrijvingen';
 import { totalAfschrijvingenGereserveerd, gereserveerdTotDatum } from './afschrijvingen';
+
+// ─── Schenkbelasting ──────────────────────────────────────────────────────
+// Tarieven en vrijstellingen: Belastingdienst 2025 (Successiewet 1956 art. 24/33)
+// 2026 values are indexed to CPI; exact published values used where available.
+
+interface SchenkVrijstellingen {
+  kind: number;          // jaarlijkse vrijstelling ouder→kind
+  overig: number;        // jaarlijkse vrijstelling overige verkrijgers
+  eenmaligVrij: number;  // eenmalig verhoogde vrijstelling, vrij besteedbaar (kind 18-40)
+  eenmaligStudie: number;// eenmalig verhoogde vrijstelling, dure studie (kind 18-40)
+  schijfgrens: number;   // schijfgrens eerste/tweede schijf
+}
+
+function getSchenkVrijstellingen(taxYear: number): SchenkVrijstellingen {
+  // Exact values per year (Belastingdienst tabel schenkbelasting)
+  if (taxYear >= 2026) return { kind: 6908, overig: 2784, eenmaligVrij: 33241, eenmaligStudie: 69225, schijfgrens: 144948 };
+  if (taxYear === 2025) return { kind: 6633, overig: 2658, eenmaligVrij: 31813, eenmaligStudie: 66268, schijfgrens: 138642 };
+  return { kind: 6633, overig: 2658, eenmaligVrij: 31813, eenmaligStudie: 66268, schijfgrens: 138642 };
+}
+
+export interface SchenkingCalc {
+  bedrag: number;
+  vrijgesteld: number;
+  belastbaar: number;
+  belasting: number;
+  effectiefTarief: number;
+  netOntvangen: number;
+}
+
+export function berekenSchenking(item: SchenkingItem, taxYear: number): SchenkingCalc {
+  const v = getSchenkVrijstellingen(taxYear);
+
+  let vrijgesteld = 0;
+  if (item.relatie === 'ouder') {
+    if      (item.vrijstelling === 'jaarlijks')        vrijgesteld = v.kind;
+    else if (item.vrijstelling === 'eenmalig_vrij')    vrijgesteld = v.eenmaligVrij;
+    else if (item.vrijstelling === 'eenmalig_studie')  vrijgesteld = v.eenmaligStudie;
+  } else {
+    if (item.vrijstelling === 'jaarlijks') vrijgesteld = v.overig;
+  }
+
+  vrijgesteld = Math.min(vrijgesteld, item.bedrag);
+  const belastbaar = Math.max(0, item.bedrag - vrijgesteld);
+
+  let belasting = 0;
+  if (item.relatie === 'ouder') {
+    // Tariefgroep I: kind ontvangt van ouder — 10% t/m schijfgrens, 20% daarboven
+    belasting = Math.min(belastbaar, v.schijfgrens) * 0.10
+              + Math.max(0, belastbaar - v.schijfgrens) * 0.20;
+  } else {
+    // Tariefgroep IA/II: overige verkrijgers — 18% t/m schijfgrens, 36% daarboven
+    belasting = Math.min(belastbaar, v.schijfgrens) * 0.18
+              + Math.max(0, belastbaar - v.schijfgrens) * 0.36;
+  }
+
+  const netOntvangen = item.bedrag - belasting;
+  const effectiefTarief = item.bedrag > 0 ? belasting / item.bedrag : 0;
+
+  return { bedrag: item.bedrag, vrijgesteld, belastbaar, belasting, effectiefTarief, netOntvangen };
+}
 
 // ─── Eigenwoningforfait (EWF) ──────────────────────────────────────────────
 // 2026: 0% ≤ €12.500; 0,35% up to €1.310.000; 2,35% on excess (villatarief)
@@ -468,11 +529,18 @@ export function calculateTaxes(data: TaxFormData): TaxResult {
     hypotheekRestschuld -
     afschrijvingenActueel;
 
+  // Schenkbelasting
+  const schenkItems = (data.schenkingen?.schenkingen ?? []);
+  const schenkCalcs = schenkItems.map(s => berekenSchenking(s, personal.taxYear));
+  const schenkbelasting   = schenkCalcs.reduce((t, c) => t + c.belasting, 0);
+  const schenkNetOntvangen = schenkCalcs.reduce((t, c) => t + c.netOntvangen, 0);
+
   return {
     box1, box3, toeslagen, totalTax, netDisposableIncome, totalExpenses,
     annualSavings, portfolioCurrentValue, portfolioJan1Value,
     portfolioGainLoss: gainLoss, actualSavingsInterest, currentNetWorth, wozAsset, hypotheekRestschuld, afschrijvingenActueel,
     duoJaarbetaling, afschrijvingenJaarDeposit,
+    schenkbelasting, schenkNetOntvangen,
   };
 }
 

@@ -774,6 +774,8 @@ export const translations = {
       portfolioNow:       '→ huidig:',
       duoRepayment:       'DUO terugbetaling',
       savingsProvisions:  'Sparen voorzieningen',
+      schenkbelasting:    'Schenkbelasting',
+      schenkNetOntvangen: 'Netto ontvangen schenkingen',
       gainLossInfo:       'Gerealiseerde koerswinst/-verlies (informatief)',
     },
 
@@ -1563,6 +1565,8 @@ export const translations = {
       portfolioNow:       '→ current:',
       duoRepayment:       'DUO repayment',
       savingsProvisions:  'Savings provisions',
+      schenkbelasting:    'Gift tax',
+      schenkNetOntvangen: 'Net gifts received',
       gainLossInfo:       'Realised gain/loss (informational)',
     },
 

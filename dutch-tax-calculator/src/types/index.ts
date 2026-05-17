@@ -197,6 +197,21 @@ export interface AfschrijvingenData {
   categorieen: AfschrijvingCategorie[];
 }
 
+export type SchenkingRelatie    = 'ouder' | 'overig';
+export type SchenkingVrijstelling = 'jaarlijks' | 'eenmalig_vrij' | 'eenmalig_studie' | 'geen';
+
+export interface SchenkingItem {
+  id: string;
+  omschrijving: string;
+  bedrag: number;
+  relatie: SchenkingRelatie;
+  vrijstelling: SchenkingVrijstelling;
+}
+
+export interface SchenkingenData {
+  schenkingen: SchenkingItem[];
+}
+
 export interface TaxFormData {
   personal: PersonalData;
   woon: WoonData;
@@ -208,6 +223,7 @@ export interface TaxFormData {
   schulden: SchuldenData;
   portfolio: PortfolioData;
   afschrijvingen: AfschrijvingenData;
+  schenkingen: SchenkingenData;
 }
 
 // ---- Results ----
@@ -272,6 +288,8 @@ export interface TaxResult {
   afschrijvingenActueel: number;
   duoJaarbetaling: number;
   afschrijvingenJaarDeposit: number;
+  schenkbelasting: number;
+  schenkNetOntvangen: number;
 }
 
 export interface Position {

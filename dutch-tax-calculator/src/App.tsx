@@ -14,6 +14,7 @@ import WaardesSection from './components/WaardesSection';
 import TaxResults from './components/TaxResults';
 import NetWorthProjection from './components/NetWorthProjection';
 import AfschrijvingenSection from './components/AfschrijvingenSection';
+import SchenkingenSection from './components/SchenkingenSection';
 import BankRekeningenSection from './components/BankRekeningenSection';
 import MarginaleDrukChart from './components/MarginaleDrukChart';
 import JaarruimteSection from './components/JaarruimteSection';
@@ -49,9 +50,10 @@ const DEFAULT_DATA: TaxFormData = {
     rentePercentage: 4.0,
     categorieen: [],
   },
+  schenkingen: { schenkingen: [] },
 };
 
-const APP_VERSION         = 'v1.12.1';
+const APP_VERSION         = 'v1.12.2';
 
 const STORAGE_KEY         = 'nl-belasting-data-v1';
 const PROGNOSE_STORAGE_KEY = 'nl-belasting-prognose-v1';
@@ -98,20 +100,21 @@ function loadSavedData(): TaxFormData {
       schulden:       { ...DEFAULT_DATA.schulden,       ...saved.schulden       },
       portfolio:      { ...DEFAULT_DATA.portfolio,      ...saved.portfolio      },
       afschrijvingen: { ...DEFAULT_DATA.afschrijvingen, ...saved.afschrijvingen },
+      schenkingen:    { ...DEFAULT_DATA.schenkingen,    ...saved.schenkingen    },
     };
   } catch {
     return DEFAULT_DATA;
   }
 }
 
-type Tab = 'income' | 'woon' | 'waardes' | 'expenses' | 'schulden' | 'bank' | 'portfolio' | 'afschrijvingen' | 'jaarruimte' | 'prognose' | 'results' | 'marginale';
+type Tab = 'income' | 'woon' | 'waardes' | 'expenses' | 'schulden' | 'bank' | 'portfolio' | 'afschrijvingen' | 'schenkingen' | 'jaarruimte' | 'prognose' | 'results' | 'marginale';
 type AnyTab = Tab | 'home';
 
 interface TabMeta { id: Tab; emoji: string; description: string }
 
 const ALL_TAB_IDS: Tab[] = [
   'income', 'woon', 'waardes', 'expenses', 'schulden', 'bank',
-  'portfolio', 'afschrijvingen', 'jaarruimte', 'prognose', 'results', 'marginale',
+  'portfolio', 'afschrijvingen', 'schenkingen', 'jaarruimte', 'prognose', 'results', 'marginale',
 ];
 
 const DEFAULT_ENABLED_TABS = new Set<Tab>(ALL_TAB_IDS);
@@ -197,6 +200,7 @@ export default function App() {
     { id: 'bank',           emoji: '🏦', description: t.tabDescriptions.bank },
     { id: 'portfolio',      emoji: '📈', description: t.tabDescriptions.portfolio },
     { id: 'afschrijvingen', emoji: '🔄', description: t.tabDescriptions.afschrijvingen },
+    { id: 'schenkingen',   emoji: '🎁', description: 'Ontvangen schenkingen en schenkbelasting berekening.' },
     { id: 'jaarruimte',     emoji: '🏛️', description: t.tabDescriptions.jaarruimte },
     { id: 'prognose',       emoji: '🔮', description: t.tabDescriptions.prognose },
     { id: 'results',        emoji: '🧮', description: t.tabDescriptions.results },
@@ -214,6 +218,7 @@ export default function App() {
     bank:           t.tabs.bank,
     portfolio:      t.tabs.portfolio,
     afschrijvingen: t.tabs.depreciation,
+    schenkingen:   'Schenkingen',
     jaarruimte:     t.tabs.jaarruimte,
     prognose:       t.tabs.forecast,
     results:        t.tabs.results,
@@ -610,6 +615,13 @@ export default function App() {
                   data={data.afschrijvingen}
                   taxYear={data.personal.taxYear}
                   onChange={afschrijvingen => setData(d => ({ ...d, afschrijvingen }))}
+                />
+              )}
+              {tab === 'schenkingen' && (
+                <SchenkingenSection
+                  data={data.schenkingen}
+                  taxYear={data.personal.taxYear}
+                  onChange={schenkingen => setData(d => ({ ...d, schenkingen }))}
                 />
               )}
               {tab === 'jaarruimte' && <JaarruimteSection data={data} />}

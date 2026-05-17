@@ -25,6 +25,7 @@ export default function TaxResults({ result }: Props) {
     portfolioGainLoss, portfolioCurrentValue, portfolioJan1Value,
     actualSavingsInterest, currentNetWorth, wozAsset, hypotheekRestschuld, afschrijvingenActueel,
     duoJaarbetaling, afschrijvingenJaarDeposit,
+    schenkbelasting, schenkNetOntvangen,
   } = result;
 
   const hasToeslagen = toeslagen.total > 0 || toeslagen.hypotheekrenteaftrek > 0;
@@ -301,6 +302,12 @@ export default function TaxResults({ result }: Props) {
               : []),
             ...(afschrijvingenJaarDeposit > 0
               ? [{ label: t.resultsExtra.savingsProvisions, value: -afschrijvingenJaarDeposit, sign: '−', color: 'text-orange-400' }]
+              : []),
+            ...(schenkbelasting > 0
+              ? [{ label: t.resultsExtra.schenkbelasting, value: -schenkbelasting, sign: '−', color: 'text-purple-600' }]
+              : []),
+            ...(schenkNetOntvangen > 0
+              ? [{ label: t.resultsExtra.schenkNetOntvangen, value: schenkNetOntvangen, sign: '+', color: 'text-green-600' }]
               : []),
           ].map((row, i) => (
             <div key={i} className="flex justify-between items-center gap-2 py-2 border-b border-slate-100 dark:border-slate-700 last:border-0 text-sm">
