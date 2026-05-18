@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 import { Upload, Trash2, ChevronDown, ChevronRight, TrendingUp, AlertTriangle, GripVertical } from 'lucide-react';
-import type { ExpensesData, SavingsData } from '../types';
+import type { ExpensesData, SavingsData, WoonData } from '../types';
 import { useLanguage } from '../i18n/LanguageContext';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -202,9 +202,28 @@ const CAT_CONFIGS: CatConfig[] = [
 interface Props {
   expenses: ExpensesData;
   savings: SavingsData;
+  woon: WoonData;
 }
 
-export default function BankImportTab({ expenses, savings }: Props) {
+function calcMonthlyHousing(woon: WoonData): number {
+  const extra = woon.gwe + woon.vve + woon.overig;
+  if (woon.woningType === 'huur') return woon.maandhuur + extra;
+  let hyp = 0;
+  for (const h of woon.hypotheken) {
+    const r = h.rentePercentage / 100 / 12;
+    const n = h.looptijd;
+    if (h.type === 'aflossingsvrijij') {
+      hyp += h.leningBedrag * r;
+    } else if (h.type === 'lineair') {
+      hyp += h.leningBedrag / n + h.leningBedrag * r;
+    } else {
+      hyp += r === 0 ? h.leningBedrag / n : h.leningBedrag * r * Math.pow(1 + r, n) / (Math.pow(1 + r, n) - 1);
+    }
+  }
+  return hyp + extra;
+}
+
+export default function BankImportTab({ expenses, savings, woon }: Props) {
   const { t } = useLanguage();
   const [txs, setTxs]          = useState<BankTx[]>(loadStored);
   const [dragging, setDragging]  = useState(false);
@@ -271,9 +290,13 @@ export default function BankImportTab({ expenses, savings }: Props) {
   const investTotal    = sumCat('investments');
   const totalSpending  = CAT_CONFIGS.filter(c => c.key !== 'investments').reduce((s, c) => s + sumCat(c.key), 0);
 
+  const housingMonthly = calcMonthlyHousing(woon);
+
   // budget for a given expense key, normalized to same period
-  const budgetAmt = (expKey?: keyof ExpensesData) =>
-    expKey ? expenses[expKey] * months : 0;
+  const budgetAmt = (cfg: CatConfig) => {
+    if (cfg.key === 'housing') return housingMonthly * months;
+    return cfg.expKey ? expenses[cfg.expKey] * months : 0;
+  };
 
   // ── Render ────────────────────────────────────────────────────────────────────
 
@@ -372,7 +395,7 @@ export default function BankImportTab({ expenses, savings }: Props) {
           const txList  = activeTxs.filter(x => x.category === cfg.key && x.afBij === 'Af');
           if (!actual && !cfg.expKey) return null;
 
-          const budget  = budgetAmt(cfg.expKey);
+          const budget  = budgetAmt(cfg);
           const diff    = budget > 0 ? actual - budget : null;
           const over    = diff !== null && diff > 0;
           const maxBar  = budget > 0 ? Math.max(actual, budget) : actual || 1;

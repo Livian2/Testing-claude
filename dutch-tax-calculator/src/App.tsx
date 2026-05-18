@@ -55,7 +55,7 @@ const DEFAULT_DATA: TaxFormData = {
   schenkingen: { schenkingen: [] },
 };
 
-const APP_VERSION         = 'v1.14.1';
+const APP_VERSION         = 'v1.14.2';
 
 const STORAGE_KEY         = 'nl-belasting-data-v1';
 const PROGNOSE_STORAGE_KEY = 'nl-belasting-prognose-v1';
@@ -598,6 +598,7 @@ export default function App() {
                   onChange={expenses => setData(d => ({ ...d, expenses }))}
                   savings={data.savings}
                   onSavingsChange={savings => setData(d => ({ ...d, savings }))}
+                  woon={data.woon}
                 />
               )}
               {tab === 'schulden' && (

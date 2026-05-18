@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { PiggyBank, ShoppingCart, BarChart2 } from 'lucide-react';
-import type { ExpensesData, SavingsData } from '../types';
+import type { ExpensesData, SavingsData, WoonData } from '../types';
 import { useLanguage } from '../i18n/LanguageContext';
 import CurrencyInput from './CurrencyInput';
 import SectionCard from './SectionCard';
@@ -12,13 +12,14 @@ interface Props {
   onChange: (d: ExpensesData) => void;
   savings: SavingsData;
   onSavingsChange: (s: SavingsData) => void;
+  woon: WoonData;
 }
 
 const nl = new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
 
 type Tab = 'budget' | 'werkelijk';
 
-export default function ExpensesSection({ data, onChange, savings, onSavingsChange }: Props) {
+export default function ExpensesSection({ data, onChange, savings, onSavingsChange, woon }: Props) {
   const { t } = useLanguage();
   const [tab, setTab] = useState<Tab>('budget');
   const set = (key: keyof ExpensesData) => (v: number) => onChange({ ...data, [key]: v });
@@ -130,7 +131,7 @@ export default function ExpensesSection({ data, onChange, savings, onSavingsChan
             <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">{t.expenses.werkelijkTab}</h3>
             <span className="text-xs text-slate-400 dark:text-slate-500 ml-1">— {t.expenses.importSubtitle}</span>
           </div>
-          <BankImportTab expenses={data} savings={savings} />
+          <BankImportTab expenses={data} savings={savings} woon={woon} />
         </div>
       )}
     </div>
