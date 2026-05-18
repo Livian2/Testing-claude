@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo, lazy, Suspense } from 'react';
 import {
   TrendingUp, Plus, Trash2, ArrowUpCircle, ArrowDownCircle,
   LayoutList, RefreshCw, AlertCircle, CheckCircle2, FileUp, Clock, Globe, Layers,
+  ChevronUp, ChevronDown, ChevronsUpDown,
 } from 'lucide-react';
 import type { PortfolioData, Holding, Transaction, AssetType, TransactionType } from '../types';
 import { computePositions } from '../utils/taxCalculations';
@@ -44,6 +45,7 @@ const nl0 = new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR',
 
 type InnerTab = 'holdings' | 'transactions' | 'import' | 'overview' | 'analyse';
 type FetchState = 'idle' | 'loading' | 'ok' | 'error';
+type SortCol = 'name' | 'qty' | 'marketValue' | 'gainPct' | 'gainAbs';
 
 const fmtDate = (iso: string): string =>
   new Date(iso + 'T00:00:00').toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -266,6 +268,25 @@ function FondsSearch({ value, holdings, onChange }: FondsSearchProps) {
   );
 }
 
+function SortHeader({ label, col, sortCol, sortDir, onSort, align }: {
+  label: string; col: SortCol; sortCol: SortCol; sortDir: 'asc' | 'desc';
+  onSort: (col: SortCol) => void; align: 'left' | 'right';
+}) {
+  const active = sortCol === col;
+  const Icon = active ? (sortDir === 'desc' ? ChevronDown : ChevronUp) : ChevronsUpDown;
+  return (
+    <button
+      onClick={() => onSort(col)}
+      className={`flex items-center gap-0.5 cursor-pointer bg-transparent border-0 p-0 font-medium transition-colors
+        ${align === 'right' ? 'flex-row-reverse ml-auto' : ''}
+        ${active ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
+    >
+      {label}
+      <Icon size={11} className={active ? 'text-indigo-500' : 'text-slate-300 dark:text-slate-600'} />
+    </button>
+  );
+}
+
 export default function PortfolioSection({ data, onChange }: Props) {
   const { t } = useLanguage();
   const [tab, setTab]               = useState<InnerTab>('holdings');
@@ -274,6 +295,8 @@ export default function PortfolioSection({ data, onChange }: Props) {
   const [fetchMsg, setFetchMsg]     = useState('');
   const [lastFetchTime, setLastFetchTime] = useState<string | null>(null);
   const [fxRates, setFxRates]            = useState<Record<string, number>>({});
+  const [sortCol, setSortCol]       = useState<SortCol>('marketValue');
+  const [sortDir, setSortDir]       = useState<'asc' | 'desc'>('desc');
   const autoFetched = useRef(false);
 
   const setHoldings = (holdings: Holding[])         => onChange({ ...data, holdings });
@@ -421,6 +444,33 @@ export default function PortfolioSection({ data, onChange }: Props) {
     () => positions.reduce((s, p) => s + p.currentValue, 0),
     [positions],
   );
+
+  function toggleSort(col: SortCol) {
+    if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setSortCol(col); setSortDir('desc'); }
+  }
+
+  const sortedPositions = useMemo(() => {
+    const dir = sortDir === 'asc' ? 1 : -1;
+    return [...positions].sort((a, b) => {
+      switch (sortCol) {
+        case 'name':        return dir * a.name.localeCompare(b.name);
+        case 'qty':         return dir * (a.quantity - b.quantity);
+        case 'marketValue': return dir * (a.currentValue - b.currentValue);
+        case 'gainPct': {
+          const ga = a.avgCost > 0 && a.currentPrice > 0 ? (a.currentPrice - a.avgCost) / a.avgCost : -Infinity;
+          const gb = b.avgCost > 0 && b.currentPrice > 0 ? (b.currentPrice - b.avgCost) / b.avgCost : -Infinity;
+          return dir * (ga - gb);
+        }
+        case 'gainAbs': {
+          const ga = a.avgCost > 0 && a.currentPrice > 0 ? a.quantity * (a.currentPrice - a.avgCost) : -Infinity;
+          const gb = b.avgCost > 0 && b.currentPrice > 0 ? b.quantity * (b.currentPrice - b.avgCost) : -Infinity;
+          return dir * (ga - gb);
+        }
+        default: return 0;
+      }
+    });
+  }, [positions, sortCol, sortDir]);
 
   // Filter transactions by current type once — was filtered twice (empty check + map)
   const filteredTxs = useMemo(
@@ -854,9 +904,15 @@ export default function PortfolioSection({ data, onChange }: Props) {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-slate-200 dark:border-slate-700 text-xs text-slate-500 dark:text-slate-400">
-                      <th className="text-left py-2 pr-3 font-medium">{t.portfolioExtra.colName}</th>
+                      {/* Naam — sortable */}
+                      <th className="text-left py-2 pr-3 font-medium">
+                        <SortHeader label={t.portfolioExtra.colName} col="name" sortCol={sortCol} sortDir={sortDir} onSort={toggleSort} align="left" />
+                      </th>
                       <th className="text-left py-2 pr-3 font-medium hidden sm:table-cell">{t.portfolioExtra.colBroker}</th>
-                      <th className="text-right py-2 pr-3 font-medium">{t.portfolioExtra.colQty}</th>
+                      {/* Aantal — sortable */}
+                      <th className="text-right py-2 pr-3 font-medium">
+                        <SortHeader label={t.portfolioExtra.colQty} col="qty" sortCol={sortCol} sortDir={sortDir} onSort={toggleSort} align="right" />
+                      </th>
                       <th className="text-right py-2 pr-3 font-medium hidden sm:table-cell">{t.portfolioExtra.colAvgPrice}</th>
                       <th className="text-right py-2 pr-3 font-medium">
                         <span className="flex items-center justify-end gap-1">
@@ -867,13 +923,23 @@ export default function PortfolioSection({ data, onChange }: Props) {
                         </span>
                       </th>
                       <th className="text-right py-2 pr-3 font-medium hidden md:table-cell">{t.portfolioExtra.colDivYr}</th>
-                      <th className="text-right py-2 pr-3 font-medium">{t.portfolioExtra.colReturn}</th>
-                      <th className="text-right py-2 font-medium">{t.portfolioExtra.colValue}</th>
+                      {/* Rendement — sortable (two sub-sorts: % and abs) */}
+                      <th className="text-right py-2 pr-3 font-medium">
+                        <span className="flex items-center justify-end gap-1">
+                          <SortHeader label={t.portfolioExtra.colReturn + ' %'} col="gainPct" sortCol={sortCol} sortDir={sortDir} onSort={toggleSort} align="right" />
+                          <span className="text-slate-300">/</span>
+                          <SortHeader label="€" col="gainAbs" sortCol={sortCol} sortDir={sortDir} onSort={toggleSort} align="right" />
+                        </span>
+                      </th>
+                      {/* Marktwaarde — sortable */}
+                      <th className="text-right py-2 font-medium">
+                        <SortHeader label="Marktwaarde" col="marketValue" sortCol={sortCol} sortDir={sortDir} onSort={toggleSort} align="right" />
+                      </th>
                       <th className="py-2 font-medium w-6"></th>
                     </tr>
                   </thead>
                   <tbody>
-                    {positions.map((p, i) => {
+                    {sortedPositions.map((p, i) => {
                       const holding = holdingByKey(p.name, p.ticker);
                       const hasFetched = p.currentPrice > 0;
                       const gainPct = p.avgCost > 0 && hasFetched
