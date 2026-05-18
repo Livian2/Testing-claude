@@ -357,6 +357,9 @@ export const translations = {
       importLegendUnder:  'Onder budget',
       importLegendOver:   'Over budget',
       importLegendBudget: 'Budget grens',
+      importDupSkipped:   'reeds aanwezige transacties overgeslagen',
+      importNewAdded:     'nieuwe transacties toegevoegd',
+      importDataFrom:     'Gegevens beschikbaar van',
     },
 
     // ── Savings ──────────────────────────────────────────────────────────────
@@ -1223,6 +1226,9 @@ export const translations = {
       importLegendUnder:  'Under budget',
       importLegendOver:   'Over budget',
       importLegendBudget: 'Budget line',
+      importDupSkipped:   'duplicate transactions skipped',
+      importNewAdded:     'new transactions added',
+      importDataFrom:     'Data available from',
     },
 
     // ── Savings ──────────────────────────────────────────────────────────────

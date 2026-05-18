@@ -246,7 +246,9 @@ export interface Box1Result {
 
 export interface Box3Result {
   totalAssets: number;
-  totalDebts: number;
+  totalDebts: number;       // after drempelschuld — for Box 3 tax calculation only
+  rawDebts: number;         // actual total debt, no threshold — for net worth display
+  drempelschuld: number;    // the deducted threshold (informational)
   afschrijvingenGereserveerd: number;
   netWealth: number;
   exemption: number;

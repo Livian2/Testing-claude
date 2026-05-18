@@ -247,9 +247,12 @@ export function calculateBox3(
   const netWealth      = Math.max(0, adjustedAssets - totalDebts);
   const taxableWealth  = Math.max(0, netWealth - exemption);
 
+  const drempelschuld = rawDebts - totalDebts; // amount removed by threshold
+
   if (taxableWealth === 0) {
     return {
-      totalAssets, totalDebts, afschrijvingenGereserveerd, netWealth, exemption, taxableWealth,
+      totalAssets, totalDebts, rawDebts, drempelschuld,
+      afschrijvingenGereserveerd, netWealth, exemption, taxableWealth,
       fictitiousReturn: 0, grossTax: 0, heffingskortingBox3: 0, netTax: 0,
       breakdown: {
         savings: totalSavings, investments: totalInvestments, debts: totalDebts,
@@ -272,7 +275,8 @@ export function calculateBox3(
   const grossTax         = Math.max(0, fictitiousReturn * BOX3_TAX_RATE);
 
   return {
-    totalAssets, totalDebts, afschrijvingenGereserveerd, netWealth, exemption, taxableWealth,
+    totalAssets, totalDebts, rawDebts, drempelschuld,
+    afschrijvingenGereserveerd, netWealth, exemption, taxableWealth,
     fictitiousReturn, grossTax, heffingskortingBox3: 0, netTax: grossTax,
     breakdown: {
       savings: totalSavings, investments: totalInvestments, debts: totalDebts,

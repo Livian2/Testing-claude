@@ -228,23 +228,38 @@ export default function BankImportTab({ expenses, savings, woon }: Props) {
   const [txs, setTxs]          = useState<BankTx[]>(loadStored);
   const [dragging, setDragging]  = useState(false);
   const [error, setError]        = useState<string | null>(null);
+  const [importInfo, setImportInfo] = useState<{ newCount: number; dupCount: number; from: string; to: string } | null>(null);
   const [expanded, setExpanded]  = useState<Set<TxCategory>>(new Set());
   const [dropTarget, setDropTarget] = useState<TxCategory | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const handleFile = useCallback((file: File) => {
     setError(null);
+    setImportInfo(null);
     const reader = new FileReader();
     reader.onload = e => {
       try {
         const csv = e.target?.result as string;
         const parsed = parseING(csv);
         if (!parsed.length) { setError(t.expenses.importNoData); return; }
-        const next = [...txs, ...parsed].filter((tx, i, arr) =>
-          arr.findIndex(x => x.datum === tx.datum && x.naam === tx.naam && x.bedrag === tx.bedrag && x.afBij === tx.afBij) === i
-        );
+
+        const existingKeys = new Set(txs.map(txKey));
+        const dupCount = parsed.filter(tx => existingKeys.has(txKey(tx))).length;
+        const newTxs   = parsed.filter(tx => !existingKeys.has(txKey(tx)));
+
+        const next = [...txs, ...newTxs];
         setTxs(next);
         localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+
+        if (dupCount > 0 || next.length > 0) {
+          const allDates = next.map(t => t.datum).sort();
+          setImportInfo({
+            newCount: newTxs.length,
+            dupCount,
+            from: dateToDMY(allDates[0]),
+            to:   dateToDMY(allDates[allDates.length - 1]),
+          });
+        }
       } catch { setError(t.expenses.importParseError); }
     };
     reader.readAsText(file, 'utf-8');
@@ -363,6 +378,26 @@ export default function BankImportTab({ expenses, savings, woon }: Props) {
         <input ref={fileRef} type="file" accept=".csv" className="hidden"
           onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ''; }} />
       </div>
+
+      {/* Duplicate import warning */}
+      {importInfo && importInfo.dupCount > 0 && (
+        <div className="flex items-start gap-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-3 text-sm text-amber-800 dark:text-amber-300">
+          <AlertTriangle size={16} className="shrink-0 mt-0.5" />
+          <span>
+            <strong>{importInfo.dupCount}</strong> {t.expenses.importDupSkipped}.{' '}
+            {importInfo.newCount > 0 && <><strong>{importInfo.newCount}</strong> {t.expenses.importNewAdded}. </>}
+            {t.expenses.importDataFrom} <strong>{importInfo.from}</strong> – <strong>{importInfo.to}</strong>.
+          </span>
+        </div>
+      )}
+      {importInfo && importInfo.dupCount === 0 && importInfo.newCount > 0 && (
+        <div className="flex items-center gap-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl p-3 text-sm text-green-700 dark:text-green-300">
+          <AlertTriangle size={16} className="shrink-0" />
+          <span>
+            <strong>{importInfo.newCount}</strong> {t.expenses.importNewAdded}. {t.expenses.importDataFrom} <strong>{importInfo.from}</strong> – <strong>{importInfo.to}</strong>.
+          </span>
+        </div>
+      )}
 
       {/* Summary row */}
       <div className="grid grid-cols-3 gap-3">

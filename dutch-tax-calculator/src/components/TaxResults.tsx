@@ -42,9 +42,9 @@ export default function TaxResults({ result }: Props) {
   const hasPriceDiff = portfolioCurrentValue > 0 && Math.abs(portfolioCurrentValue - portfolioJan1Value) > 1;
   const grossIncome  = box1.taxableIncome;
 
-  // Net worth breakdown for visual bar
+  // Net worth breakdown — use rawDebts (actual debt, no Box 3 threshold applied)
   const totalAssets = box3.breakdown.savings + portfolioCurrentValue + Math.max(0, wozAsset);
-  const totalDebts  = Math.max(0, hypotheekRestschuld) + Math.max(0, box3.totalDebts) + Math.max(0, afschrijvingenActueel);
+  const totalDebts  = Math.max(0, hypotheekRestschuld) + Math.max(0, box3.rawDebts) + Math.max(0, afschrijvingenActueel);
   const assetPct    = totalAssets > 0 ? Math.round((totalAssets / (totalAssets + totalDebts)) * 100) : 100;
 
   const assetSegments = [
@@ -55,7 +55,7 @@ export default function TaxResults({ result }: Props) {
 
   const debtSegments = [
     ...(hypotheekRestschuld > 0 ? [{ label: t.resultsExtra.hypotheekSchuld, value: hypotheekRestschuld, textColor: 'text-red-700 dark:text-red-300', border: 'border-red-200 dark:border-red-800', bg: 'bg-red-50 dark:bg-red-900/20' }] : []),
-    ...(box3.totalDebts > 0      ? [{ label: t.results.debtsBox3,           value: box3.totalDebts,     textColor: 'text-orange-700 dark:text-orange-300', border: 'border-orange-200 dark:border-orange-800', bg: 'bg-orange-50 dark:bg-orange-900/20' }] : []),
+    ...(box3.rawDebts > 0        ? [{ label: t.results.debtsBox3,            value: box3.rawDebts,      textColor: 'text-orange-700 dark:text-orange-300', border: 'border-orange-200 dark:border-orange-800', bg: 'bg-orange-50 dark:bg-orange-900/20' }] : []),
     ...(afschrijvingenActueel > 0 ? [{ label: t.results.depreciationRes,    value: afschrijvingenActueel, textColor: 'text-slate-600 dark:text-slate-400', border: 'border-slate-200 dark:border-slate-700', bg: 'bg-slate-50 dark:bg-slate-900' }] : []),
   ];
 

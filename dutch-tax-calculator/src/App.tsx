@@ -55,7 +55,7 @@ const DEFAULT_DATA: TaxFormData = {
   schenkingen: { schenkingen: [] },
 };
 
-const APP_VERSION         = 'v1.14.2';
+const APP_VERSION         = 'v1.14.3';
 
 const STORAGE_KEY         = 'nl-belasting-data-v1';
 const PROGNOSE_STORAGE_KEY = 'nl-belasting-prognose-v1';
