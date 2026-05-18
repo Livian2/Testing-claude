@@ -71,19 +71,19 @@ export default function TaxResults({ result }: Props) {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="min-w-0">
             <p className="text-xs text-slate-400 mb-1 truncate">{t.results.totalTax}</p>
-            <p className="text-xl lg:text-2xl font-bold text-red-400 break-words">{fmt(totalTax)}</p>
+            <p className="text-xl lg:text-2xl font-bold text-red-400 truncate">{fmt(totalTax)}</p>
           </div>
           <div className="min-w-0">
             <p className="text-xs text-slate-400 mb-1 truncate">{t.results.box1Tax}</p>
-            <p className="text-xl lg:text-2xl font-bold text-orange-400 break-words">{fmt(box1.netTax)}</p>
+            <p className="text-xl lg:text-2xl font-bold text-orange-400 truncate">{fmt(box1.netTax)}</p>
           </div>
           <div className="min-w-0">
             <p className="text-xs text-slate-400 mb-1 truncate">{t.results.box3Tax}</p>
-            <p className="text-xl lg:text-2xl font-bold text-purple-400 break-words">{fmt(box3.netTax)}</p>
+            <p className="text-xl lg:text-2xl font-bold text-purple-400 truncate">{fmt(box3.netTax)}</p>
           </div>
           <div className="min-w-0">
             <p className="text-xs text-slate-400 mb-1 truncate">{t.results.netDisposable}</p>
-            <p className={`text-xl lg:text-2xl font-bold break-words ${netDisposableIncome >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+            <p className={`text-xl lg:text-2xl font-bold truncate ${netDisposableIncome >= 0 ? 'text-green-400' : 'text-red-400'}`}>
               {fmt(netDisposableIncome)}
             </p>
           </div>
@@ -265,30 +265,32 @@ export default function TaxResults({ result }: Props) {
                 </div>
               )}
 
-              {/* Asset cards */}
+              {/* Asset rows */}
               {assetSegments.length > 0 && (
                 <div>
-                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">{t.results.savingsBalance.split(' ')[0]}</p>
-                  <div className="grid grid-cols-2 gap-2">
+                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">Bezittingen</p>
+                  <div className="space-y-1.5">
                     {assetSegments.map((s, i) => (
-                      <div key={i} className={`rounded-xl border p-3 ${s.bg} ${s.border}`}>
-                        <p className={`text-xs font-medium opacity-70 mb-1 truncate ${s.textColor}`}>{s.label}</p>
-                        <p className={`text-sm font-bold tabular-nums ${s.textColor}`}>{fmt(s.value)}</p>
+                      <div key={i} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border ${s.bg} ${s.border}`}>
+                        <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${s.color}`} />
+                        <span className={`flex-1 min-w-0 text-xs truncate ${s.textColor} opacity-80`}>{s.label}</span>
+                        <span className={`text-sm font-bold tabular-nums shrink-0 ${s.textColor}`}>{fmt(s.value)}</span>
                       </div>
                     ))}
                   </div>
                 </div>
               )}
 
-              {/* Debt cards */}
+              {/* Debt rows */}
               {debtSegments.length > 0 && (
                 <div>
-                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">{t.results.debtsBox3.split(' ')[0]}</p>
-                  <div className="grid grid-cols-2 gap-2">
+                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">Schulden</p>
+                  <div className="space-y-1.5">
                     {debtSegments.map((s, i) => (
-                      <div key={i} className={`rounded-xl border p-3 ${s.bg} ${s.border}`}>
-                        <p className={`text-xs font-medium opacity-70 mb-1 truncate ${s.textColor}`}>{s.label}</p>
-                        <p className={`text-sm font-bold tabular-nums ${s.textColor}`}>− {fmt(s.value)}</p>
+                      <div key={i} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border ${s.bg} ${s.border}`}>
+                        <div className="w-2.5 h-2.5 rounded-full shrink-0 bg-red-400" />
+                        <span className={`flex-1 min-w-0 text-xs truncate ${s.textColor} opacity-80`}>{s.label}</span>
+                        <span className={`text-sm font-bold tabular-nums shrink-0 ${s.textColor}`}>− {fmt(s.value)}</span>
                       </div>
                     ))}
                   </div>
@@ -374,14 +376,14 @@ export default function TaxResults({ result }: Props) {
                   ? [{ label: t.resultsExtra.duoLeningInflow, value: duoLeningJaar, sign: '+', color: 'text-blue-500' }]
                   : []),
               ].map((row, i) => (
-                <div key={i} className="flex items-center gap-3 py-2 border-b border-slate-100 dark:border-slate-700 last:border-0 text-sm">
-                  <span className="text-slate-600 dark:text-slate-300">{row.label}</span>
-                  <span className={`ml-auto shrink-0 font-medium tabular-nums ${row.color}`}>{row.sign} {fmt(Math.abs(row.value))}</span>
+                <div key={i} className="flex items-center gap-2 py-2 border-b border-slate-100 dark:border-slate-700 last:border-0 text-xs">
+                  <span className="flex-1 min-w-0 truncate text-slate-600 dark:text-slate-300">{row.label}</span>
+                  <span className={`shrink-0 font-medium tabular-nums ${row.color}`}>{row.sign} {fmt(Math.abs(row.value))}</span>
                 </div>
               ))}
-              <div className="flex items-center gap-3 pt-3 border-t-2 border-slate-200 dark:border-slate-700">
-                <span className="font-semibold text-slate-700 dark:text-slate-200">{t.results.netDisposable}</span>
-                <span className={`ml-auto shrink-0 text-lg font-bold tabular-nums ${netDisposableIncome >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              <div className="flex items-center gap-2 pt-3 border-t-2 border-slate-200 dark:border-slate-700">
+                <span className="flex-1 min-w-0 text-sm font-semibold text-slate-700 dark:text-slate-200 truncate">{t.results.netDisposable}</span>
+                <span className={`shrink-0 text-base font-bold tabular-nums ${netDisposableIncome >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                   {fmt(netDisposableIncome)}
                 </span>
               </div>

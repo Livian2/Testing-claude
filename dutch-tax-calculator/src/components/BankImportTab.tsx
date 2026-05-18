@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
-import { Upload, Trash2, ChevronDown, ChevronRight, TrendingUp, AlertTriangle } from 'lucide-react';
+import { Upload, Trash2, ChevronDown, ChevronRight, TrendingUp, AlertTriangle, GripVertical } from 'lucide-react';
 import type { ExpensesData, SavingsData } from '../types';
 import { useLanguage } from '../i18n/LanguageContext';
 
@@ -154,6 +154,25 @@ function loadStored(): BankTx[] {
   try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch { return []; }
 }
 
+function txKey(tx: BankTx) {
+  return `${tx.datum}_${tx.naam}_${tx.bedrag}_${tx.afBij}`;
+}
+
+const RECLASSIFIABLE: { key: TxCategory; nlLabel: string }[] = [
+  { key: 'groceries',  nlLabel: 'Boodschappen' },
+  { key: 'transport',  nlLabel: 'Transport' },
+  { key: 'insurance',  nlLabel: 'Verzekeringen' },
+  { key: 'healthcare', nlLabel: 'Zorg' },
+  { key: 'leisure',    nlLabel: 'Vrije tijd' },
+  { key: 'education',  nlLabel: 'Opleiding' },
+  { key: 'housing',    nlLabel: 'Huur / hypotheek' },
+  { key: 'phone',      nlLabel: 'Telefoon' },
+  { key: 'investments',nlLabel: 'Beleggingen' },
+  { key: 'income',     nlLabel: 'Inkomsten' },
+  { key: 'other',      nlLabel: 'Overig' },
+  { key: 'internal',   nlLabel: '— Verbergen —' },
+];
+
 // ── Category config ────────────────────────────────────────────────────────────
 
 interface CatConfig {
@@ -187,10 +206,11 @@ interface Props {
 
 export default function BankImportTab({ expenses, savings }: Props) {
   const { t } = useLanguage();
-  const [txs, setTxs]         = useState<BankTx[]>(loadStored);
-  const [dragging, setDragging] = useState(false);
-  const [error, setError]      = useState<string | null>(null);
-  const [expanded, setExpanded] = useState<Set<TxCategory>>(new Set());
+  const [txs, setTxs]          = useState<BankTx[]>(loadStored);
+  const [dragging, setDragging]  = useState(false);
+  const [error, setError]        = useState<string | null>(null);
+  const [expanded, setExpanded]  = useState<Set<TxCategory>>(new Set());
+  const [dropTarget, setDropTarget] = useState<TxCategory | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const handleFile = useCallback((file: File) => {
@@ -220,6 +240,14 @@ export default function BankImportTab({ expenses, savings }: Props) {
 
   function clearAll() {
     setTxs([]); localStorage.removeItem(STORAGE_KEY);
+  }
+
+  function recat(key: string, cat: TxCategory) {
+    const next = txs.map(tx =>
+      txKey(tx) === key ? { ...tx, category: cat, excluded: cat === 'internal' } : tx
+    );
+    setTxs(next);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
   }
 
   function toggleCat(cat: TxCategory) {
@@ -351,10 +379,14 @@ export default function BankImportTab({ expenses, savings }: Props) {
           const isOpen  = expanded.has(cfg.key);
 
           return (
-            <div key={cfg.key} className="border-b border-slate-50 dark:border-slate-700 last:border-0">
+            <div key={cfg.key} className={`border-b border-slate-50 dark:border-slate-700 last:border-0 transition-colors ${dropTarget === cfg.key ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}
+              onDragOver={e => { e.preventDefault(); setDropTarget(cfg.key); }}
+              onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDropTarget(null); }}
+              onDrop={e => { e.preventDefault(); const k = e.dataTransfer.getData('tx-key'); if (k) recat(k, cfg.key); setDropTarget(null); }}
+            >
               <button
                 className="w-full flex items-center gap-3 px-5 py-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors text-left"
-                onClick={() => txList.length > 0 && toggleCat(cfg.key)}
+                onClick={() => toggleCat(cfg.key)}
               >
                 <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${cfg.color}`} />
                 <span className="text-sm text-slate-700 dark:text-slate-200 flex-1 min-w-0">{cfg.nlLabel}</span>
@@ -393,15 +425,29 @@ export default function BankImportTab({ expenses, savings }: Props) {
 
               {/* Transaction list */}
               {isOpen && txList.length > 0 && (
-                <div className={`px-5 pb-3 space-y-1 ${cfg.bg} border-t ${cfg.border}`}>
-                  {txList.map((tx, i) => (
-                    <div key={i} className="flex items-center gap-2 py-1 text-xs">
-                      <span className="text-slate-400 shrink-0 w-20 font-mono">{dateToDMY(tx.datum)}</span>
-                      <span className={`flex-1 min-w-0 truncate ${cfg.text}`}>{tx.naam}</span>
+                <div className={`px-3 pb-3 space-y-0.5 ${cfg.bg} border-t ${cfg.border}`}>
+                  {txList.map(tx => (
+                    <div
+                      key={txKey(tx)}
+                      className="flex items-center gap-2 py-1.5 text-xs rounded-lg hover:bg-black/5 dark:hover:bg-white/5 px-2 group cursor-grab active:cursor-grabbing"
+                      draggable
+                      onDragStart={e => { e.dataTransfer.setData('tx-key', txKey(tx)); e.dataTransfer.effectAllowed = 'move'; }}
+                    >
+                      <GripVertical size={12} className="text-slate-300 dark:text-slate-600 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <span className="text-slate-400 shrink-0 w-16 font-mono">{dateToDMY(tx.datum)}</span>
+                      <span className={`flex-1 min-w-0 truncate ${cfg.text}`} title={tx.naam}>{tx.naam}</span>
                       <span className="shrink-0 font-medium tabular-nums text-slate-700 dark:text-slate-200">{fmtDec.format(tx.bedrag)}</span>
+                      <select
+                        value={tx.category}
+                        onChange={e => recat(txKey(tx), e.target.value as TxCategory)}
+                        onClick={e => e.stopPropagation()}
+                        className="shrink-0 text-xs border border-slate-200 dark:border-slate-600 rounded-md px-1 py-0.5 bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 cursor-pointer opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+                      >
+                        {RECLASSIFIABLE.map(c => <option key={c.key} value={c.key}>{c.nlLabel}</option>)}
+                      </select>
                     </div>
                   ))}
-                  <div className="flex items-center gap-2 pt-1 border-t border-slate-100 dark:border-slate-700">
+                  <div className="flex items-center gap-2 pt-1.5 mt-1 border-t border-slate-100 dark:border-slate-700 px-2">
                     <span className="flex-1 text-xs font-semibold text-slate-500 dark:text-slate-400">{txList.length} transacties</span>
                     <span className="text-xs font-bold tabular-nums text-slate-700 dark:text-slate-200">{fmtDec.format(actual)}</span>
                   </div>
@@ -414,7 +460,11 @@ export default function BankImportTab({ expenses, savings }: Props) {
 
       {/* Investments row */}
       {investTotal > 0 && (
-        <div className="bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800 rounded-xl">
+        <div className={`bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800 rounded-xl transition-colors ${dropTarget === 'investments' ? 'ring-2 ring-violet-400' : ''}`}
+          onDragOver={e => { e.preventDefault(); setDropTarget('investments'); }}
+          onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDropTarget(null); }}
+          onDrop={e => { e.preventDefault(); const k = e.dataTransfer.getData('tx-key'); if (k) recat(k, 'investments'); setDropTarget(null); }}
+        >
           <button className="w-full flex items-center gap-3 px-5 py-3 text-left"
             onClick={() => toggleCat('investments')}>
             <div className="w-2.5 h-2.5 rounded-full shrink-0 bg-violet-500" />
@@ -428,12 +478,18 @@ export default function BankImportTab({ expenses, savings }: Props) {
               : <ChevronRight size={14} className="text-violet-400 shrink-0" />}
           </button>
           {expanded.has('investments') && (
-            <div className="px-5 pb-3 border-t border-violet-200 dark:border-violet-800 space-y-1">
-              {activeTxs.filter(x => x.category === 'investments').map((tx, i) => (
-                <div key={i} className="flex items-center gap-2 py-1 text-xs">
-                  <span className="text-violet-400 shrink-0 w-20 font-mono">{dateToDMY(tx.datum)}</span>
+            <div className="px-3 pb-3 border-t border-violet-200 dark:border-violet-800 space-y-0.5">
+              {activeTxs.filter(x => x.category === 'investments').map(tx => (
+                <div key={txKey(tx)} className="flex items-center gap-2 py-1.5 text-xs rounded-lg hover:bg-black/5 dark:hover:bg-white/5 px-2 group cursor-grab"
+                  draggable onDragStart={e => { e.dataTransfer.setData('tx-key', txKey(tx)); }}>
+                  <GripVertical size={12} className="text-violet-300 shrink-0 opacity-0 group-hover:opacity-100" />
+                  <span className="text-violet-400 shrink-0 w-16 font-mono">{dateToDMY(tx.datum)}</span>
                   <span className="flex-1 min-w-0 truncate text-violet-700 dark:text-violet-300">{tx.naam}</span>
                   <span className="shrink-0 font-medium tabular-nums text-violet-700 dark:text-violet-300">{fmtDec.format(tx.bedrag)}</span>
+                  <select value={tx.category} onChange={e => recat(txKey(tx), e.target.value as TxCategory)} onClick={e => e.stopPropagation()}
+                    className="shrink-0 text-xs border border-violet-200 dark:border-violet-600 rounded-md px-1 py-0.5 bg-white dark:bg-slate-700 cursor-pointer opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity">
+                    {RECLASSIFIABLE.map(c => <option key={c.key} value={c.key}>{c.nlLabel}</option>)}
+                  </select>
                 </div>
               ))}
             </div>
@@ -442,7 +498,11 @@ export default function BankImportTab({ expenses, savings }: Props) {
       )}
 
       {/* Income breakdown */}
-      <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl">
+      <div className={`bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl transition-colors ${dropTarget === 'income' ? 'ring-2 ring-green-400' : ''}`}
+        onDragOver={e => { e.preventDefault(); setDropTarget('income'); }}
+        onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDropTarget(null); }}
+        onDrop={e => { e.preventDefault(); const k = e.dataTransfer.getData('tx-key'); if (k) recat(k, 'income'); setDropTarget(null); }}
+      >
         <button className="w-full flex items-center gap-3 px-5 py-3 text-left"
           onClick={() => toggleCat('income')}>
           <TrendingUp size={16} className="text-green-500 shrink-0" />
@@ -453,12 +513,18 @@ export default function BankImportTab({ expenses, savings }: Props) {
             : <ChevronRight size={14} className="text-green-400 shrink-0" />}
         </button>
         {expanded.has('income') && (
-          <div className="px-5 pb-3 border-t border-green-200 dark:border-green-800 space-y-1">
-            {activeTxs.filter(x => x.category === 'income').map((tx, i) => (
-              <div key={i} className="flex items-center gap-2 py-1 text-xs">
-                <span className="text-green-400 shrink-0 w-20 font-mono">{dateToDMY(tx.datum)}</span>
-                <span className="flex-1 min-w-0 truncate text-green-700 dark:text-green-300">{tx.naam}</span>
+          <div className="px-3 pb-3 border-t border-green-200 dark:border-green-800 space-y-0.5">
+            {activeTxs.filter(x => x.category === 'income').map(tx => (
+              <div key={txKey(tx)} className="flex items-center gap-2 py-1.5 text-xs rounded-lg hover:bg-black/5 dark:hover:bg-white/5 px-2 group cursor-grab"
+                draggable onDragStart={e => { e.dataTransfer.setData('tx-key', txKey(tx)); }}>
+                <GripVertical size={12} className="text-green-300 shrink-0 opacity-0 group-hover:opacity-100" />
+                <span className="text-green-400 shrink-0 w-16 font-mono">{dateToDMY(tx.datum)}</span>
+                <span className="flex-1 min-w-0 truncate text-green-700 dark:text-green-300" title={tx.naam}>{tx.naam}</span>
                 <span className="shrink-0 font-medium tabular-nums text-green-700 dark:text-green-300">+{fmtDec.format(tx.bedrag)}</span>
+                <select value={tx.category} onChange={e => recat(txKey(tx), e.target.value as TxCategory)} onClick={e => e.stopPropagation()}
+                  className="shrink-0 text-xs border border-green-200 dark:border-green-600 rounded-md px-1 py-0.5 bg-white dark:bg-slate-700 cursor-pointer opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity">
+                  {RECLASSIFIABLE.map(c => <option key={c.key} value={c.key}>{c.nlLabel}</option>)}
+                </select>
               </div>
             ))}
           </div>
