@@ -923,13 +923,13 @@ export default function PortfolioSection({ data, onChange }: Props) {
                         </span>
                       </th>
                       <th className="text-right py-2 pr-3 font-medium hidden md:table-cell">{t.portfolioExtra.colDivYr}</th>
-                      {/* Rendement — sortable (two sub-sorts: % and abs) */}
+                      {/* Rendement % — sortable */}
+                      <th className="text-right py-2 pr-3 font-medium hidden sm:table-cell">
+                        <SortHeader label={t.portfolioExtra.colReturn} col="gainPct" sortCol={sortCol} sortDir={sortDir} onSort={toggleSort} align="right" />
+                      </th>
+                      {/* Winst/verlies € — sortable */}
                       <th className="text-right py-2 pr-3 font-medium">
-                        <span className="flex items-center justify-end gap-1">
-                          <SortHeader label={t.portfolioExtra.colReturn + ' %'} col="gainPct" sortCol={sortCol} sortDir={sortDir} onSort={toggleSort} align="right" />
-                          <span className="text-slate-300">/</span>
-                          <SortHeader label="€" col="gainAbs" sortCol={sortCol} sortDir={sortDir} onSort={toggleSort} align="right" />
-                        </span>
+                        <SortHeader label="Winst/verlies" col="gainAbs" sortCol={sortCol} sortDir={sortDir} onSort={toggleSort} align="right" />
                       </th>
                       {/* Marktwaarde — sortable */}
                       <th className="text-right py-2 font-medium">
@@ -1016,20 +1016,30 @@ export default function PortfolioSection({ data, onChange }: Props) {
                             })()}
                           </td>
 
-                          {/* Rendement */}
-                          <td className="py-2.5 pr-3 text-right text-xs">
+                          {/* Rendement % */}
+                          <td className="py-2.5 pr-3 text-right text-xs hidden sm:table-cell">
                             {gainPct !== null ? (
                               <span className={gainPct >= 0 ? 'text-green-600 font-semibold' : 'text-red-500 font-semibold'}>
                                 {gainPct >= 0 ? '▲' : '▼'} {Math.abs(gainPct).toFixed(1)}%
-                                <span className="block font-normal text-slate-400">{nl0.format(gainAbs!)}</span>
                               </span>
                             ) : (
                               <span className="text-slate-300">—</span>
                             )}
                           </td>
 
-                          {/* Waarde */}
-                          <td className="py-2.5 text-right font-semibold text-slate-800">
+                          {/* Winst/verlies € */}
+                          <td className="py-2.5 pr-3 text-right text-xs">
+                            {gainAbs !== null ? (
+                              <span className={gainAbs >= 0 ? 'text-green-600 font-semibold' : 'text-red-500 font-semibold'}>
+                                {nl0.format(gainAbs)}
+                              </span>
+                            ) : (
+                              <span className="text-slate-300">—</span>
+                            )}
+                          </td>
+
+                          {/* Marktwaarde */}
+                          <td className="py-2.5 text-right font-semibold text-slate-800 dark:text-slate-100">
                             {nl0.format(p.currentValue)}
                           </td>
 
@@ -1063,8 +1073,8 @@ export default function PortfolioSection({ data, onChange }: Props) {
                   <tfoot>
                     <tr className="border-t-2 border-slate-200 dark:border-slate-700">
                       <td colSpan={4} className="py-2.5 font-semibold text-slate-700 dark:text-slate-200 hidden sm:table-cell">{t.portfolioExtra.totalLabel}</td>
-                      <td colSpan={3} className="py-2.5 font-semibold text-slate-700 dark:text-slate-200 sm:hidden">{t.portfolioExtra.totalLabel}</td>
-                      <td colSpan={4} className="py-2.5 text-right">
+                      <td colSpan={2} className="py-2.5 font-semibold text-slate-700 dark:text-slate-200 sm:hidden">{t.portfolioExtra.totalLabel}</td>
+                      <td colSpan={5} className="py-2.5 text-right">
                         <span className="font-bold text-slate-900 dark:text-slate-100">{nl0.format(totalCurrentValue)}</span>
                         {lastFetchTime && (
                           <span className="block text-xs text-slate-400 font-normal flex items-center justify-end gap-1">
