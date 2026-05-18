@@ -41,7 +41,7 @@ export default function TaxResults({ result }: Props) {
 
   const [cfTab, setCfTab] = useState<'verwacht' | 'werkelijk'>('verwacht');
 
-  // ── Bank actuals (from localStorage, annualized to 12 months) ──────────────
+  // ── Bank actuals (from localStorage, raw totals — NOT annualized) ──────────
   interface RawTx { datum: string; category: string; afBij: string; bedrag: number; excluded: boolean; }
   const bankTxs: RawTx[] = (() => {
     try { return JSON.parse(localStorage.getItem('dutch-tax-bank-txs-v1') || '[]'); } catch { return []; }
@@ -56,14 +56,14 @@ export default function TaxResults({ result }: Props) {
     const ey = Math.floor(e / 10000), em = Math.floor((e % 10000) / 100);
     return Math.max(1, (ey - sy) * 12 + (em - sm) + 1);
   })();
-  const ann = (n: number) => (n / bankMonths) * 12;
 
   const EXPENSE_CATS = new Set(['groceries', 'transport', 'insurance', 'healthcare', 'education', 'leisure', 'other', 'housing', 'phone']);
-  const aktIncome   = ann(bankTxs.filter(t => t.category === 'income'      && t.afBij === 'Bij').reduce((s, t) => s + t.bedrag, 0));
-  const aktExpenses = ann(bankTxs.filter(t => !t.excluded && EXPENSE_CATS.has(t.category) && t.afBij === 'Af').reduce((s, t) => s + t.bedrag, 0));
-  const aktInvest   = ann(bankTxs.filter(t => t.category === 'investments' && t.afBij === 'Af').reduce((s, t) => s + t.bedrag, 0));
-  const aktNet      = aktIncome - box1.netTax - box3.netTax + toeslagen.total - aktExpenses - aktInvest
-                      - duoJaarbetaling - afschrijvingenJaarDeposit + duoLeningJaar + schenkNetOntvangen;
+  const aktIncome   = bankTxs.filter(t => t.category === 'income'      && t.afBij === 'Bij').reduce((s, t) => s + t.bedrag, 0);
+  const aktExpenses = bankTxs.filter(t => !t.excluded && EXPENSE_CATS.has(t.category) && t.afBij === 'Af').reduce((s, t) => s + t.bedrag, 0);
+  const aktInvest   = bankTxs.filter(t => t.category === 'investments' && t.afBij === 'Af').reduce((s, t) => s + t.bedrag, 0);
+  // Budget scaled to same period for delta comparison
+  const budgetScale = bankMonths / 12;
+  const aktNet      = aktIncome - (box1.netTax + box3.netTax - toeslagen.total + duoJaarbetaling + afschrijvingenJaarDeposit - duoLeningJaar - schenkNetOntvangen) * budgetScale - aktExpenses - aktInvest;
 
   const hasToeslagen = toeslagen.total > 0 || toeslagen.hypotheekrenteaftrek > 0;
   const grossIncome  = box1.taxableIncome;
@@ -325,10 +325,10 @@ export default function TaxResults({ result }: Props) {
               {/* Visual income vs outflow bar */}
               {grossIncome > 0 && (() => {
                 const totalOut = cfTab === 'werkelijk' && hasBankData
-                  ? aktExpenses + aktInvest + box1.netTax + box3.netTax + duoJaarbetaling + afschrijvingenJaarDeposit + schenkbelasting
+                  ? aktExpenses + aktInvest + (box1.netTax + box3.netTax + duoJaarbetaling + afschrijvingenJaarDeposit + schenkbelasting) * budgetScale
                   : box1.netTax + box3.netTax + totalExpenses + annualSavings + annualInvestments + duoJaarbetaling + afschrijvingenJaarDeposit + schenkbelasting;
                 const totalIn  = cfTab === 'werkelijk' && hasBankData
-                  ? aktIncome + toeslagen.total + duoLeningJaar + schenkNetOntvangen
+                  ? aktIncome + (toeslagen.total + duoLeningJaar + schenkNetOntvangen) * budgetScale
                   : grossIncome + toeslagen.total + duoLeningJaar + schenkNetOntvangen;
                 const maxVal   = Math.max(totalIn, totalOut) || 1;
                 return (
@@ -356,7 +356,7 @@ export default function TaxResults({ result }: Props) {
               {/* Period note in werkelijk mode */}
               {cfTab === 'werkelijk' && hasBankData && (
                 <p className="text-xs text-slate-400 dark:text-slate-500 mb-3 italic">
-                  Werkelijke bedragen op basis van {bankMonths} {bankMonths === 1 ? 'maand' : 'maanden'} bankdata, herschaald naar jaar.
+                  Werkelijke bedragen over {bankMonths} {bankMonths === 1 ? 'maand' : 'maanden'}. Budget geschaald naar dezelfde periode voor vergelijking.
                 </p>
               )}
 
@@ -364,34 +364,36 @@ export default function TaxResults({ result }: Props) {
               {(() => {
                 const isWerk = cfTab === 'werkelijk' && hasBankData;
                 type CfRow = { label: string; budget: number; actual: number | null; sign: '+' | '−'; color: string };
+                // In werkelijk mode, budget is scaled to the same period as bank data
+                const sc = isWerk ? budgetScale : 1;
                 const rows: CfRow[] = [
-                  { label: t.results.grossIncome,          budget: grossIncome,              actual: isWerk ? aktIncome   : null, sign: '+', color: 'text-green-600' },
-                  { label: t.results.box1Tax,              budget: -box1.netTax,             actual: null,                        sign: '−', color: 'text-red-500' },
-                  { label: t.results.box3Tax,              budget: -box3.netTax,             actual: null,                        sign: '−', color: 'text-red-500' },
+                  { label: t.results.grossIncome,          budget: grossIncome * sc,              actual: isWerk ? aktIncome   : null, sign: '+', color: 'text-green-600' },
+                  { label: t.results.box1Tax,              budget: -box1.netTax * sc,             actual: null,                        sign: '−', color: 'text-red-500' },
+                  { label: t.results.box3Tax,              budget: -box3.netTax * sc,             actual: null,                        sign: '−', color: 'text-red-500' },
                   ...(toeslagen.total > 0
-                    ? [{ label: t.results.toeslagen,       budget: toeslagen.total,          actual: null,                        sign: '+' as const, color: 'text-teal-600' }]
+                    ? [{ label: t.results.toeslagen,       budget: toeslagen.total * sc,          actual: null,                        sign: '+' as const, color: 'text-teal-600' }]
                     : []),
-                  { label: t.results.totalExpenses,        budget: -totalExpenses,           actual: isWerk ? -aktExpenses : null, sign: '−', color: 'text-orange-500' },
+                  { label: t.results.totalExpenses,        budget: -totalExpenses * sc,           actual: isWerk ? -aktExpenses : null, sign: '−', color: 'text-orange-500' },
                   ...(annualSavings > 0
-                    ? [{ label: t.expenses.monthlySavings, budget: -annualSavings,           actual: null,                        sign: '−' as const, color: 'text-blue-500' }]
+                    ? [{ label: t.expenses.monthlySavings, budget: -annualSavings * sc,           actual: null,                        sign: '−' as const, color: 'text-blue-500' }]
                     : []),
                   ...(annualInvestments > 0 || (isWerk && aktInvest > 0)
-                    ? [{ label: t.expenses.monthlyInvest,  budget: -annualInvestments,       actual: isWerk ? -aktInvest  : null, sign: '−' as const, color: 'text-violet-500' }]
+                    ? [{ label: t.expenses.monthlyInvest,  budget: -annualInvestments * sc,       actual: isWerk ? -aktInvest  : null, sign: '−' as const, color: 'text-violet-500' }]
                     : []),
                   ...(duoJaarbetaling > 0
-                    ? [{ label: t.resultsExtra.duoRepayment, budget: -duoJaarbetaling,       actual: null,                        sign: '−' as const, color: 'text-purple-600' }]
+                    ? [{ label: t.resultsExtra.duoRepayment, budget: -duoJaarbetaling * sc,       actual: null,                        sign: '−' as const, color: 'text-purple-600' }]
                     : []),
                   ...(afschrijvingenJaarDeposit > 0
-                    ? [{ label: t.resultsExtra.savingsProvisions, budget: -afschrijvingenJaarDeposit, actual: null,               sign: '−' as const, color: 'text-orange-400' }]
+                    ? [{ label: t.resultsExtra.savingsProvisions, budget: -afschrijvingenJaarDeposit * sc, actual: null,               sign: '−' as const, color: 'text-orange-400' }]
                     : []),
                   ...(schenkbelasting > 0
-                    ? [{ label: t.resultsExtra.schenkbelasting, budget: -schenkbelasting,    actual: null,                        sign: '−' as const, color: 'text-purple-600' }]
+                    ? [{ label: t.resultsExtra.schenkbelasting, budget: -schenkbelasting * sc,    actual: null,                        sign: '−' as const, color: 'text-purple-600' }]
                     : []),
                   ...(schenkNetOntvangen > 0
-                    ? [{ label: t.resultsExtra.schenkNetOntvangen, budget: schenkNetOntvangen, actual: null,                      sign: '+' as const, color: 'text-green-600' }]
+                    ? [{ label: t.resultsExtra.schenkNetOntvangen, budget: schenkNetOntvangen * sc, actual: null,                      sign: '+' as const, color: 'text-green-600' }]
                     : []),
                   ...(duoLeningJaar > 0
-                    ? [{ label: t.resultsExtra.duoLeningInflow, budget: duoLeningJaar,       actual: null,                        sign: '+' as const, color: 'text-blue-500' }]
+                    ? [{ label: t.resultsExtra.duoLeningInflow, budget: duoLeningJaar * sc,       actual: null,                        sign: '+' as const, color: 'text-blue-500' }]
                     : []),
                 ];
 
@@ -423,8 +425,8 @@ export default function TaxResults({ result }: Props) {
                 {cfTab === 'werkelijk' && hasBankData ? (
                   <>
                     <span className={`shrink-0 text-base font-bold tabular-nums ${aktNet >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fmt(aktNet)}</span>
-                    <span className={`shrink-0 text-xs font-medium tabular-nums w-16 text-right ${aktNet - netDisposableIncome >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                      {aktNet - netDisposableIncome >= 0 ? '+' : '−'}{fmt(Math.abs(aktNet - netDisposableIncome))}
+                    <span className={`shrink-0 text-xs font-medium tabular-nums w-16 text-right ${aktNet - netDisposableIncome * budgetScale >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                      {aktNet - netDisposableIncome * budgetScale >= 0 ? '+' : '−'}{fmt(Math.abs(aktNet - netDisposableIncome * budgetScale))}
                     </span>
                   </>
                 ) : (
