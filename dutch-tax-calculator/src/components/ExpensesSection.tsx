@@ -1,9 +1,11 @@
-import { PiggyBank, ShoppingCart } from 'lucide-react';
+import { useState } from 'react';
+import { PiggyBank, ShoppingCart, BarChart2 } from 'lucide-react';
 import type { ExpensesData, SavingsData } from '../types';
 import { useLanguage } from '../i18n/LanguageContext';
 import CurrencyInput from './CurrencyInput';
 import SectionCard from './SectionCard';
 import InfoTooltip from './InfoTooltip';
+import BankImportTab from './BankImportTab';
 
 interface Props {
   data: ExpensesData;
@@ -14,8 +16,11 @@ interface Props {
 
 const nl = new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
 
+type Tab = 'budget' | 'werkelijk';
+
 export default function ExpensesSection({ data, onChange, savings, onSavingsChange }: Props) {
   const { t } = useLanguage();
+  const [tab, setTab] = useState<Tab>('budget');
   const set = (key: keyof ExpensesData) => (v: number) => onChange({ ...data, [key]: v });
 
   const FIELDS: { key: keyof ExpensesData; label: string; tip?: string }[] = [
@@ -32,65 +37,102 @@ export default function ExpensesSection({ data, onChange, savings, onSavingsChan
   const monthlyTotal    = monthlyExpenses + savings.monthlySavingsContribution + savings.maandelijksBeleggen;
   const yearlyTotal     = monthlyTotal * 12;
 
+  const TABS: { key: Tab; label: string; icon: React.ReactNode }[] = [
+    { key: 'budget',    label: t.expenses.budgetTab,    icon: <ShoppingCart size={14} /> },
+    { key: 'werkelijk', label: t.expenses.werkelijkTab, icon: <BarChart2 size={14} /> },
+  ];
+
   return (
     <div className="space-y-4">
-      <SectionCard title={t.expenses.sectionTitle} icon={<ShoppingCart size={20} />} accent="border-rose-400">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {FIELDS.map(f => (
-            <CurrencyInput key={f.key} label={f.label} value={data[f.key]} onChange={set(f.key)}
-              tooltip={f.tip ? <InfoTooltip tip={f.tip} /> : undefined}
-            />
-          ))}
-        </div>
-        <div className="mt-4 grid grid-cols-2 gap-3">
-          <div className="flex justify-between items-center bg-rose-50 dark:bg-rose-900/20 rounded-xl px-4 py-3 border border-rose-100 dark:border-rose-800">
-            <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{t.expenses.monthlyTotal}</span>
-            <span className="text-base font-bold text-rose-600">{nl.format(monthlyExpenses)}</span>
-          </div>
-          <div className="flex justify-between items-center bg-rose-50 dark:bg-rose-900/20 rounded-xl px-4 py-3 border border-rose-100 dark:border-rose-800">
-            <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{t.expenses.yearlyTotal}</span>
-            <span className="text-base font-bold text-rose-700">{nl.format(monthlyExpenses * 12)}</span>
-          </div>
-        </div>
-      </SectionCard>
+      {/* Tab switcher */}
+      <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 rounded-xl p-1 w-fit">
+        {TABS.map(tb => (
+          <button
+            key={tb.key}
+            onClick={() => setTab(tb.key)}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors
+              ${tab === tb.key
+                ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 shadow-sm'
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
+          >
+            {tb.icon}
+            {tb.label}
+          </button>
+        ))}
+      </div>
 
-      <SectionCard title={t.expenses.savingsTitle} icon={<PiggyBank size={20} />} accent="border-emerald-400">
-        <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
-          {t.expenses.savingsContribDesc}
-        </p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <CurrencyInput
-            label={t.expenses.monthlySavings}
-            hint={t.expenses.monthlySavingsHint}
-            value={savings.monthlySavingsContribution}
-            onChange={v => onSavingsChange({ ...savings, monthlySavingsContribution: v })}
-            suffix="/mnd"
-            tooltip={<InfoTooltip tip={t.expenses.monthlySavingsTip} />}
-          />
-          <CurrencyInput
-            label={t.expenses.monthlyInvest}
-            hint={t.expenses.monthlyInvestHint}
-            value={savings.maandelijksBeleggen}
-            onChange={v => onSavingsChange({ ...savings, maandelijksBeleggen: v })}
-            suffix="/mnd"
-            tooltip={<InfoTooltip tip={t.expenses.monthlyInvestTip} />}
-          />
+      {tab === 'budget' && (
+        <>
+          <SectionCard title={t.expenses.sectionTitle} icon={<ShoppingCart size={20} />} accent="border-rose-400">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {FIELDS.map(f => (
+                <CurrencyInput key={f.key} label={f.label} value={data[f.key]} onChange={set(f.key)}
+                  tooltip={f.tip ? <InfoTooltip tip={f.tip} /> : undefined}
+                />
+              ))}
+            </div>
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <div className="flex justify-between items-center bg-rose-50 dark:bg-rose-900/20 rounded-xl px-4 py-3 border border-rose-100 dark:border-rose-800">
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{t.expenses.monthlyTotal}</span>
+                <span className="text-base font-bold text-rose-600">{nl.format(monthlyExpenses)}</span>
+              </div>
+              <div className="flex justify-between items-center bg-rose-50 dark:bg-rose-900/20 rounded-xl px-4 py-3 border border-rose-100 dark:border-rose-800">
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{t.expenses.yearlyTotal}</span>
+                <span className="text-base font-bold text-rose-700">{nl.format(monthlyExpenses * 12)}</span>
+              </div>
+            </div>
+          </SectionCard>
+
+          <SectionCard title={t.expenses.savingsTitle} icon={<PiggyBank size={20} />} accent="border-emerald-400">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
+              {t.expenses.savingsContribDesc}
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <CurrencyInput
+                label={t.expenses.monthlySavings}
+                hint={t.expenses.monthlySavingsHint}
+                value={savings.monthlySavingsContribution}
+                onChange={v => onSavingsChange({ ...savings, monthlySavingsContribution: v })}
+                suffix="/mnd"
+                tooltip={<InfoTooltip tip={t.expenses.monthlySavingsTip} />}
+              />
+              <CurrencyInput
+                label={t.expenses.monthlyInvest}
+                hint={t.expenses.monthlyInvestHint}
+                value={savings.maandelijksBeleggen}
+                onChange={v => onSavingsChange({ ...savings, maandelijksBeleggen: v })}
+                suffix="/mnd"
+                tooltip={<InfoTooltip tip={t.expenses.monthlyInvestTip} />}
+              />
+            </div>
+            <div className="mt-4 grid grid-cols-3 gap-3">
+              <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 rounded-xl px-3 py-2.5">
+                <p className="text-xs text-slate-500 dark:text-slate-400">{t.expenses.savingsPerMonth}</p>
+                <p className="text-base font-bold text-emerald-700">{nl.format(savings.monthlySavingsContribution)}</p>
+              </div>
+              <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-800 rounded-xl px-3 py-2.5">
+                <p className="text-xs text-slate-500 dark:text-slate-400">{t.expenses.investPerMonth}</p>
+                <p className="text-base font-bold text-purple-700">{nl.format(savings.maandelijksBeleggen)}</p>
+              </div>
+              <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5">
+                <p className="text-xs text-slate-500 dark:text-slate-400">{t.expenses.totalOutPerYear}</p>
+                <p className="text-base font-bold text-slate-700 dark:text-slate-200">{nl.format(yearlyTotal)}</p>
+              </div>
+            </div>
+          </SectionCard>
+        </>
+      )}
+
+      {tab === 'werkelijk' && (
+        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-6">
+          <div className="flex items-center gap-2 mb-5">
+            <BarChart2 size={18} className="text-blue-500" />
+            <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">{t.expenses.werkelijkTab}</h3>
+            <span className="text-xs text-slate-400 dark:text-slate-500 ml-1">— {t.expenses.importSubtitle}</span>
+          </div>
+          <BankImportTab expenses={data} savings={savings} />
         </div>
-        <div className="mt-4 grid grid-cols-3 gap-3">
-          <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 rounded-xl px-3 py-2.5">
-            <p className="text-xs text-slate-500 dark:text-slate-400">{t.expenses.savingsPerMonth}</p>
-            <p className="text-base font-bold text-emerald-700">{nl.format(savings.monthlySavingsContribution)}</p>
-          </div>
-          <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-800 rounded-xl px-3 py-2.5">
-            <p className="text-xs text-slate-500 dark:text-slate-400">{t.expenses.investPerMonth}</p>
-            <p className="text-base font-bold text-purple-700">{nl.format(savings.maandelijksBeleggen)}</p>
-          </div>
-          <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5">
-            <p className="text-xs text-slate-500 dark:text-slate-400">{t.expenses.totalOutPerYear}</p>
-            <p className="text-base font-bold text-slate-700 dark:text-slate-200">{nl.format(yearlyTotal)}</p>
-          </div>
-        </div>
-      </SectionCard>
+      )}
     </div>
   );
 }

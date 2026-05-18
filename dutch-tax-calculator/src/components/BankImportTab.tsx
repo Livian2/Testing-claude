@@ -1,0 +1,476 @@
+import { useState, useCallback, useRef } from 'react';
+import { Upload, Trash2, ChevronDown, ChevronRight, TrendingUp, AlertTriangle } from 'lucide-react';
+import type { ExpensesData, SavingsData } from '../types';
+import { useLanguage } from '../i18n/LanguageContext';
+
+// ── Types ──────────────────────────────────────────────────────────────────────
+
+export type TxCategory =
+  | 'groceries' | 'transport' | 'insurance' | 'healthcare'
+  | 'education' | 'leisure' | 'housing' | 'phone'
+  | 'investments' | 'internal' | 'income' | 'other';
+
+export interface BankTx {
+  datum: string;         // YYYYMMDD
+  naam: string;
+  code: string;
+  afBij: 'Af' | 'Bij';
+  bedrag: number;
+  mutatiesoort: string;
+  omschrijving: string;
+  category: TxCategory;
+  excluded: boolean;
+}
+
+const STORAGE_KEY = 'dutch-tax-bank-txs-v1';
+
+// ── CSV parsing ────────────────────────────────────────────────────────────────
+
+function parseEuroAmount(s: string): number {
+  // ING uses "1.234,56" format
+  return parseFloat(s.replace(/\./g, '').replace(',', '.')) || 0;
+}
+
+function categorize(naam: string, code: string, afBij: 'Af' | 'Bij', omschrijving: string): { category: TxCategory; excluded: boolean } {
+  const n = naam.toUpperCase();
+  const d = omschrijving.toUpperCase();
+
+  // Internal: savings rounding / own savings account
+  if (naam === 'NOTPROVIDED' || n.includes('SPAARREKENING') || n.includes('ORANJE SPAAR'))
+    return { category: 'internal', excluded: true };
+
+  if (afBij === 'Bij') return { category: 'income', excluded: false };
+
+  // Investments (outgoing to brokers)
+  if (['IBKR', 'FLATEX', 'DEGIRO', 'TRADING 212'].some(k => n.includes(k)) ||
+      n.includes('BUX VIA') || n.includes('BUX ') && code !== 'BA')
+    return { category: 'investments', excluded: false };
+
+  // Housing / rent
+  if (n.includes('MAKELAARDIJ') || n.includes('MAKELA') || n.includes('WONINGCORP') ||
+      n.includes('VESTIA') || n.includes('YMERE') || n.includes('WOONBEDRIJF') ||
+      d.includes('MAANDHUUR') || d.includes(' HUUR ') || d.includes('NIERSSTRAAT') ||
+      d.includes('KAMERADRES') || d.includes('KAMERHUUR'))
+    return { category: 'housing', excluded: false };
+
+  // Groceries
+  if (['ALBERT HEIJN', 'BCK*AH', 'DIRK', 'JUMBO', 'LIDL', 'EKOPLAZA', 'DEKA',
+       'PLUS RETAIL', 'COOP', 'HOOGVLIET', 'PARESTO', 'KRUIDVAT', 'ETOS', 'DEKAMARKT',
+       'SPAR'].some(k => n.includes(k)) ||
+      n.startsWith('AH ') || (code === 'BA' && (n.includes('MARKT') || n.includes('SUPER'))) ||
+      (n.includes('ACTION') && code === 'BA'))
+    return { category: 'groceries', excluded: false };
+
+  // Transport
+  if (['NS REIZIGERS', 'NS GROEP', 'GVB ', 'HTM ', 'RET ', 'CONNEXXION', 'ARRIVA',
+       'TRANSDEV', 'Q-PARK', 'APCOA', 'SHELL ', 'BP ', 'ESSO ', 'TEXACO', 'TANGO '].some(k => n.includes(k)) ||
+      n.includes('UBER') || n.includes('BOLT ') || n.includes('TAXI') ||
+      n.includes('OV-CHIP') || n.includes('PARKEER') || n.includes('NS E-TICKETS') || d.includes('E-TICKETS'))
+    return { category: 'transport', excluded: false };
+
+  // Insurance
+  if (['VGZ', 'MENZIS', 'ZILVEREN KRUIS', 'DSW', 'OHRA', 'CENTRAAL BEHEER',
+       'AEGON', 'ANWB VERZEKER', 'ALLSECUR', 'INTERPOLIS', 'NATIONALE-NEDERLANDEN'].some(k => n.includes(k)) ||
+      n.includes('ZORGVERZEKER') || (n.includes('CZ') && n.length <= 4))
+    return { category: 'insurance', excluded: false };
+
+  // Healthcare
+  if (['APOTHEEK', 'HUISARTS', 'TANDARTS', 'FYSIOTHER', 'ZIEKENHUIS', 'KLINIEK',
+       'SPECSAVERS', 'PEARLE', 'LENSPLAZA', 'GGD', 'PSYCHOL', 'OPTICIAN',
+       'OPTIEKZAAK'].some(k => n.includes(k)) ||
+      n.includes('MEDIC') || n.includes('PHARMACY') || n.includes('MEDICAMENT'))
+    return { category: 'healthcare', excluded: false };
+
+  // Phone / telecom
+  if (['SIMYO', 'KPN ', 'VODAFONE', 'T-MOBILE', 'TELE2', 'YOUFONE', 'LEBARA',
+       'ODIDO', 'HOLLANDS NIEUWE', 'BELLEN.COM'].some(k => n.includes(k)) ||
+      n.startsWith('BEN '))
+    return { category: 'phone', excluded: false };
+
+  // Education
+  if (n.includes('UNIVERSITEIT') || n.includes('HOGESCHOOL') || n.includes('BIBLIOTHEEK') ||
+      n.includes('STUDIEBOEK') || n.includes('HBO ') || n.includes('COURSERA') ||
+      n.includes('UDEMY') || (n.includes('DUO ') && code !== 'VZ'))
+    return { category: 'education', excluded: false };
+
+  // Leisure / entertainment
+  if (['SPOTIFY', 'NETFLIX', 'VIDEOLAND', 'DISNEY', 'DAZN', 'GALL&GALL', 'GALL ',
+       'FITNESS', 'SPORTSCHOOL', 'TICKETMASTER', 'EVENTIM', 'MCDONALDS', 'MC DONALDS',
+       'BURGER KING', 'DOMINOS', 'PIZZA', 'ALIPAY', 'DELIVEROO', 'THUISBEZORGD',
+       'UBER EATS', 'STEAM ', 'PLAYSTATION', 'XBOX ', 'NINTENDO', 'BOOKING.COM',
+       'AIRBNB', 'HOTELS'].some(k => n.includes(k)) ||
+      n.includes('BCK*VUE') || n.includes('BCK*PATH') || n.includes('VUE ') ||
+      n.includes('CCV*VUE') || n.includes('CCV*PATH') || n.includes('BIOSCOOP') ||
+      n.includes('SLIJTER') || n.includes('CCV*STUDENT') || n.includes('STICHTING SEVENDE'))
+    return { category: 'leisure', excluded: false };
+
+  return { category: 'other', excluded: false };
+}
+
+function parseING(csv: string): BankTx[] {
+  const lines = csv.trim().split('\n').slice(1); // skip header
+  return lines.flatMap(line => {
+    try {
+      const fields = line.split('";"').map(f => f.replace(/^"|"$/g, ''));
+      if (fields.length < 9) return [];
+      const [datum, naam, , , code, afBij, bedragStr, mutatiesoort, omschrijving] = fields;
+      if (!datum || !afBij) return [];
+      const bedrag = parseEuroAmount(bedragStr);
+      if (bedrag <= 0) return [];
+      const { category, excluded } = categorize(naam, code, afBij as 'Af' | 'Bij', omschrijving);
+      return [{ datum, naam, code, afBij: afBij as 'Af' | 'Bij', bedrag, mutatiesoort, omschrijving, category, excluded }];
+    } catch { return []; }
+  });
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────────
+
+const fmt = new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
+const fmtDec = new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+function dateToDMY(d: string): string {
+  return `${d.slice(6, 8)}-${d.slice(4, 6)}-${d.slice(0, 4)}`;
+}
+
+function detectPeriod(txs: BankTx[]): string {
+  if (!txs.length) return '';
+  const dates = txs.map(t => t.datum).sort();
+  const from = dateToDMY(dates[0]);
+  const to   = dateToDMY(dates[dates.length - 1]);
+  return from === to ? from : `${from} – ${to}`;
+}
+
+function monthsInPeriod(txs: BankTx[]): number {
+  if (!txs.length) return 1;
+  const dates = txs.map(t => +t.datum).sort();
+  const start = dates[0];
+  const end   = dates[dates.length - 1];
+  const startY = Math.floor(start / 10000), startM = Math.floor((start % 10000) / 100);
+  const endY   = Math.floor(end / 10000),   endM   = Math.floor((end % 10000) / 100);
+  return Math.max(1, (endY - startY) * 12 + (endM - startM) + 1);
+}
+
+function loadStored(): BankTx[] {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch { return []; }
+}
+
+// ── Category config ────────────────────────────────────────────────────────────
+
+interface CatConfig {
+  key: TxCategory;
+  expKey?: keyof ExpensesData;
+  nlLabel: string;
+  color: string;
+  bg: string;
+  border: string;
+  text: string;
+}
+
+const CAT_CONFIGS: CatConfig[] = [
+  { key: 'housing',    nlLabel: 'Huur / hypotheek',     color: 'bg-slate-500',   bg: 'bg-slate-50 dark:bg-slate-900',       border: 'border-slate-200 dark:border-slate-700', text: 'text-slate-700 dark:text-slate-200' },
+  { key: 'groceries',  expKey: 'groceries', nlLabel: 'Boodschappen',        color: 'bg-green-500',   bg: 'bg-green-50 dark:bg-green-900/20',    border: 'border-green-200 dark:border-green-800', text: 'text-green-700 dark:text-green-300' },
+  { key: 'transport',  expKey: 'transport', nlLabel: 'Transport',           color: 'bg-blue-500',    bg: 'bg-blue-50 dark:bg-blue-900/20',      border: 'border-blue-200 dark:border-blue-800',  text: 'text-blue-700 dark:text-blue-300' },
+  { key: 'insurance',  expKey: 'insurance', nlLabel: 'Verzekeringen',       color: 'bg-amber-500',   bg: 'bg-amber-50 dark:bg-amber-900/20',    border: 'border-amber-200 dark:border-amber-800', text: 'text-amber-700 dark:text-amber-300' },
+  { key: 'healthcare', expKey: 'healthcare', nlLabel: 'Zorg',               color: 'bg-rose-500',    bg: 'bg-rose-50 dark:bg-rose-900/20',      border: 'border-rose-200 dark:border-rose-800',  text: 'text-rose-700 dark:text-rose-300' },
+  { key: 'leisure',    expKey: 'leisure',   nlLabel: 'Vrije tijd',          color: 'bg-purple-500',  bg: 'bg-purple-50 dark:bg-purple-900/20',  border: 'border-purple-200 dark:border-purple-800', text: 'text-purple-700 dark:text-purple-300' },
+  { key: 'education',  expKey: 'education', nlLabel: 'Opleiding',           color: 'bg-indigo-500',  bg: 'bg-indigo-50 dark:bg-indigo-900/20',  border: 'border-indigo-200 dark:border-indigo-800', text: 'text-indigo-700 dark:text-indigo-300' },
+  { key: 'phone',      nlLabel: 'Telefoon / internet',  color: 'bg-cyan-500',    bg: 'bg-cyan-50 dark:bg-cyan-900/20',      border: 'border-cyan-200 dark:border-cyan-800',  text: 'text-cyan-700 dark:text-cyan-300' },
+  { key: 'other',      expKey: 'other',     nlLabel: 'Overig',              color: 'bg-slate-400',   bg: 'bg-slate-50 dark:bg-slate-900',       border: 'border-slate-200 dark:border-slate-700', text: 'text-slate-600 dark:text-slate-300' },
+];
+
+// ── Component ──────────────────────────────────────────────────────────────────
+
+interface Props {
+  expenses: ExpensesData;
+  savings: SavingsData;
+}
+
+export default function BankImportTab({ expenses, savings }: Props) {
+  const { t } = useLanguage();
+  const [txs, setTxs]         = useState<BankTx[]>(loadStored);
+  const [dragging, setDragging] = useState(false);
+  const [error, setError]      = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<Set<TxCategory>>(new Set());
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const handleFile = useCallback((file: File) => {
+    setError(null);
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        const csv = e.target?.result as string;
+        const parsed = parseING(csv);
+        if (!parsed.length) { setError(t.expenses.importNoData); return; }
+        const next = [...txs, ...parsed].filter((tx, i, arr) =>
+          arr.findIndex(x => x.datum === tx.datum && x.naam === tx.naam && x.bedrag === tx.bedrag && x.afBij === tx.afBij) === i
+        );
+        setTxs(next);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      } catch { setError(t.expenses.importParseError); }
+    };
+    reader.readAsText(file, 'utf-8');
+  }, [txs, t]);
+
+  const onDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault(); setDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (file?.name.endsWith('.csv')) handleFile(file);
+    else setError(t.expenses.importCsvOnly);
+  }, [handleFile, t]);
+
+  function clearAll() {
+    setTxs([]); localStorage.removeItem(STORAGE_KEY);
+  }
+
+  function toggleCat(cat: TxCategory) {
+    setExpanded(prev => {
+      const next = new Set(prev);
+      next.has(cat) ? next.delete(cat) : next.add(cat);
+      return next;
+    });
+  }
+
+  // ── Derived data ─────────────────────────────────────────────────────────────
+
+  const activeTxs  = txs.filter(t => !t.excluded);
+  const months     = monthsInPeriod(txs);
+  const period     = detectPeriod(txs);
+
+  const sumCat = (cat: TxCategory) =>
+    activeTxs.filter(x => x.category === cat && x.afBij === 'Af').reduce((s, x) => s + x.bedrag, 0);
+
+  const incomeTotal    = activeTxs.filter(x => x.category === 'income').reduce((s, x) => s + x.bedrag, 0);
+  const investTotal    = sumCat('investments');
+  const totalSpending  = CAT_CONFIGS.filter(c => c.key !== 'investments').reduce((s, c) => s + sumCat(c.key), 0);
+
+  // budget for a given expense key, normalized to same period
+  const budgetAmt = (expKey?: keyof ExpensesData) =>
+    expKey ? expenses[expKey] * months : 0;
+
+  // ── Render ────────────────────────────────────────────────────────────────────
+
+  if (!txs.length) {
+    return (
+      <div className="space-y-4">
+        <div
+          className={`border-2 border-dashed rounded-2xl p-10 text-center transition-colors cursor-pointer
+            ${dragging ? 'border-blue-400 bg-blue-50 dark:bg-blue-900/20' : 'border-slate-300 dark:border-slate-600 hover:border-blue-400 hover:bg-slate-50 dark:hover:bg-slate-800/50'}`}
+          onDragOver={e => { e.preventDefault(); setDragging(true); }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={onDrop}
+          onClick={() => fileRef.current?.click()}
+        >
+          <Upload size={32} className="mx-auto mb-3 text-slate-400" />
+          <p className="text-base font-semibold text-slate-700 dark:text-slate-200">{t.expenses.importTitle}</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{t.expenses.importSubtitle}</p>
+          <p className="text-xs text-slate-400 dark:text-slate-500 mt-3">{t.expenses.importDrop}</p>
+          <button className="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl transition-colors">
+            {t.expenses.importClick}
+          </button>
+        </div>
+        {error && (
+          <div className="flex items-center gap-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-3 text-sm text-red-700 dark:text-red-300">
+            <AlertTriangle size={16} />
+            {error}
+          </div>
+        )}
+        <input ref={fileRef} type="file" accept=".csv" className="hidden"
+          onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ''; }} />
+        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4 text-xs text-amber-800 dark:text-amber-300 space-y-1">
+          <p className="font-semibold">{t.expenses.importHowTo}</p>
+          <p>{t.expenses.importHowToING}</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Header bar */}
+      <div className="flex items-center justify-between gap-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3">
+        <div>
+          <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+            {txs.length} {t.expenses.importTransactions}
+            {months > 1 && <span className="ml-1 text-slate-400 font-normal">({months} {t.expenses.importMonths})</span>}
+          </p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">{period}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => fileRef.current?.click()}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+          >
+            <Upload size={13} /> {t.expenses.importAdd}
+          </button>
+          <button
+            onClick={clearAll}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+          >
+            <Trash2 size={13} /> {t.expenses.importClear}
+          </button>
+        </div>
+        <input ref={fileRef} type="file" accept=".csv" className="hidden"
+          onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ''; }} />
+      </div>
+
+      {/* Summary row */}
+      <div className="grid grid-cols-3 gap-3">
+        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl p-3 text-center">
+          <p className="text-xs text-green-600 dark:text-green-400 mb-1 font-medium">{t.expenses.importIncome}</p>
+          <p className="text-lg font-bold text-green-700 dark:text-green-300">{fmt.format(incomeTotal)}</p>
+        </div>
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-3 text-center">
+          <p className="text-xs text-red-600 dark:text-red-400 mb-1 font-medium">{t.expenses.importExpenses}</p>
+          <p className="text-lg font-bold text-red-700 dark:text-red-300">{fmt.format(totalSpending)}</p>
+        </div>
+        <div className="bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800 rounded-xl p-3 text-center">
+          <p className="text-xs text-violet-600 dark:text-violet-400 mb-1 font-medium">{t.expenses.importInvested}</p>
+          <p className="text-lg font-bold text-violet-700 dark:text-violet-300">{fmt.format(investTotal)}</p>
+        </div>
+      </div>
+
+      {/* Category breakdown */}
+      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
+        <div className="px-5 py-3 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
+          <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">{t.expenses.importBreakdown}</span>
+          <div className="flex items-center gap-4 text-xs text-slate-400">
+            <span>{t.expenses.importActual}</span>
+            <span>{t.expenses.importBudget}</span>
+          </div>
+        </div>
+
+        {CAT_CONFIGS.map(cfg => {
+          const actual  = sumCat(cfg.key);
+          const txList  = activeTxs.filter(x => x.category === cfg.key && x.afBij === 'Af');
+          if (!actual && !cfg.expKey) return null;
+
+          const budget  = budgetAmt(cfg.expKey);
+          const diff    = budget > 0 ? actual - budget : null;
+          const over    = diff !== null && diff > 0;
+          const maxBar  = budget > 0 ? Math.max(actual, budget) : actual || 1;
+          const isOpen  = expanded.has(cfg.key);
+
+          return (
+            <div key={cfg.key} className="border-b border-slate-50 dark:border-slate-700 last:border-0">
+              <button
+                className="w-full flex items-center gap-3 px-5 py-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors text-left"
+                onClick={() => txList.length > 0 && toggleCat(cfg.key)}
+              >
+                <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${cfg.color}`} />
+                <span className="text-sm text-slate-700 dark:text-slate-200 flex-1 min-w-0">{cfg.nlLabel}</span>
+
+                {/* Budget comparison */}
+                <div className="flex items-center gap-3 shrink-0">
+                  {budget > 0 && (
+                    <div className="flex items-center gap-1 text-xs text-slate-400">
+                      <div className="w-16 h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden relative">
+                        <div className={`absolute top-0 left-0 h-full rounded-full ${over ? 'bg-red-400' : 'bg-green-400'}`}
+                          style={{ width: `${Math.min(100, (actual / maxBar) * 100)}%` }} />
+                        <div className="absolute top-0 left-0 h-full border-r-2 border-slate-400 dark:border-slate-500"
+                          style={{ width: `${(budget / maxBar) * 100}%` }} />
+                      </div>
+                    </div>
+                  )}
+                  <span className={`text-sm font-semibold tabular-nums w-20 text-right ${over ? 'text-red-600 dark:text-red-400' : 'text-slate-700 dark:text-slate-200'}`}>
+                    {fmtDec.format(actual)}
+                  </span>
+                  {budget > 0 && (
+                    <span className="text-xs tabular-nums w-20 text-right text-slate-400">{fmt.format(budget)}</span>
+                  )}
+                  {budget === 0 && <span className="w-20" />}
+                  {diff !== null && (
+                    <span className={`text-xs tabular-nums w-16 text-right font-medium ${over ? 'text-red-500' : 'text-green-600'}`}>
+                      {over ? '+' : '−'}{fmt.format(Math.abs(diff))}
+                    </span>
+                  )}
+                  {diff === null && <span className="w-16" />}
+                  {txList.length > 0
+                    ? (isOpen ? <ChevronDown size={14} className="text-slate-400 shrink-0" /> : <ChevronRight size={14} className="text-slate-400 shrink-0" />)
+                    : <span className="w-3.5" />
+                  }
+                </div>
+              </button>
+
+              {/* Transaction list */}
+              {isOpen && txList.length > 0 && (
+                <div className={`px-5 pb-3 space-y-1 ${cfg.bg} border-t ${cfg.border}`}>
+                  {txList.map((tx, i) => (
+                    <div key={i} className="flex items-center gap-2 py-1 text-xs">
+                      <span className="text-slate-400 shrink-0 w-20 font-mono">{dateToDMY(tx.datum)}</span>
+                      <span className={`flex-1 min-w-0 truncate ${cfg.text}`}>{tx.naam}</span>
+                      <span className="shrink-0 font-medium tabular-nums text-slate-700 dark:text-slate-200">{fmtDec.format(tx.bedrag)}</span>
+                    </div>
+                  ))}
+                  <div className="flex items-center gap-2 pt-1 border-t border-slate-100 dark:border-slate-700">
+                    <span className="flex-1 text-xs font-semibold text-slate-500 dark:text-slate-400">{txList.length} transacties</span>
+                    <span className="text-xs font-bold tabular-nums text-slate-700 dark:text-slate-200">{fmtDec.format(actual)}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Investments row */}
+      {investTotal > 0 && (
+        <div className="bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800 rounded-xl">
+          <button className="w-full flex items-center gap-3 px-5 py-3 text-left"
+            onClick={() => toggleCat('investments')}>
+            <div className="w-2.5 h-2.5 rounded-full shrink-0 bg-violet-500" />
+            <span className="text-sm text-violet-700 dark:text-violet-300 flex-1">{t.expenses.importInvested}</span>
+            <span className="text-sm font-semibold tabular-nums text-violet-700 dark:text-violet-300 mr-2">{fmtDec.format(investTotal)}</span>
+            <span className="text-xs text-violet-500 mr-4">
+              {t.expenses.importBudget}: {fmt.format(savings.maandelijksBeleggen * months)}
+            </span>
+            {expanded.has('investments')
+              ? <ChevronDown size={14} className="text-violet-400 shrink-0" />
+              : <ChevronRight size={14} className="text-violet-400 shrink-0" />}
+          </button>
+          {expanded.has('investments') && (
+            <div className="px-5 pb-3 border-t border-violet-200 dark:border-violet-800 space-y-1">
+              {activeTxs.filter(x => x.category === 'investments').map((tx, i) => (
+                <div key={i} className="flex items-center gap-2 py-1 text-xs">
+                  <span className="text-violet-400 shrink-0 w-20 font-mono">{dateToDMY(tx.datum)}</span>
+                  <span className="flex-1 min-w-0 truncate text-violet-700 dark:text-violet-300">{tx.naam}</span>
+                  <span className="shrink-0 font-medium tabular-nums text-violet-700 dark:text-violet-300">{fmtDec.format(tx.bedrag)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Income breakdown */}
+      <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl">
+        <button className="w-full flex items-center gap-3 px-5 py-3 text-left"
+          onClick={() => toggleCat('income')}>
+          <TrendingUp size={16} className="text-green-500 shrink-0" />
+          <span className="text-sm text-green-700 dark:text-green-300 flex-1">{t.expenses.importIncome}</span>
+          <span className="text-sm font-semibold tabular-nums text-green-700 dark:text-green-300 mr-6">{fmtDec.format(incomeTotal)}</span>
+          {expanded.has('income')
+            ? <ChevronDown size={14} className="text-green-400 shrink-0" />
+            : <ChevronRight size={14} className="text-green-400 shrink-0" />}
+        </button>
+        {expanded.has('income') && (
+          <div className="px-5 pb-3 border-t border-green-200 dark:border-green-800 space-y-1">
+            {activeTxs.filter(x => x.category === 'income').map((tx, i) => (
+              <div key={i} className="flex items-center gap-2 py-1 text-xs">
+                <span className="text-green-400 shrink-0 w-20 font-mono">{dateToDMY(tx.datum)}</span>
+                <span className="flex-1 min-w-0 truncate text-green-700 dark:text-green-300">{tx.naam}</span>
+                <span className="shrink-0 font-medium tabular-nums text-green-700 dark:text-green-300">+{fmtDec.format(tx.bedrag)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Legend */}
+      <div className="text-xs text-slate-400 dark:text-slate-500 flex items-center gap-4 px-1">
+        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-400 inline-block" />{t.expenses.importLegendUnder}</span>
+        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-400 inline-block" />{t.expenses.importLegendOver}</span>
+        <span className="flex items-center gap-1"><span className="inline-block w-0.5 h-3 bg-slate-400" />{t.expenses.importLegendBudget}</span>
+      </div>
+    </div>
+  );
+}
