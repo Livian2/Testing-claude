@@ -146,7 +146,7 @@ export default function TaxResults({ result }: Props) {
           {(box1.ewEffect !== 0 || box1.pensionDeduction > 0) && (
             <div className="bg-slate-50 dark:bg-slate-900 rounded-xl p-4 border border-slate-100 dark:border-slate-700">
               <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-3">{t.resultsExtra.incomeBreakdown}</p>
-              <div className="space-y-0">
+              <div className="space-y-0 max-w-sm">
                 <Row label={t.resultsExtra.grossIncomeLine} value={fmt(box1.grossIncomeBeforeDeductions)} />
                 {box1.ewEffect < 0 && (
                   <Row label={t.results.netDeductionHRA} value={`− ${fmt(Math.abs(box1.ewEffect))}`} indent green />
@@ -179,19 +179,19 @@ export default function TaxResults({ result }: Props) {
                 ))}
               </div>
             )}
-            <div className="bg-green-50 dark:bg-green-900/20 rounded-xl p-4 border border-green-100 dark:border-green-800 space-y-2">
+            <div className="bg-green-50 dark:bg-green-900/20 rounded-xl p-4 border border-green-100 dark:border-green-800 space-y-2 w-fit min-w-[240px]">
               <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-3">{t.results.kortingen}</p>
-              <div className="flex justify-between items-center gap-2 text-sm">
-                <span className="min-w-0 flex-1 text-slate-700 dark:text-slate-200">{t.results.ahk}</span>
-                <span className="shrink-0 font-semibold text-green-600">− {fmt(box1.algemeneHeffingskorting)}</span>
+              <div className="flex items-center gap-4 text-sm">
+                <span className="text-slate-700 dark:text-slate-200">{t.results.ahk}</span>
+                <span className="ml-auto shrink-0 font-semibold tabular-nums text-green-600">− {fmt(box1.algemeneHeffingskorting)}</span>
               </div>
-              <div className="flex justify-between items-center gap-2 text-sm border-b border-green-200 dark:border-green-800 pb-2">
-                <span className="min-w-0 flex-1 text-slate-700 dark:text-slate-200">{t.results.ak}</span>
-                <span className="shrink-0 font-semibold text-green-600">− {fmt(box1.arbeidskorting)}</span>
+              <div className="flex items-center gap-4 text-sm border-b border-green-200 dark:border-green-800 pb-2">
+                <span className="text-slate-700 dark:text-slate-200">{t.results.ak}</span>
+                <span className="ml-auto shrink-0 font-semibold tabular-nums text-green-600">− {fmt(box1.arbeidskorting)}</span>
               </div>
-              <div className="flex justify-between items-center gap-2 text-sm font-semibold">
-                <span className="min-w-0 flex-1 text-slate-700 dark:text-slate-200">{t.results.totalKortingen}</span>
-                <span className="shrink-0 text-green-600">− {fmt(box1.algemeneHeffingskorting + box1.arbeidskorting)}</span>
+              <div className="flex items-center gap-4 text-sm font-semibold">
+                <span className="text-slate-700 dark:text-slate-200">{t.results.totalKortingen}</span>
+                <span className="ml-auto shrink-0 tabular-nums text-green-600">− {fmt(box1.algemeneHeffingskorting + box1.arbeidskorting)}</span>
               </div>
             </div>
           </div>
@@ -220,7 +220,7 @@ export default function TaxResults({ result }: Props) {
             {/* Left: Box 3 tax calculation */}
             <div>
               <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-3">{t.results.box3Grondslag}</p>
-              <div className="space-y-0">
+              <div className="space-y-0 max-w-sm">
                 <Row label={t.results.savingsBalance}    value={fmt(box3.breakdown.savings)}     indent />
                 <Row label={t.results.portfolioValue}    value={fmt(box3.breakdown.investments)} indent />
                 {box3.totalDebts > 0 && (
@@ -251,11 +251,11 @@ export default function TaxResults({ result }: Props) {
             <div>
               <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-3">{t.results.netWorth}</p>
               {hasPriceDiff && (
-                <div className="mb-3 p-3 bg-purple-50 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-800 rounded-lg text-xs text-purple-700 dark:text-purple-300">
+                <div className="mb-3 p-3 bg-purple-50 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-800 rounded-lg text-xs text-purple-700 dark:text-purple-300 max-w-sm">
                   {t.resultsExtra.portfolioJan1} {fmt(portfolioJan1Value)} {t.resultsExtra.portfolioNow} {fmt(portfolioCurrentValue)}
                 </div>
               )}
-              <div className="space-y-0">
+              <div className="space-y-0 max-w-sm">
                 <Row label={t.results.savingsBalance}  value={fmt(box3.breakdown.savings)}    indent />
                 <Row label={t.results.portfolioValue}  value={fmt(portfolioCurrentValue)}     indent />
                 {wozAsset > 0 && (
@@ -289,7 +289,8 @@ export default function TaxResults({ result }: Props) {
           <TrendingDown size={18} className="text-green-500" />
           <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">{t.results.cashflow}</h3>
         </div>
-        <div className="p-6 space-y-1">
+        <div className="p-6">
+          <div className="space-y-1 max-w-sm">
           {[
             { label: t.results.grossIncome,    value:  grossIncome,          sign: '+', color: 'text-green-600' },
             { label: t.results.box1Tax,        value: -box1.netTax,          sign: '−', color: 'text-red-500' },
@@ -339,6 +340,7 @@ export default function TaxResults({ result }: Props) {
               </span>
             </div>
           )}
+          </div>
         </div>
       </div>
     </div>
