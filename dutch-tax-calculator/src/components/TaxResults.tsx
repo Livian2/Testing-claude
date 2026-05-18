@@ -45,8 +45,6 @@ export default function TaxResults({ result }: Props) {
   // Net worth breakdown — use rawDebts (actual debt, no Box 3 threshold applied)
   const totalAssets = box3.breakdown.savings + portfolioCurrentValue + Math.max(0, wozAsset);
   const totalDebts  = Math.max(0, hypotheekRestschuld) + Math.max(0, box3.rawDebts) + Math.max(0, afschrijvingenActueel);
-  const assetPct    = totalAssets > 0 ? Math.round((totalAssets / (totalAssets + totalDebts)) * 100) : 100;
-
   const assetSegments = [
     { label: t.results.savingsBalance, value: box3.breakdown.savings,    color: 'bg-blue-400',   textColor: 'text-blue-700 dark:text-blue-300',   border: 'border-blue-200 dark:border-blue-800',   bg: 'bg-blue-50 dark:bg-blue-900/20' },
     { label: t.results.portfolioValue, value: portfolioCurrentValue,     color: 'bg-violet-400', textColor: 'text-violet-700 dark:text-violet-300', border: 'border-violet-200 dark:border-violet-800', bg: 'bg-violet-50 dark:bg-violet-900/20' },
@@ -236,34 +234,13 @@ export default function TaxResults({ result }: Props) {
                 <p className={`text-4xl font-bold tabular-nums ${currentNetWorth >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
                   {fmt(currentNetWorth)}
                 </p>
-                {currentNetWorth >= 0 && totalAssets > 0 && (
-                  <p className="text-xs text-slate-400 mt-1">{assetPct}% bezit · {100 - assetPct}% schuld</p>
+                {currentNetWorth >= 0 && totalAssets > 0 && totalDebts > 0 && (
+                  <p className="text-xs text-slate-400 mt-1">
+                    Schuldgraad: {Math.round((totalDebts / totalAssets) * 100)}%
+                  </p>
                 )}
               </div>
 
-              {/* Visual bar */}
-              {totalAssets > 0 && (
-                <div>
-                  <div className="flex rounded-full overflow-hidden h-3 gap-px bg-slate-100 dark:bg-slate-700">
-                    {assetSegments.map((s, i) => {
-                      const pct = totalAssets > 0 ? (s.value / (totalAssets + totalDebts)) * 100 : 0;
-                      return pct > 0 ? (
-                        <div key={i} className={`${s.color} h-full transition-all`} style={{ width: `${pct}%` }} title={s.label} />
-                      ) : null;
-                    })}
-                    {debtSegments.map((s, i) => {
-                      const pct = totalDebts > 0 ? (s.value / (totalAssets + totalDebts)) * 100 : 0;
-                      return pct > 0 ? (
-                        <div key={i} className="bg-red-300 dark:bg-red-700 h-full transition-all" style={{ width: `${pct}%` }} title={s.label} />
-                      ) : null;
-                    })}
-                  </div>
-                  <div className="flex items-center justify-between text-xs text-slate-400 mt-1">
-                    <span>{t.results.savingsBalance.split(' ')[0]} + {t.results.portfolioValue.split(' ')[0]}</span>
-                    {totalDebts > 0 && <span className="text-red-400">{t.results.debtsBox3.split(' ')[0]}</span>}
-                  </div>
-                </div>
-              )}
 
               {/* Asset rows */}
               {assetSegments.length > 0 && (
