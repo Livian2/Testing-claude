@@ -1,4 +1,4 @@
-import { useMemo, useState, useRef, useCallback } from 'react';
+import { useMemo, useState, useRef, useCallback, useEffect } from 'react';
 import type { TaxFormData, PrognoseConfig } from '../types';
 import { berekenHypotheek } from '../utils/hypotheek';
 import { computePositions } from '../utils/taxCalculations';
@@ -86,6 +86,25 @@ function smoothArea(pts: [number, number][], baseY: number): string {
 
 type SeriesKey = 'netWorth' | 'investments' | 'savings' | 'woz' | 'hyp' | 'box3';
 
+const FIRE_STATE_KEY = 'dutch-tax-fire-state';
+
+interface FireState {
+  swr: number;
+  leeftijd: number;
+  gewensteFireLeeftijd: number;
+  aowLeeftijd: number;
+  aowBedragMaand: number;
+  pensioenBedragMaand: number;
+  pensioenLeeftijd: number;
+}
+
+function loadFireState(): Partial<FireState> {
+  try {
+    const raw = localStorage.getItem(FIRE_STATE_KEY);
+    return raw ? (JSON.parse(raw) as Partial<FireState>) : {};
+  } catch { return {}; }
+}
+
 export default function NetWorthProjection({ data, config, onConfigChange }: Props) {
   const { t } = useLanguage();
   const currentYear = data.personal.taxYear;
@@ -101,15 +120,24 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
 
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
   const svgRef                  = useRef<SVGSVGElement>(null);
-  const [swr, setSwr]           = useState<number>(4);
-  const [leeftijd, setLeeftijd] = useState<number>(data.personal.age || 35);
-  const [gewensteFireLeeftijd, setGewensteFireLeeftijd] = useState<number>(55);
-  const [aowLeeftijd, setAowLeeftijd] = useState<number>(67);
 
   const isPartnerFireState = data.personal.filingStatus === 'partner';
-  const [aowBedragMaand, setAowBedragMaand] = useState<number>(isPartnerFireState ? 985 : 1400);
-  const [pensioenBedragMaand, setPensioenBedragMaand] = useState<number>(0);
-  const [pensioenLeeftijd, setPensioenLeeftijd] = useState<number>(67);
+  const _saved = loadFireState();
+  const [swr, setSwr]                                   = useState<number>(_saved.swr                   ?? 4);
+  const [leeftijd, setLeeftijd]                         = useState<number>(_saved.leeftijd              ?? data.personal.age ?? 35);
+  const [gewensteFireLeeftijd, setGewensteFireLeeftijd] = useState<number>(_saved.gewensteFireLeeftijd  ?? 55);
+  const [aowLeeftijd, setAowLeeftijd]                   = useState<number>(_saved.aowLeeftijd           ?? 67);
+  const [aowBedragMaand, setAowBedragMaand]             = useState<number>(_saved.aowBedragMaand        ?? (isPartnerFireState ? 985 : 1400));
+  const [pensioenBedragMaand, setPensioenBedragMaand]   = useState<number>(_saved.pensioenBedragMaand   ?? 0);
+  const [pensioenLeeftijd, setPensioenLeeftijd]         = useState<number>(_saved.pensioenLeeftijd      ?? 67);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(FIRE_STATE_KEY, JSON.stringify({
+        swr, leeftijd, gewensteFireLeeftijd, aowLeeftijd, aowBedragMaand, pensioenBedragMaand, pensioenLeeftijd,
+      } satisfies FireState));
+    } catch { /* quota */ }
+  }, [swr, leeftijd, gewensteFireLeeftijd, aowLeeftijd, aowBedragMaand, pensioenBedragMaand, pensioenLeeftijd]);
 
   const jaarlijksSparen   = data.savings.monthlySavingsContribution * 12;
   const jaarlijksBeleggen = data.savings.maandelijksBeleggen * 12;
@@ -232,14 +260,21 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
         const aowIncome      = year > aowCalendarYear      ? aowJaar      : 0;
         const pensioenIncome = year > pensioenCalendarYear ? pensioenJaar : 0;
         const required       = Math.max(0, annualExp - aowIncome - pensioenIncome);
-        const grownSavings     = prevSavings     * savingsGrowth;
-        const grownInvestments = prevInvestments * investGrowth;
-        if (grownSavings >= required) {
-          savings     = grownSavings - required;
+        const grownSavings     = Math.max(0, prevSavings)     * savingsGrowth;
+        const grownInvestments = Math.max(0, prevInvestments) * investGrowth;
+        const totalLiquid      = grownSavings + grownInvestments;
+        if (required <= 0 || totalLiquid <= 0) {
+          // No withdrawal needed or nothing left
+          savings     = grownSavings;
           investments = grownInvestments;
-        } else {
+        } else if (required >= totalLiquid) {
           savings     = 0;
-          investments = Math.max(0, grownInvestments - (required - grownSavings));
+          investments = 0;
+        } else {
+          // Proportional withdrawal: each bucket contributes its share of the total
+          const savingsFrac  = grownSavings / totalLiquid;
+          savings     = grownSavings     - required * savingsFrac;
+          investments = grownInvestments - required * (1 - savingsFrac);
         }
       }
 
