@@ -32,14 +32,13 @@ export default function TaxResults({ result }: Props) {
   const {
     box1, box3, toeslagen, totalTax, netDisposableIncome, totalExpenses,
     annualSavings, annualInvestments,
-    portfolioGainLoss, portfolioCurrentValue, portfolioJan1Value,
+    portfolioCurrentValue,
     actualSavingsInterest, currentNetWorth, wozAsset, hypotheekRestschuld, afschrijvingenActueel,
     duoJaarbetaling, duoLeningJaar, afschrijvingenJaarDeposit,
     schenkbelasting, schenkNetOntvangen,
   } = result;
 
   const hasToeslagen = toeslagen.total > 0 || toeslagen.hypotheekrenteaftrek > 0;
-  const hasPriceDiff = portfolioCurrentValue > 0 && Math.abs(portfolioCurrentValue - portfolioJan1Value) > 1;
   const grossIncome  = box1.taxableIncome;
 
   // Net worth breakdown — use rawDebts (actual debt, no Box 3 threshold applied)
@@ -275,16 +274,6 @@ export default function TaxResults({ result }: Props) {
               )}
 
               {/* Portfolio gain/loss note */}
-              {hasPriceDiff && (
-                <div className="p-3 bg-purple-50 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-800 rounded-xl text-xs text-purple-700 dark:text-purple-300">
-                  {t.resultsExtra.portfolioJan1} {fmt(portfolioJan1Value)} {t.resultsExtra.portfolioNow} {fmt(portfolioCurrentValue)}
-                  {portfolioGainLoss !== 0 && (
-                    <span className={`ml-2 font-semibold ${portfolioGainLoss >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-                      ({portfolioGainLoss >= 0 ? '+' : '−'}{fmt(Math.abs(portfolioGainLoss))})
-                    </span>
-                  )}
-                </div>
-              )}
             </div>
           </div>
 
