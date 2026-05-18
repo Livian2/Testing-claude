@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Calculator, TrendingUp, TrendingDown, Info, Gift, Wallet } from 'lucide-react';
 import type { TaxResult } from '../types';
 import { fmt, fmtPct } from '../utils/taxCalculations';
@@ -37,6 +38,32 @@ export default function TaxResults({ result }: Props) {
     duoJaarbetaling, duoLeningJaar, afschrijvingenJaarDeposit,
     schenkbelasting, schenkNetOntvangen,
   } = result;
+
+  const [cfTab, setCfTab] = useState<'verwacht' | 'werkelijk'>('verwacht');
+
+  // ── Bank actuals (from localStorage, annualized to 12 months) ──────────────
+  interface RawTx { datum: string; category: string; afBij: string; bedrag: number; excluded: boolean; }
+  const bankTxs: RawTx[] = (() => {
+    try { return JSON.parse(localStorage.getItem('dutch-tax-bank-txs-v1') || '[]'); } catch { return []; }
+  })();
+  const hasBankData = bankTxs.length > 0;
+
+  const bankMonths = (() => {
+    if (!bankTxs.length) return 1;
+    const dates = bankTxs.map(t => +t.datum).sort();
+    const s = dates[0], e = dates[dates.length - 1];
+    const sy = Math.floor(s / 10000), sm = Math.floor((s % 10000) / 100);
+    const ey = Math.floor(e / 10000), em = Math.floor((e % 10000) / 100);
+    return Math.max(1, (ey - sy) * 12 + (em - sm) + 1);
+  })();
+  const ann = (n: number) => (n / bankMonths) * 12;
+
+  const EXPENSE_CATS = new Set(['groceries', 'transport', 'insurance', 'healthcare', 'education', 'leisure', 'other', 'housing', 'phone']);
+  const aktIncome   = ann(bankTxs.filter(t => t.category === 'income'      && t.afBij === 'Bij').reduce((s, t) => s + t.bedrag, 0));
+  const aktExpenses = ann(bankTxs.filter(t => !t.excluded && EXPENSE_CATS.has(t.category) && t.afBij === 'Af').reduce((s, t) => s + t.bedrag, 0));
+  const aktInvest   = ann(bankTxs.filter(t => t.category === 'investments' && t.afBij === 'Af').reduce((s, t) => s + t.bedrag, 0));
+  const aktNet      = aktIncome - box1.netTax - box3.netTax + toeslagen.total - aktExpenses - aktInvest
+                      - duoJaarbetaling - afschrijvingenJaarDeposit + duoLeningJaar + schenkNetOntvangen;
 
   const hasToeslagen = toeslagen.total > 0 || toeslagen.hypotheekrenteaftrek > 0;
   const grossIncome  = box1.taxableIncome;
@@ -281,13 +308,28 @@ export default function TaxResults({ result }: Props) {
           <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
             <div className="flex items-center gap-3 px-6 py-4 border-b-2 border-green-400 bg-gradient-to-r from-green-50 to-white dark:from-slate-800 dark:to-slate-800">
               <TrendingDown size={18} className="text-green-500" />
-              <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">{t.results.cashflow}</h3>
+              <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100 flex-1">{t.results.cashflow}</h3>
+              {hasBankData && (
+                <div className="flex gap-0 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden text-xs">
+                  {(['verwacht', 'werkelijk'] as const).map(tab => (
+                    <button key={tab} onClick={() => setCfTab(tab)}
+                      className={`px-3 py-1 font-medium transition-colors cursor-pointer border-0 capitalize
+                        ${cfTab === tab ? 'bg-green-500 text-white' : 'bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'}`}>
+                      {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
             <div className="p-6">
               {/* Visual income vs outflow bar */}
               {grossIncome > 0 && (() => {
-                const totalOut = box1.netTax + box3.netTax + totalExpenses + annualSavings + annualInvestments + duoJaarbetaling + afschrijvingenJaarDeposit + schenkbelasting;
-                const totalIn  = grossIncome + toeslagen.total + duoLeningJaar + schenkNetOntvangen;
+                const totalOut = cfTab === 'werkelijk' && hasBankData
+                  ? aktExpenses + aktInvest + box1.netTax + box3.netTax + duoJaarbetaling + afschrijvingenJaarDeposit + schenkbelasting
+                  : box1.netTax + box3.netTax + totalExpenses + annualSavings + annualInvestments + duoJaarbetaling + afschrijvingenJaarDeposit + schenkbelasting;
+                const totalIn  = cfTab === 'werkelijk' && hasBankData
+                  ? aktIncome + toeslagen.total + duoLeningJaar + schenkNetOntvangen
+                  : grossIncome + toeslagen.total + duoLeningJaar + schenkNetOntvangen;
                 const maxVal   = Math.max(totalIn, totalOut) || 1;
                 return (
                   <div className="mb-5 space-y-2">
@@ -311,47 +353,85 @@ export default function TaxResults({ result }: Props) {
                 );
               })()}
 
+              {/* Period note in werkelijk mode */}
+              {cfTab === 'werkelijk' && hasBankData && (
+                <p className="text-xs text-slate-400 dark:text-slate-500 mb-3 italic">
+                  Werkelijke bedragen op basis van {bankMonths} {bankMonths === 1 ? 'maand' : 'maanden'} bankdata, herschaald naar jaar.
+                </p>
+              )}
+
               <div className="space-y-1">
-              {[
-                { label: t.results.grossIncome,    value:  grossIncome,          sign: '+', color: 'text-green-600' },
-                { label: t.results.box1Tax,        value: -box1.netTax,          sign: '−', color: 'text-red-500' },
-                { label: t.results.box3Tax,        value: -box3.netTax,          sign: '−', color: 'text-red-500' },
-                ...(toeslagen.total > 0
-                  ? [{ label: t.results.toeslagen, value: toeslagen.total,        sign: '+', color: 'text-teal-600' }]
-                  : []),
-                { label: t.results.totalExpenses,  value: -totalExpenses,        sign: '−', color: 'text-orange-500' },
-                ...(annualSavings > 0
-                  ? [{ label: t.expenses.monthlySavings, value: -annualSavings, sign: '−', color: 'text-blue-500' }]
-                  : []),
-                ...(annualInvestments > 0
-                  ? [{ label: t.expenses.monthlyInvest, value: -annualInvestments, sign: '−', color: 'text-violet-500' }]
-                  : []),
-                ...(duoJaarbetaling > 0
-                  ? [{ label: t.resultsExtra.duoRepayment, value: -duoJaarbetaling,       sign: '−', color: 'text-purple-600' }]
-                  : []),
-                ...(afschrijvingenJaarDeposit > 0
-                  ? [{ label: t.resultsExtra.savingsProvisions, value: -afschrijvingenJaarDeposit, sign: '−', color: 'text-orange-400' }]
-                  : []),
-                ...(schenkbelasting > 0
-                  ? [{ label: t.resultsExtra.schenkbelasting, value: -schenkbelasting, sign: '−', color: 'text-purple-600' }]
-                  : []),
-                ...(schenkNetOntvangen > 0
-                  ? [{ label: t.resultsExtra.schenkNetOntvangen, value: schenkNetOntvangen, sign: '+', color: 'text-green-600' }]
-                  : []),
-                ...(duoLeningJaar > 0
-                  ? [{ label: t.resultsExtra.duoLeningInflow, value: duoLeningJaar, sign: '+', color: 'text-blue-500' }]
-                  : []),
-              ].map((row, i) => (
-                <div key={i} className="flex items-center gap-2 py-2 border-b border-slate-100 dark:border-slate-700 last:border-0 text-xs">
-                  <span className="flex-1 min-w-0 truncate text-slate-600 dark:text-slate-300">{row.label}</span>
-                  <span className={`shrink-0 font-medium tabular-nums ${row.color}`}>{row.sign} {fmt(Math.abs(row.value))}</span>
-                </div>
-              ))}
+              {(() => {
+                const isWerk = cfTab === 'werkelijk' && hasBankData;
+                type CfRow = { label: string; budget: number; actual: number | null; sign: '+' | '−'; color: string };
+                const rows: CfRow[] = [
+                  { label: t.results.grossIncome,          budget: grossIncome,              actual: isWerk ? aktIncome   : null, sign: '+', color: 'text-green-600' },
+                  { label: t.results.box1Tax,              budget: -box1.netTax,             actual: null,                        sign: '−', color: 'text-red-500' },
+                  { label: t.results.box3Tax,              budget: -box3.netTax,             actual: null,                        sign: '−', color: 'text-red-500' },
+                  ...(toeslagen.total > 0
+                    ? [{ label: t.results.toeslagen,       budget: toeslagen.total,          actual: null,                        sign: '+' as const, color: 'text-teal-600' }]
+                    : []),
+                  { label: t.results.totalExpenses,        budget: -totalExpenses,           actual: isWerk ? -aktExpenses : null, sign: '−', color: 'text-orange-500' },
+                  ...(annualSavings > 0
+                    ? [{ label: t.expenses.monthlySavings, budget: -annualSavings,           actual: null,                        sign: '−' as const, color: 'text-blue-500' }]
+                    : []),
+                  ...(annualInvestments > 0 || (isWerk && aktInvest > 0)
+                    ? [{ label: t.expenses.monthlyInvest,  budget: -annualInvestments,       actual: isWerk ? -aktInvest  : null, sign: '−' as const, color: 'text-violet-500' }]
+                    : []),
+                  ...(duoJaarbetaling > 0
+                    ? [{ label: t.resultsExtra.duoRepayment, budget: -duoJaarbetaling,       actual: null,                        sign: '−' as const, color: 'text-purple-600' }]
+                    : []),
+                  ...(afschrijvingenJaarDeposit > 0
+                    ? [{ label: t.resultsExtra.savingsProvisions, budget: -afschrijvingenJaarDeposit, actual: null,               sign: '−' as const, color: 'text-orange-400' }]
+                    : []),
+                  ...(schenkbelasting > 0
+                    ? [{ label: t.resultsExtra.schenkbelasting, budget: -schenkbelasting,    actual: null,                        sign: '−' as const, color: 'text-purple-600' }]
+                    : []),
+                  ...(schenkNetOntvangen > 0
+                    ? [{ label: t.resultsExtra.schenkNetOntvangen, budget: schenkNetOntvangen, actual: null,                      sign: '+' as const, color: 'text-green-600' }]
+                    : []),
+                  ...(duoLeningJaar > 0
+                    ? [{ label: t.resultsExtra.duoLeningInflow, budget: duoLeningJaar,       actual: null,                        sign: '+' as const, color: 'text-blue-500' }]
+                    : []),
+                ];
+
+                return rows.map((row, i) => {
+                  const displayVal  = isWerk && row.actual !== null ? row.actual : row.budget;
+                  const delta       = isWerk && row.actual !== null ? row.actual - row.budget : null;
+                  const absDisplay  = Math.abs(displayVal);
+                  return (
+                    <div key={i} className="flex items-center gap-2 py-2 border-b border-slate-100 dark:border-slate-700 last:border-0 text-xs">
+                      <span className="flex-1 min-w-0 truncate text-slate-600 dark:text-slate-300">{row.label}</span>
+                      {isWerk && row.actual === null && (
+                        <span className="text-xs text-slate-300 dark:text-slate-600 shrink-0 mr-1" title="Geen bankdata beschikbaar, budgetwaarde gebruikt">~</span>
+                      )}
+                      <span className={`shrink-0 font-medium tabular-nums ${row.color}`}>
+                        {row.sign} {fmt(absDisplay)}
+                      </span>
+                      {delta !== null && (
+                        <span className={`shrink-0 tabular-nums text-xs font-medium w-16 text-right ${delta > 0 === (row.sign === '+') ? 'text-green-500' : 'text-red-500'}`}>
+                          {delta > 0 ? '+' : '−'}{fmt(Math.abs(delta))}
+                        </span>
+                      )}
+                      {isWerk && delta === null && <span className="w-16 shrink-0" />}
+                    </div>
+                  );
+                });
+              })()}
               <div className="flex items-center gap-2 pt-3 border-t-2 border-slate-200 dark:border-slate-700">
                 <span className="flex-1 min-w-0 text-sm font-semibold text-slate-700 dark:text-slate-200 truncate">{t.results.netDisposable}</span>
-                <span className={`shrink-0 text-base font-bold tabular-nums ${netDisposableIncome >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {fmt(netDisposableIncome)}
-                </span>
+                {cfTab === 'werkelijk' && hasBankData ? (
+                  <>
+                    <span className={`shrink-0 text-base font-bold tabular-nums ${aktNet >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fmt(aktNet)}</span>
+                    <span className={`shrink-0 text-xs font-medium tabular-nums w-16 text-right ${aktNet - netDisposableIncome >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                      {aktNet - netDisposableIncome >= 0 ? '+' : '−'}{fmt(Math.abs(aktNet - netDisposableIncome))}
+                    </span>
+                  </>
+                ) : (
+                  <span className={`shrink-0 text-base font-bold tabular-nums ${netDisposableIncome >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {fmt(netDisposableIncome)}
+                  </span>
+                )}
               </div>
               </div>
             </div>
