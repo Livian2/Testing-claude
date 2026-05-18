@@ -280,6 +280,7 @@ export interface TaxResult {
   netDisposableIncome: number;
   totalExpenses: number;
   annualSavings: number;
+  annualInvestments: number;
   portfolioCurrentValue: number;
   portfolioJan1Value: number;
   portfolioGainLoss: number;

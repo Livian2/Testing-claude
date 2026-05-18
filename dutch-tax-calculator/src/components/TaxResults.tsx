@@ -22,6 +22,7 @@ export default function TaxResults({ result }: Props) {
   const { t } = useLanguage();
   const {
     box1, box3, toeslagen, totalTax, netDisposableIncome, totalExpenses,
+    annualSavings, annualInvestments,
     portfolioGainLoss, portfolioCurrentValue, portfolioJan1Value,
     actualSavingsInterest, currentNetWorth, wozAsset, hypotheekRestschuld, afschrijvingenActueel,
     duoJaarbetaling, duoLeningJaar, afschrijvingenJaarDeposit,
@@ -297,6 +298,12 @@ export default function TaxResults({ result }: Props) {
               ? [{ label: t.results.toeslagen, value: toeslagen.total,        sign: '+', color: 'text-teal-600' }]
               : []),
             { label: t.results.totalExpenses,  value: -totalExpenses,        sign: '−', color: 'text-orange-500' },
+            ...(annualSavings > 0
+              ? [{ label: t.expenses.monthlySavings, value: -annualSavings, sign: '−', color: 'text-blue-500' }]
+              : []),
+            ...(annualInvestments > 0
+              ? [{ label: t.expenses.monthlyInvest, value: -annualInvestments, sign: '−', color: 'text-violet-500' }]
+              : []),
             ...(duoJaarbetaling > 0
               ? [{ label: t.resultsExtra.duoRepayment, value: -duoJaarbetaling,       sign: '−', color: 'text-purple-600' }]
               : []),

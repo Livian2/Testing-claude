@@ -493,7 +493,8 @@ export function calculateTaxes(data: TaxFormData): TaxResult {
      expenses.healthcare + expenses.education + expenses.leisure +
      expenses.other) * 12 + totalWoonlasten;
 
-  const annualSavings = savings.monthlySavingsContribution * 12;
+  const annualSavings      = savings.monthlySavingsContribution * 12;
+  const annualInvestments  = savings.maandelijksBeleggen * 12;
   const grossIncome   = _grossInc;
 
   let portfolioCurrentValue = 0;
@@ -537,7 +538,9 @@ export function calculateTaxes(data: TaxFormData): TaxResult {
   const duoLeningJaar = (income.duoLening ?? 0) * 12;
 
   const netDisposableIncome =
-    grossIncome - totalTax + toeslagen.total - totalExpenses - duoJaarbetaling - afschrijvingenJaarDeposit + duoLeningJaar;
+    grossIncome - totalTax + toeslagen.total - totalExpenses
+    - annualSavings - annualInvestments
+    - duoJaarbetaling - afschrijvingenJaarDeposit + duoLeningJaar;
 
   const wozAsset = woon.woningType === 'hypotheek' ? (woon.wozWaarde ?? 0) : 0;
 
@@ -561,7 +564,7 @@ export function calculateTaxes(data: TaxFormData): TaxResult {
 
   return {
     box1, box3, toeslagen, totalTax, netDisposableIncome, totalExpenses,
-    annualSavings, portfolioCurrentValue, portfolioJan1Value,
+    annualSavings, annualInvestments, portfolioCurrentValue, portfolioJan1Value,
     portfolioGainLoss: gainLoss, actualSavingsInterest, currentNetWorth, wozAsset, hypotheekRestschuld, afschrijvingenActueel,
     duoJaarbetaling, duoLeningJaar, afschrijvingenJaarDeposit,
     schenkbelasting, schenkNetOntvangen,
