@@ -53,7 +53,7 @@ const DEFAULT_DATA: TaxFormData = {
   schenkingen: { schenkingen: [] },
 };
 
-const APP_VERSION         = 'v1.18.2';
+const APP_VERSION         = 'v1.18.3';
 
 const STORAGE_KEY         = 'nl-belasting-data-v1';
 const PROGNOSE_STORAGE_KEY = 'nl-belasting-prognose-v1';
@@ -148,9 +148,28 @@ export default function App() {
   const [isDark, setIsDark]       = useState<boolean>(loadInitialDark);
   const [showWelcome, setShowWelcome]   = useState<boolean>(false);
   const [showLanding, setShowLanding]   = useState<boolean>(false);
-  const importRef                       = useRef<HTMLInputElement>(null);
+  const [panelDetached, setPanelDetached] = useState(false);
+  const [panelPos, setPanelPos]           = useState({ x: 0, y: 80 });
+  const importRef                         = useRef<HTMLInputElement>(null);
+  const panelDragRef                      = useRef<{ startX: number; startY: number; originX: number; originY: number } | null>(null);
 
   const closeWelcome = () => setShowWelcome(false);
+
+  const onPanelDragStart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const el = (e.currentTarget as HTMLElement).closest('[data-panel]') as HTMLElement;
+    const rect = el.getBoundingClientRect();
+    panelDragRef.current = { startX: e.clientX, startY: e.clientY, originX: rect.left, originY: rect.top };
+    const onMove = (me: MouseEvent) => {
+      if (!panelDragRef.current) return;
+      const dx = me.clientX - panelDragRef.current.startX;
+      const dy = me.clientY - panelDragRef.current.startY;
+      setPanelPos({ x: Math.max(0, panelDragRef.current.originX + dx), y: Math.max(0, panelDragRef.current.originY + dy) });
+    };
+    const onUp = () => { panelDragRef.current = null; window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  };
 
   // Apply / remove .dark class on <html> and persist preference
   useEffect(() => {
@@ -546,9 +565,34 @@ export default function App() {
           </div>
         )}
 
+        {/* Floating detached panel */}
+        {showSidePanel && panelDetached && (
+          <div
+            data-panel
+            className="fixed z-50 w-[420px] max-h-[calc(100vh-20px)] overflow-y-auto rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+            style={{ left: panelPos.x, top: panelPos.y }}
+          >
+            <div
+              onMouseDown={onPanelDragStart}
+              className="flex items-center justify-between px-4 py-2 cursor-grab active:cursor-grabbing bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 rounded-t-2xl select-none"
+            >
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor" className="opacity-50"><circle cx="3" cy="3" r="1.2"/><circle cx="9" cy="3" r="1.2"/><circle cx="3" cy="9" r="1.2"/><circle cx="9" cy="9" r="1.2"/><circle cx="3" cy="6" r="1.2"/><circle cx="9" cy="6" r="1.2"/></svg>
+                Berekening
+              </span>
+              <button
+                onClick={() => setPanelDetached(false)}
+                className="text-xs text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors cursor-pointer border-0 bg-transparent px-1"
+                title="Verankeren"
+              >✕ sluiten</button>
+            </div>
+            <TaxResults result={result} />
+          </div>
+        )}
+
         {/* Two-column layout for input tabs on wide screens */}
         {showSidePanel && (
-          <div className="grid grid-cols-1 xl:grid-cols-[1fr_400px] 2xl:grid-cols-[1fr_460px] gap-6 items-start">
+          <div className={`grid gap-6 items-start ${panelDetached ? 'grid-cols-1' : 'grid-cols-1 xl:grid-cols-[1fr_400px] 2xl:grid-cols-[1fr_460px]'}`}>
             {/* Left: tab content */}
             <div className="min-w-0">
               {tab === 'income' && (
@@ -630,10 +674,25 @@ export default function App() {
               {tab === 'jaarruimte' && <JaarruimteSection data={data} />}
             </div>
 
-            {/* Right: live results panel */}
-            <div className="xl:sticky xl:top-[89px] xl:max-h-[calc(100vh-100px)] xl:overflow-y-auto">
-              <TaxResults result={result} />
-            </div>
+            {/* Right: live results panel (docked) */}
+            {!panelDetached && (
+              <div className="xl:sticky xl:top-[89px] xl:max-h-[calc(100vh-100px)] xl:overflow-y-auto">
+                <div className="flex justify-end mb-2">
+                  <button
+                    onClick={() => {
+                      setPanelPos({ x: Math.max(0, window.innerWidth - 460), y: 80 });
+                      setPanelDetached(true);
+                    }}
+                    className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors cursor-pointer border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 rounded-lg px-2.5 py-1 flex items-center gap-1.5"
+                    title="Los koppelen"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><circle cx="3" cy="3" r="1.2"/><circle cx="9" cy="3" r="1.2"/><circle cx="3" cy="9" r="1.2"/><circle cx="9" cy="9" r="1.2"/><circle cx="3" cy="6" r="1.2"/><circle cx="9" cy="6" r="1.2"/></svg>
+                    Vrijzetten
+                  </button>
+                </div>
+                <TaxResults result={result} />
+              </div>
+            )}
           </div>
         )}
 

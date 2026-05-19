@@ -21,9 +21,9 @@ function Row({ label, value, bold, green, red, indent }: {
 
 function StatCard({ label, value, color }: { label: string; value: string; color: string }) {
   return (
-    <div className={`min-w-0 rounded-xl border p-3 ${color}`}>
-      <p className="text-xs font-medium opacity-70 mb-1 truncate">{label}</p>
-      <p className="text-base lg:text-lg font-bold break-words">{value}</p>
+    <div className={`min-w-0 rounded-xl border p-4 ${color}`}>
+      <p className="text-xs font-medium opacity-70 mb-1.5 truncate">{label}</p>
+      <p className="text-xl lg:text-2xl font-bold break-words">{value}</p>
     </div>
   );
 }
@@ -95,19 +95,19 @@ export default function TaxResults({ result }: Props) {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="min-w-0">
             <p className="text-xs text-slate-400 mb-1 truncate">{t.results.totalTax}</p>
-            <p className="text-xl lg:text-2xl font-bold text-red-400 truncate">{fmt(totalTax)}</p>
+            <p className="text-2xl lg:text-3xl font-bold text-red-400">{fmt(totalTax)}</p>
           </div>
           <div className="min-w-0">
             <p className="text-xs text-slate-400 mb-1 truncate">{t.results.box1Tax}</p>
-            <p className="text-xl lg:text-2xl font-bold text-orange-400 truncate">{fmt(box1.netTax)}</p>
+            <p className="text-2xl lg:text-3xl font-bold text-orange-400">{fmt(box1.netTax)}</p>
           </div>
           <div className="min-w-0">
             <p className="text-xs text-slate-400 mb-1 truncate">{t.results.box3Tax}</p>
-            <p className="text-xl lg:text-2xl font-bold text-purple-400 truncate">{fmt(box3.netTax)}</p>
+            <p className="text-2xl lg:text-3xl font-bold text-purple-400">{fmt(box3.netTax)}</p>
           </div>
           <div className="min-w-0">
             <p className="text-xs text-slate-400 mb-1 truncate">{t.results.netDisposable}</p>
-            <p className={`text-xl lg:text-2xl font-bold truncate ${netDisposableIncome >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+            <p className={`text-2xl lg:text-3xl font-bold ${netDisposableIncome >= 0 ? 'text-green-400' : 'text-red-400'}`}>
               {fmt(netDisposableIncome)}
             </p>
           </div>
@@ -276,8 +276,8 @@ export default function TaxResults({ result }: Props) {
                     {assetSegments.map((s, i) => (
                       <div key={i} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border ${s.bg} ${s.border}`}>
                         <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${s.color}`} />
-                        <span className={`flex-1 min-w-0 text-xs truncate ${s.textColor} opacity-80`}>{s.label}</span>
-                        <span className={`text-sm font-bold tabular-nums shrink-0 ${s.textColor}`}>{fmt(s.value)}</span>
+                        <span className={`flex-1 min-w-0 text-sm truncate ${s.textColor} opacity-80`}>{s.label}</span>
+                        <span className={`text-base font-bold tabular-nums shrink-0 ${s.textColor}`}>{fmt(s.value)}</span>
                       </div>
                     ))}
                   </div>
@@ -292,8 +292,8 @@ export default function TaxResults({ result }: Props) {
                     {debtSegments.map((s, i) => (
                       <div key={i} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border ${s.bg} ${s.border}`}>
                         <div className="w-2.5 h-2.5 rounded-full shrink-0 bg-red-400" />
-                        <span className={`flex-1 min-w-0 text-xs truncate ${s.textColor} opacity-80`}>{s.label}</span>
-                        <span className={`text-sm font-bold tabular-nums shrink-0 ${s.textColor}`}>− {fmt(s.value)}</span>
+                        <span className={`flex-1 min-w-0 text-sm truncate ${s.textColor} opacity-80`}>{s.label}</span>
+                        <span className={`text-base font-bold tabular-nums shrink-0 ${s.textColor}`}>− {fmt(s.value)}</span>
                       </div>
                     ))}
                   </div>
@@ -360,82 +360,106 @@ export default function TaxResults({ result }: Props) {
                 </p>
               )}
 
-              <div className="space-y-1">
               {(() => {
                 const isWerk = cfTab === 'werkelijk' && hasBankData;
                 type CfRow = { label: string; budget: number; actual: number | null; sign: '+' | '−'; color: string };
-                // In werkelijk mode, budget is scaled to the same period as bank data
                 const sc = isWerk ? budgetScale : 1;
-                const rows: CfRow[] = [
-                  { label: t.results.grossIncome,          budget: grossIncome * sc,              actual: isWerk ? aktIncome   : null, sign: '+', color: 'text-green-600' },
-                  { label: t.results.box1Tax,              budget: -box1.netTax * sc,             actual: null,                        sign: '−', color: 'text-red-500' },
-                  { label: t.results.box3Tax,              budget: -box3.netTax * sc,             actual: null,                        sign: '−', color: 'text-red-500' },
+
+                const incomeRows: CfRow[] = [
+                  { label: t.results.grossIncome,              budget: grossIncome * sc,              actual: isWerk ? aktIncome : null, sign: '+', color: 'text-green-600' },
                   ...(toeslagen.total > 0
-                    ? [{ label: t.results.toeslagen,       budget: toeslagen.total * sc,          actual: null,                        sign: '+' as const, color: 'text-teal-600' }]
-                    : []),
-                  { label: t.results.totalExpenses,        budget: -totalExpenses * sc,           actual: isWerk ? -aktExpenses : null, sign: '−', color: 'text-orange-500' },
-                  ...(annualSavings > 0
-                    ? [{ label: t.expenses.monthlySavings, budget: -annualSavings * sc,           actual: null,                        sign: '−' as const, color: 'text-blue-500' }]
-                    : []),
-                  ...(annualInvestments > 0 || (isWerk && aktInvest > 0)
-                    ? [{ label: t.expenses.monthlyInvest,  budget: -annualInvestments * sc,       actual: isWerk ? -aktInvest  : null, sign: '−' as const, color: 'text-violet-500' }]
-                    : []),
-                  ...(duoJaarbetaling > 0
-                    ? [{ label: t.resultsExtra.duoRepayment, budget: -duoJaarbetaling * sc,       actual: null,                        sign: '−' as const, color: 'text-purple-600' }]
-                    : []),
-                  ...(afschrijvingenJaarDeposit > 0
-                    ? [{ label: t.resultsExtra.savingsProvisions, budget: -afschrijvingenJaarDeposit * sc, actual: null,               sign: '−' as const, color: 'text-orange-400' }]
-                    : []),
-                  ...(schenkbelasting > 0
-                    ? [{ label: t.resultsExtra.schenkbelasting, budget: -schenkbelasting * sc,    actual: null,                        sign: '−' as const, color: 'text-purple-600' }]
+                    ? [{ label: t.results.toeslagen,           budget: toeslagen.total * sc,          actual: null, sign: '+' as const, color: 'text-teal-600' }]
                     : []),
                   ...(schenkNetOntvangen > 0
-                    ? [{ label: t.resultsExtra.schenkNetOntvangen, budget: schenkNetOntvangen * sc, actual: null,                      sign: '+' as const, color: 'text-green-600' }]
+                    ? [{ label: t.resultsExtra.schenkNetOntvangen, budget: schenkNetOntvangen * sc,   actual: null, sign: '+' as const, color: 'text-green-600' }]
                     : []),
                   ...(duoLeningJaar > 0
-                    ? [{ label: t.resultsExtra.duoLeningInflow, budget: duoLeningJaar * sc,       actual: null,                        sign: '+' as const, color: 'text-blue-500' }]
+                    ? [{ label: t.resultsExtra.duoLeningInflow, budget: duoLeningJaar * sc,           actual: null, sign: '+' as const, color: 'text-blue-500' }]
                     : []),
                 ];
 
-                return rows.map((row, i) => {
-                  const displayVal  = isWerk && row.actual !== null ? row.actual : row.budget;
-                  const delta       = isWerk && row.actual !== null ? row.actual - row.budget : null;
-                  const absDisplay  = Math.abs(displayVal);
+                const outflowRows: CfRow[] = [
+                  { label: t.results.box1Tax,                  budget: -box1.netTax * sc,             actual: null, sign: '−', color: 'text-red-500' },
+                  { label: t.results.box3Tax,                  budget: -box3.netTax * sc,             actual: null, sign: '−', color: 'text-red-500' },
+                  { label: t.results.totalExpenses,            budget: -totalExpenses * sc,           actual: isWerk ? -aktExpenses : null, sign: '−', color: 'text-orange-500' },
+                  ...(annualSavings > 0
+                    ? [{ label: t.expenses.monthlySavings,     budget: -annualSavings * sc,           actual: null, sign: '−' as const, color: 'text-blue-500' }]
+                    : []),
+                  ...(annualInvestments > 0 || (isWerk && aktInvest > 0)
+                    ? [{ label: t.expenses.monthlyInvest,      budget: -annualInvestments * sc,       actual: isWerk ? -aktInvest : null, sign: '−' as const, color: 'text-violet-500' }]
+                    : []),
+                  ...(duoJaarbetaling > 0
+                    ? [{ label: t.resultsExtra.duoRepayment,   budget: -duoJaarbetaling * sc,         actual: null, sign: '−' as const, color: 'text-purple-600' }]
+                    : []),
+                  ...(afschrijvingenJaarDeposit > 0
+                    ? [{ label: t.resultsExtra.savingsProvisions, budget: -afschrijvingenJaarDeposit * sc, actual: null, sign: '−' as const, color: 'text-orange-400' }]
+                    : []),
+                  ...(schenkbelasting > 0
+                    ? [{ label: t.resultsExtra.schenkbelasting, budget: -schenkbelasting * sc,        actual: null, sign: '−' as const, color: 'text-purple-600' }]
+                    : []),
+                ];
+
+                const totalIncome  = incomeRows.reduce((s, r) => s + (isWerk && r.actual !== null ? r.actual : r.budget), 0);
+                const totalOutflow = outflowRows.reduce((s, r) => s + Math.abs(isWerk && r.actual !== null ? r.actual : r.budget), 0);
+                const netActual    = isWerk ? aktNet : netDisposableIncome;
+
+                const renderRow = (row: CfRow, i: number) => {
+                  const displayVal = isWerk && row.actual !== null ? row.actual : row.budget;
+                  const delta      = isWerk && row.actual !== null ? row.actual - row.budget : null;
                   return (
-                    <div key={i} className="flex items-center gap-2 py-2 border-b border-slate-100 dark:border-slate-700 last:border-0 text-xs">
-                      <span className="flex-1 min-w-0 truncate text-slate-600 dark:text-slate-300">{row.label}</span>
+                    <div key={i} className="flex items-center gap-3 py-2.5 border-b border-slate-100 dark:border-slate-700 last:border-0">
+                      <span className="flex-1 min-w-0 truncate text-sm text-slate-600 dark:text-slate-300">{row.label}</span>
                       {isWerk && row.actual === null && (
-                        <span className="text-xs text-slate-300 dark:text-slate-600 shrink-0 mr-1" title="Geen bankdata beschikbaar, budgetwaarde gebruikt">~</span>
+                        <span className="text-xs text-slate-300 dark:text-slate-600 shrink-0" title="Budgetwaarde">~</span>
                       )}
-                      <span className={`shrink-0 font-medium tabular-nums ${row.color}`}>
-                        {row.sign} {fmt(absDisplay)}
+                      <span className={`shrink-0 text-sm font-semibold tabular-nums ${row.color}`}>
+                        {row.sign} {fmt(Math.abs(displayVal))}
                       </span>
-                      {delta !== null && (
-                        <span className={`shrink-0 tabular-nums text-xs font-medium w-16 text-right ${delta > 0 === (row.sign === '+') ? 'text-green-500' : 'text-red-500'}`}>
+                      {delta !== null ? (
+                        <span className={`shrink-0 text-xs font-medium tabular-nums w-14 text-right ${delta > 0 === (row.sign === '+') ? 'text-green-500' : 'text-red-500'}`}>
                           {delta > 0 ? '+' : '−'}{fmt(Math.abs(delta))}
                         </span>
-                      )}
-                      {isWerk && delta === null && <span className="w-16 shrink-0" />}
+                      ) : isWerk ? <span className="w-14 shrink-0" /> : null}
                     </div>
                   );
-                });
+                };
+
+                return (
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Inkomsten</p>
+                      <div>{incomeRows.map(renderRow)}</div>
+                      <div className="flex items-center gap-3 pt-2 mt-1 border-t border-slate-200 dark:border-slate-600">
+                        <span className="flex-1 text-sm font-semibold text-slate-700 dark:text-slate-200">Totaal inkomsten</span>
+                        <span className="text-base font-bold text-green-600 tabular-nums">+ {fmt(totalIncome)}</span>
+                        {isWerk && <span className="w-14 shrink-0" />}
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Uitgaven &amp; lasten</p>
+                      <div>{outflowRows.map(renderRow)}</div>
+                      <div className="flex items-center gap-3 pt-2 mt-1 border-t border-slate-200 dark:border-slate-600">
+                        <span className="flex-1 text-sm font-semibold text-slate-700 dark:text-slate-200">Totaal uitgaven</span>
+                        <span className="text-base font-bold text-red-500 tabular-nums">− {fmt(totalOutflow)}</span>
+                        {isWerk && <span className="w-14 shrink-0" />}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 pt-3 border-t-2 border-slate-300 dark:border-slate-600">
+                      <span className="flex-1 min-w-0 text-base font-bold text-slate-800 dark:text-slate-100 truncate">{t.results.netDisposable}</span>
+                      {isWerk ? (
+                        <>
+                          <span className={`shrink-0 text-xl font-bold tabular-nums ${netActual >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fmt(netActual)}</span>
+                          <span className={`shrink-0 text-xs font-medium tabular-nums w-14 text-right ${netActual - netDisposableIncome * budgetScale >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                            {netActual - netDisposableIncome * budgetScale >= 0 ? '+' : '−'}{fmt(Math.abs(netActual - netDisposableIncome * budgetScale))}
+                          </span>
+                        </>
+                      ) : (
+                        <span className={`shrink-0 text-xl font-bold tabular-nums ${netActual >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fmt(netActual)}</span>
+                      )}
+                    </div>
+                  </div>
+                );
               })()}
-              <div className="flex items-center gap-2 pt-3 border-t-2 border-slate-200 dark:border-slate-700">
-                <span className="flex-1 min-w-0 text-sm font-semibold text-slate-700 dark:text-slate-200 truncate">{t.results.netDisposable}</span>
-                {cfTab === 'werkelijk' && hasBankData ? (
-                  <>
-                    <span className={`shrink-0 text-base font-bold tabular-nums ${aktNet >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fmt(aktNet)}</span>
-                    <span className={`shrink-0 text-xs font-medium tabular-nums w-16 text-right ${aktNet - netDisposableIncome * budgetScale >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                      {aktNet - netDisposableIncome * budgetScale >= 0 ? '+' : '−'}{fmt(Math.abs(aktNet - netDisposableIncome * budgetScale))}
-                    </span>
-                  </>
-                ) : (
-                  <span className={`shrink-0 text-base font-bold tabular-nums ${netDisposableIncome >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {fmt(netDisposableIncome)}
-                  </span>
-                )}
-              </div>
-              </div>
             </div>
           </div>
 
