@@ -532,9 +532,15 @@ export function calculateTaxes(data: TaxFormData): TaxResult {
     }
   }
 
-  // DUO repayment: income-based annual payment (only if there are DUO schulden)
+  // DUO repayment: income-based annual payment, only for loans currently in repayment phase
   const isPartner = personal.filingStatus === 'partner';
-  const duoJaarbetaling = schulden.duo.length > 0
+  const taxYear   = personal.taxYear;
+  const duoInRepayment = schulden.duo.some(d => {
+    if (!d.bedrag) return false;
+    const aflossStart = d.aflossingsStartJaar ?? d.startJaar;
+    return taxYear >= aflossStart && taxYear < aflossStart + d.looptijd;
+  });
+  const duoJaarbetaling = duoInRepayment
     ? berekenDuoJaarbetaling(grossIncome, isPartner)
     : 0;
 
