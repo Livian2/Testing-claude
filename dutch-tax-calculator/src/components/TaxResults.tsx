@@ -213,29 +213,59 @@ export default function TaxResults({ result }: Props) {
                 </span>
               </div>
 
-              <div className="space-y-0 max-w-sm">
-                <Row label={t.results.savingsBalance}    value={fmt(box3.breakdown.savings)}     indent />
-                <Row label={t.results.portfolioValue}    value={fmt(box3.breakdown.investments)} indent />
-                {box3.totalDebts > 0 && (
-                  <Row label={t.results.debtsBox3}       value={`− ${fmt(box3.totalDebts)}`}     indent red />
+              <div className="grid grid-cols-2 gap-3">
+                <StatCard label={t.results.savingsBalance}  value={fmt(box3.breakdown.savings)}     color="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300" />
+                <StatCard label={t.results.portfolioValue}  value={fmt(box3.breakdown.investments)} color="bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300" />
+                <StatCard label={t.results.taxableWealth}   value={fmt(box3.taxableWealth)}         color="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200" />
+                <StatCard label={t.results.box3TaxLabel}    value={fmt(box3.netTax)}                color="bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-400" />
+              </div>
+
+              {/* Grondslag breakdown */}
+              <div className="space-y-4">
+                <div>
+                  <p className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Grondslag</p>
+                  {[
+                    { label: t.results.savingsBalance,   value: box3.breakdown.savings,                sign: '+' as const, color: 'text-blue-600' },
+                    { label: t.results.portfolioValue,   value: box3.breakdown.investments,            sign: '+' as const, color: 'text-indigo-600' },
+                    ...(box3.totalDebts > 0   ? [{ label: t.results.debtsBox3,     value: box3.totalDebts,                    sign: '−' as const, color: 'text-red-500' }]   : []),
+                    ...(box3.afschrijvingenGereserveerd > 0 ? [{ label: t.results.reservations, value: box3.afschrijvingenGereserveerd, sign: '−' as const, color: 'text-red-500' }] : []),
+                  ].map((r, i) => (
+                    <div key={i} className="flex items-center gap-3 py-2.5 border-b border-slate-100 dark:border-slate-700 last:border-0">
+                      <span className="flex-1 min-w-0 truncate text-sm text-slate-600 dark:text-slate-300">{r.label}</span>
+                      <span className={`shrink-0 text-sm font-semibold tabular-nums ${r.color}`}>{r.sign} {fmt(r.value)}</span>
+                    </div>
+                  ))}
+                  <div className="flex items-center gap-3 pt-2 mt-1 border-t border-slate-200 dark:border-slate-600">
+                    <span className="flex-1 text-sm font-semibold text-slate-700 dark:text-slate-200">{t.results.netWorth}</span>
+                    <span className="text-base font-bold tabular-nums text-slate-800 dark:text-slate-100">{fmt(box3.netWealth)}</span>
+                  </div>
+                </div>
+
+                {box3.taxableWealth > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Fictief rendement</p>
+                    {[
+                      { label: t.resultsExtra.savingsRate103,  value: box3.breakdown.savingsFictitious,     sign: '+' as const, color: 'text-blue-600' },
+                      { label: t.resultsExtra.assetsRate588,   value: box3.breakdown.investmentsFictitious, sign: '+' as const, color: 'text-indigo-600' },
+                      ...(box3.breakdown.debtsFictitious > 0 ? [{ label: t.resultsExtra.debtsRate262, value: box3.breakdown.debtsFictitious, sign: '−' as const, color: 'text-green-600' }] : []),
+                    ].map((r, i) => (
+                      <div key={i} className="flex items-center gap-3 py-2.5 border-b border-slate-100 dark:border-slate-700 last:border-0">
+                        <span className="flex-1 min-w-0 truncate text-sm text-slate-600 dark:text-slate-300">{r.label}</span>
+                        <span className={`shrink-0 text-sm font-semibold tabular-nums ${r.color}`}>{r.sign} {fmt(r.value)}</span>
+                      </div>
+                    ))}
+                    <div className="flex items-center gap-3 pt-2 mt-1 border-t border-slate-200 dark:border-slate-600">
+                      <span className="flex-1 text-sm font-semibold text-slate-700 dark:text-slate-200">{t.results.fictitiousReturn}</span>
+                      <span className="text-base font-bold text-purple-600 tabular-nums">{fmt(box3.fictitiousReturn)}</span>
+                    </div>
+                  </div>
                 )}
-                {box3.afschrijvingenGereserveerd > 0 && (
-                  <Row label={t.results.reservations}    value={`− ${fmt(box3.afschrijvingenGereserveerd)}`} indent red />
-                )}
-                <Row label={t.results.netWorth}          value={fmt(box3.netWealth)}             bold />
-                <Row label={t.results.exemption}         value={`− ${fmt(box3.exemption)}`}      indent green />
-                <Row label={t.results.taxableWealth}     value={fmt(box3.taxableWealth)}         bold />
-                {box3.taxableWealth > 0 && <>
-                  <Row label={t.resultsExtra.savingsRate103}   value={fmt(box3.breakdown.savingsFictitious)}     indent />
-                  <Row label={t.resultsExtra.assetsRate588}    value={fmt(box3.breakdown.investmentsFictitious)} indent />
-                  {box3.breakdown.debtsFictitious > 0 && (
-                    <Row label={t.resultsExtra.debtsRate262}   value={`− ${fmt(box3.breakdown.debtsFictitious)}`} indent green />
-                  )}
-                  <Row label={t.results.fictitiousReturn} value={fmt(box3.fictitiousReturn)}               bold />
-                </>}
-                <Row label={t.results.box3TaxLabel}      value={fmt(box3.netTax)}                bold red />
+
                 {actualSavingsInterest > 0 && (
-                  <Row label={t.resultsExtra.actualSavingsRate} value={`+ ${fmt(actualSavingsInterest)}`} indent green />
+                  <div className="flex items-center gap-3 py-2 border-t border-slate-200 dark:border-slate-600">
+                    <span className="flex-1 min-w-0 truncate text-sm text-slate-600 dark:text-slate-300">{t.resultsExtra.actualSavingsRate}</span>
+                    <span className="shrink-0 text-sm font-semibold tabular-nums text-green-600">+ {fmt(actualSavingsInterest)}</span>
+                  </div>
                 )}
               </div>
             </div>
