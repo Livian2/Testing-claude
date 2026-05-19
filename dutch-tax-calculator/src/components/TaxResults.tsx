@@ -23,7 +23,7 @@ function StatCard({ label, value, color }: { label: string; value: string; color
   return (
     <div className={`min-w-0 rounded-xl border p-4 ${color}`}>
       <p className="text-xs font-medium opacity-70 mb-1.5 truncate">{label}</p>
-      <p className="text-xl lg:text-2xl font-bold break-words">{value}</p>
+      <p className="text-xl lg:text-2xl font-bold truncate">{value}</p>
     </div>
   );
 }
@@ -435,7 +435,6 @@ export default function TaxResults({ result }: Props) {
 
                 const renderRow = (row: CfRow, i: number) => {
                   const displayVal = isWerk && row.actual !== null ? row.actual : row.budget;
-                  const delta      = isWerk && row.actual !== null ? row.actual - row.budget : null;
                   return (
                     <div key={i} className="flex items-center gap-3 py-2.5 border-b border-slate-100 dark:border-slate-700 last:border-0">
                       <span className="flex-1 min-w-0 truncate text-sm text-slate-600 dark:text-slate-300">{row.label}</span>
@@ -445,11 +444,6 @@ export default function TaxResults({ result }: Props) {
                       <span className={`shrink-0 text-sm font-semibold tabular-nums ${row.color}`}>
                         {row.sign} {fmt(Math.abs(displayVal))}
                       </span>
-                      {delta !== null ? (
-                        <span className={`shrink-0 text-xs font-medium tabular-nums w-14 text-right ${delta > 0 === (row.sign === '+') ? 'text-green-500' : 'text-red-500'}`}>
-                          {delta > 0 ? '+' : '−'}{fmt(Math.abs(delta))}
-                        </span>
-                      ) : isWerk ? <span className="w-14 shrink-0" /> : null}
                     </div>
                   );
                 };
@@ -462,7 +456,6 @@ export default function TaxResults({ result }: Props) {
                       <div className="flex items-center gap-3 pt-2 mt-1 border-t border-slate-200 dark:border-slate-600">
                         <span className="flex-1 text-sm font-semibold text-slate-700 dark:text-slate-200">Totaal inkomsten</span>
                         <span className="text-base font-bold text-green-600 tabular-nums">+ {fmt(totalIncome)}</span>
-                        {isWerk && <span className="w-14 shrink-0" />}
                       </div>
                     </div>
                     <div>
@@ -471,21 +464,11 @@ export default function TaxResults({ result }: Props) {
                       <div className="flex items-center gap-3 pt-2 mt-1 border-t border-slate-200 dark:border-slate-600">
                         <span className="flex-1 text-sm font-semibold text-slate-700 dark:text-slate-200">Totaal uitgaven</span>
                         <span className="text-base font-bold text-red-500 tabular-nums">− {fmt(totalOutflow)}</span>
-                        {isWerk && <span className="w-14 shrink-0" />}
                       </div>
                     </div>
                     <div className="flex items-center gap-3 pt-3 border-t-2 border-slate-300 dark:border-slate-600">
                       <span className="flex-1 min-w-0 text-base font-bold text-slate-800 dark:text-slate-100 truncate">{t.results.netDisposable}</span>
-                      {isWerk ? (
-                        <>
-                          <span className={`shrink-0 text-xl font-bold tabular-nums ${netActual >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fmt(netActual)}</span>
-                          <span className={`shrink-0 text-xs font-medium tabular-nums w-14 text-right ${netActual - netDisposableIncome * budgetScale >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                            {netActual - netDisposableIncome * budgetScale >= 0 ? '+' : '−'}{fmt(Math.abs(netActual - netDisposableIncome * budgetScale))}
-                          </span>
-                        </>
-                      ) : (
-                        <span className={`shrink-0 text-xl font-bold tabular-nums ${netActual >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fmt(netActual)}</span>
-                      )}
+                      <span className={`shrink-0 text-xl font-bold tabular-nums ${netActual >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fmt(netActual)}</span>
                     </div>
                   </div>
                 );

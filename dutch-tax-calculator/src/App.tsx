@@ -53,7 +53,7 @@ const DEFAULT_DATA: TaxFormData = {
   schenkingen: { schenkingen: [] },
 };
 
-const APP_VERSION         = 'v1.18.4';
+const APP_VERSION         = 'v1.18.5';
 
 const STORAGE_KEY         = 'nl-belasting-data-v1';
 const PROGNOSE_STORAGE_KEY = 'nl-belasting-prognose-v1';
@@ -563,10 +563,9 @@ export default function App() {
 
         {/* Two-column layout for input tabs on wide screens */}
         {showSidePanel && (
-          <div className="grid grid-cols-1 xl:grid-cols-[1fr_8px_var(--panel-w)] items-start gap-y-6"
-            style={{ '--panel-w': `${panelWidth}px` } as React.CSSProperties}>
+          <div className="flex flex-col xl:flex-row xl:items-stretch gap-y-6">
             {/* Left: tab content */}
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               {tab === 'income' && (
                 <div className="space-y-4">
                   <IncomeSection
@@ -649,13 +648,16 @@ export default function App() {
             {/* Resize handle */}
             <div
               onMouseDown={onResizeStart}
-              className="hidden xl:flex items-stretch justify-center cursor-col-resize group select-none"
+              className="hidden xl:flex flex-col items-center w-3 flex-none cursor-col-resize group select-none"
             >
-              <div className="w-0.5 rounded-full bg-slate-200 dark:bg-slate-700 group-hover:bg-indigo-400 transition-colors" />
+              <div className="w-px flex-1 bg-slate-200 dark:bg-slate-700 group-hover:bg-indigo-400 transition-colors rounded-full" />
             </div>
 
             {/* Right: live results panel */}
-            <div className="xl:sticky xl:top-[89px] xl:max-h-[calc(100vh-100px)] xl:overflow-y-auto min-w-0">
+            <div
+              className="xl:sticky xl:top-[89px] xl:max-h-[calc(100vh-100px)] xl:overflow-y-auto flex-none min-w-0"
+              style={{ width: panelWidth }}
+            >
               <TaxResults result={result} />
             </div>
           </div>
