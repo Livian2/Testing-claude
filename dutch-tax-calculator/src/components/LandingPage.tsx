@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { ArrowRight, Lock, Zap, HardDrive, ChevronDown } from 'lucide-react';
+import { ArrowRight, Lock, Zap, HardDrive, ChevronDown, X, Flag } from 'lucide-react';
 
 type Tab = string;
 interface TabMeta { id: Tab; emoji: string; description: string }
@@ -8,8 +8,6 @@ interface Props {
   ALL_TABS: TabMeta[];
   TAB_LABELS: Record<Tab, string>;
   enabledTabs: Set<Tab>;
-  toggleTab: (id: Tab) => void;
-  setTab: (id: Tab | 'home') => void;
   lang: 'nl' | 'en';
   t: {
     home: {
@@ -19,6 +17,8 @@ interface Props {
       autoSaveTitle: string; autoSaveDesc: string;
     };
   };
+  onClose: () => void;
+  onOpenTab: (id: Tab) => void;
 }
 
 /* ── Per-module spotlight data ───────────────────────────────────────────── */
@@ -91,7 +91,7 @@ function rv(on: boolean, delayMs = 0): React.CSSProperties {
 }
 
 /* ── Component ───────────────────────────────────────────────────────────── */
-export default function LandingPage({ ALL_TABS, TAB_LABELS, enabledTabs, setTab, lang, t }: Props) {
+export default function LandingPage({ ALL_TABS, TAB_LABELS, enabledTabs, lang, t, onClose, onOpenTab }: Props) {
   const nl = lang === 'nl';
 
   /* Hero entrance */
@@ -147,6 +147,40 @@ export default function LandingPage({ ALL_TABS, TAB_LABELS, enabledTabs, setTab,
   const spot = SPOT[tab?.id] ?? SPOT['income'];
 
   return (
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200 dark:from-slate-950 dark:via-slate-900 dark:to-slate-900">
+
+      {/* ── Overlay header ── */}
+      <header className="sticky top-0 z-20 bg-white/85 dark:bg-slate-900/85 backdrop-blur-xl border-b border-slate-200/80 dark:border-slate-700/80 shadow-sm">
+        <div className="px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5 bg-gradient-to-br from-orange-500 to-amber-500 text-white rounded-xl px-3 py-1.5 shadow-md shadow-orange-500/20">
+              <Flag size={14} />
+              <span className="text-sm font-bold tracking-tight">NL Belasting</span>
+            </div>
+            <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+              {nl ? 'Uitleg' : 'Guide'}
+            </span>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => onOpenTab('income' as Tab)}
+              className="hidden sm:flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-orange-500 hover:bg-orange-400 text-white border-0 cursor-pointer transition-colors"
+            >
+              {nl ? 'Open calculator' : 'Open calculator'}
+              <ArrowRight size={12} />
+            </button>
+            <button
+              onClick={onClose}
+              className="flex items-center justify-center w-8 h-8 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors bg-transparent border-0 cursor-pointer"
+              aria-label={nl ? 'Sluiten' : 'Close'}
+            >
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <div className="px-4 sm:px-6 py-6">
     <div className="lp-root">
 
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ HERO ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
@@ -184,7 +218,7 @@ export default function LandingPage({ ALL_TABS, TAB_LABELS, enabledTabs, setTab,
           {/* CTAs */}
           <div className="lp-ctas" style={rv(heroIn, 240)}>
             <button
-              onClick={() => setTab('income')}
+              onClick={() => onOpenTab('income' as Tab)}
               className="lp-cta-primary group"
             >
               {nl ? 'Start berekening' : 'Start calculator'}
@@ -294,7 +328,7 @@ export default function LandingPage({ ALL_TABS, TAB_LABELS, enabledTabs, setTab,
               {/* Open button */}
               {tab && (
                 <button
-                  onClick={() => setTab(tab.id)}
+                  onClick={() => onOpenTab(tab.id)}
                   className="lp-spot-open group"
                 >
                   {enabledTabs.has(tab.id)
@@ -454,11 +488,13 @@ export default function LandingPage({ ALL_TABS, TAB_LABELS, enabledTabs, setTab,
             : 'Enter your income on the first tab — the tax calculation starts immediately.'
           }
         </p>
-        <button onClick={() => setTab('income')} className="lp-cta-primary group lp-cta-big">
+        <button onClick={() => onOpenTab('income' as Tab)} className="lp-cta-primary group lp-cta-big">
           {nl ? 'Start met Inkomen' : 'Start with Income'}
           <ArrowRight size={16} className="lp-cta-arrow" />
         </button>
       </section>
+    </div>
+    </div>
     </div>
   );
 }
