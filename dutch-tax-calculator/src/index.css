@@ -163,6 +163,128 @@ select:focus-visible {
   font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
 }
 
+/* ── About page root ── */
+.about-root {
+  background: #050508;
+  color: #e2e8f0;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+/* ── Responsive container — wide, uses the full screen ── */
+.about-container {
+  width: 100%;
+  max-width: 1520px;
+  margin: 0 auto;
+  padding-left: clamp(1.5rem, 5vw, 5rem);
+  padding-right: clamp(1.5rem, 5vw, 5rem);
+}
+
+/* ── Section spacing ── */
+.about-section {
+  width: 100%;
+}
+
+/* ── Hero left panel padding ── */
+.about-hero-left {
+  padding-left: clamp(1.5rem, 5vw, 5rem);
+  padding-right: clamp(1.5rem, 3vw, 3rem);
+  padding-top: 5rem;
+  padding-bottom: 5rem;
+}
+
+/* ── Headline — no squishing, proper spacing ── */
+.about-headline {
+  font-family: 'Syne', system-ui, sans-serif;
+  font-weight: 900;
+  line-height: 1.07;
+  letter-spacing: -0.01em;
+  font-size: clamp(2.6rem, 4.5vw, 5rem);
+  margin: 0;
+}
+
+/* ── Section headings ── */
+.about-section-heading {
+  font-family: 'Syne', system-ui, sans-serif;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  font-size: clamp(1.75rem, 3vw, 2.5rem);
+  color: #f0f4f8;
+  margin: 0;
+}
+
+/* ── CTA heading ── */
+.about-cta-heading {
+  font-size: clamp(2rem, 4vw, 3.5rem) !important;
+}
+
+/* ── Body text ── */
+.about-subtitle {
+  font-size: clamp(0.9rem, 1.5vw, 1.05rem);
+  max-width: 520px;
+}
+.about-body-text {
+  font-size: clamp(0.85rem, 1.2vw, 0.95rem);
+}
+
+/* ── Stat cell ── */
+.about-stat-cell {
+  border: 1px solid rgba(0, 212, 255, 0.15);
+  background: rgba(0, 212, 255, 0.04);
+}
+.about-stat-value {
+  font-size: clamp(1.25rem, 2vw, 1.75rem);
+}
+
+/* ── Module grid — 3 cols min, 4 on xl ── */
+.about-modules-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1px;
+}
+@media (min-width: 640px)  { .about-modules-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 900px)  { .about-modules-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 1400px) { .about-modules-grid { grid-template-columns: repeat(4, 1fr); } }
+
+/* ── Module button hover ── */
+.about-mod-btn:hover {
+  background: rgba(0, 212, 255, 0.03) !important;
+}
+
+/* ── Shared button styles ── */
+.about-btn-cyan {
+  color: #00d4ff;
+  border-color: rgba(0, 212, 255, 0.28);
+  background: rgba(0, 212, 255, 0.06);
+}
+.about-btn-cyan:hover {
+  background: rgba(0, 212, 255, 0.12);
+  border-color: rgba(0, 212, 255, 0.45);
+}
+
+.about-cta-orange {
+  color: #f97316;
+  border-color: rgba(249, 115, 22, 0.5);
+  background: rgba(249, 115, 22, 0.1);
+  box-shadow: 0 0 20px rgba(249, 115, 22, 0.15);
+  font-family: 'Syne', system-ui;
+}
+.about-cta-orange:hover {
+  background: rgba(249, 115, 22, 0.18);
+  box-shadow: 0 0 32px rgba(249, 115, 22, 0.28);
+}
+
+.about-cta-blue {
+  color: #00d4ff;
+  border-color: rgba(0, 212, 255, 0.38);
+  background: rgba(0, 212, 255, 0.09);
+  box-shadow: 0 0 28px rgba(0, 212, 255, 0.1);
+}
+.about-cta-blue:hover {
+  background: rgba(0, 212, 255, 0.16);
+  box-shadow: 0 0 44px rgba(0, 212, 255, 0.22);
+}
+
 /* Full-page grid overlay */
 .cyber-page-grid {
   background-image:
