@@ -53,7 +53,7 @@ const DEFAULT_DATA: TaxFormData = {
   schenkingen: { schenkingen: [] },
 };
 
-const APP_VERSION         = 'v1.18.5';
+const APP_VERSION         = 'v1.18.6';
 
 const STORAGE_KEY         = 'nl-belasting-data-v1';
 const PROGNOSE_STORAGE_KEY = 'nl-belasting-prognose-v1';
@@ -149,6 +149,7 @@ export default function App() {
   const [showWelcome, setShowWelcome]   = useState<boolean>(false);
   const [showLanding, setShowLanding]   = useState<boolean>(false);
   const [panelWidth, setPanelWidth]     = useState(420);
+  const [panelVisible, setPanelVisible] = useState(true);
   const importRef                       = useRef<HTMLInputElement>(null);
   const resizeDragRef                   = useRef<{ startX: number; startWidth: number } | null>(null);
 
@@ -446,6 +447,21 @@ export default function App() {
               )}
             </button>
           ))}
+
+          {/* Panel toggle — only shown when a side panel would appear */}
+          {showSidePanel && (
+            <button
+              onClick={() => setPanelVisible(v => !v)}
+              className="ml-auto shrink-0 flex items-center gap-1.5 px-3 py-2.5 text-xs whitespace-nowrap border-b-2 border-transparent text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors cursor-pointer bg-transparent border-x-0 border-t-0"
+              title={panelVisible ? 'Verberg berekening' : 'Toon berekening'}
+            >
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <rect x="1" y="1" width="12" height="12" rx="2"/>
+                <line x1="9" y1="1" x2="9" y2="13"/>
+              </svg>
+              {panelVisible ? 'Verberg' : 'Toon berekening'}
+            </button>
+          )}
         </div>
       </header>
 
@@ -645,21 +661,23 @@ export default function App() {
               {tab === 'jaarruimte' && <JaarruimteSection data={data} />}
             </div>
 
-            {/* Resize handle */}
-            <div
-              onMouseDown={onResizeStart}
-              className="hidden xl:flex flex-col items-center w-3 flex-none cursor-col-resize group select-none"
-            >
-              <div className="w-px flex-1 bg-slate-200 dark:bg-slate-700 group-hover:bg-indigo-400 transition-colors rounded-full" />
-            </div>
-
-            {/* Right: live results panel */}
-            <div
-              className="xl:sticky xl:top-[89px] xl:max-h-[calc(100vh-100px)] xl:overflow-y-auto flex-none min-w-0"
-              style={{ width: panelWidth }}
-            >
-              <TaxResults result={result} />
-            </div>
+            {/* Resize handle + right panel — hidden when user collapses them */}
+            {panelVisible && (
+              <>
+                <div
+                  onMouseDown={onResizeStart}
+                  className="hidden xl:flex flex-col items-center w-3 flex-none cursor-col-resize group select-none"
+                >
+                  <div className="w-px flex-1 bg-slate-200 dark:bg-slate-700 group-hover:bg-indigo-400 transition-colors rounded-full" />
+                </div>
+                <div
+                  className="xl:sticky xl:top-[89px] xl:max-h-[calc(100vh-100px)] xl:overflow-y-auto flex-none min-w-0"
+                  style={{ width: panelWidth }}
+                >
+                  <TaxResults result={result} />
+                </div>
+              </>
+            )}
           </div>
         )}
 
