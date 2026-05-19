@@ -53,7 +53,7 @@ const DEFAULT_DATA: TaxFormData = {
   schenkingen: { schenkingen: [] },
 };
 
-const APP_VERSION         = 'v1.18.9';
+const APP_VERSION         = 'v1.19.0';
 
 const STORAGE_KEY         = 'nl-belasting-data-v1';
 const PROGNOSE_STORAGE_KEY = 'nl-belasting-prognose-v1';
@@ -147,7 +147,7 @@ export default function App() {
   const [tab, setTab]             = useState<AnyTab>('home');
   const [isDark, setIsDark]       = useState<boolean>(loadInitialDark);
   const [showWelcome, setShowWelcome]   = useState<boolean>(false);
-  const [showLanding, setShowLanding]   = useState<boolean>(false);
+  const [showLanding, setShowLanding]   = useState<boolean>(true);
   const [panelWidth, setPanelWidth]     = useState(420);
   const [panelVisible, setPanelVisible] = useState(true);
   const importRef                       = useRef<HTMLInputElement>(null);
@@ -416,7 +416,7 @@ export default function App() {
         <div className="px-4 sm:px-6 flex overflow-x-auto">
           {/* Home tab — always visible */}
           <button
-            onClick={() => setTab('home')}
+            onClick={() => { setTab('home'); setShowLanding(true); }}
             className={`flex items-center gap-1.5 px-3 py-2.5 text-sm whitespace-nowrap border-b-2 transition-colors cursor-pointer bg-transparent border-x-0 border-t-0 ${
               tab === 'home'
                 ? 'border-orange-500 text-orange-600 font-medium'

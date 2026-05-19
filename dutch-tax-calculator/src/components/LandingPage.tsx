@@ -105,7 +105,7 @@ export default function LandingPage({ ALL_TABS, TAB_LABELS, enabledTabs, lang, t
 
   useEffect(() => {
     setSpotOpacity(0);
-    const id = setTimeout(() => { setShownIdx(activeIdx); setCycleKey(k => k + 1); setSpotOpacity(1); pillRefs.current[activeIdx]?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }, 170);
+    const id = setTimeout(() => { setShownIdx(activeIdx); setCycleKey(k => k + 1); setSpotOpacity(1); }, 170);
     return () => clearTimeout(id);
   }, [activeIdx]);
 
@@ -337,53 +337,67 @@ export default function LandingPage({ ALL_TABS, TAB_LABELS, enabledTabs, lang, t
           <div className="lp2-calc-grid">
             {/* Box 1 */}
             <div className="lp2-calc-card" style={rv(calcIn, 0)}>
+              <div className="lp2-calc-accent" style={{ background: 'linear-gradient(90deg, #60a5fa 0%, #3b82f6 100%)' }} />
+              <div className="lp2-calc-hero">
+                <span className="lp2-calc-big" style={{ color:'#60a5fa' }}>€{v1.toLocaleString('nl-NL')}<small>/mnd</small></span>
+                <span className="lp2-calc-rlbl">{nl ? 'Netto maandinkomen' : 'Net monthly income'}</span>
+              </div>
               <div className="lp2-calc-tag" style={{ color:'#60a5fa', background:'rgba(96,165,250,0.1)', borderColor:'rgba(96,165,250,0.2)' }}>
                 Box 1 — {nl ? 'Inkomen' : 'Income'}
               </div>
-              <div className="lp2-calc-rows">
-                <div className="lp2-calc-row"><span>{nl ? 'Bruto salaris' : 'Gross salary'}</span><span>€60.000</span></div>
-                <div className="lp2-calc-row lp2-calc-dim"><span>− {nl ? 'Schijf 1 (35,82%)' : 'Bracket 1 (35.82%)'}</span><span>€13.769</span></div>
-                <div className="lp2-calc-row lp2-calc-dim"><span>− {nl ? 'Schijf 2 (37,48%)' : 'Bracket 2 (37.48%)'}</span><span>€8.081</span></div>
-                <div className="lp2-calc-row lp2-calc-dim"><span>− {nl ? 'Heffingskortingen' : 'Tax credits'}</span><span>€5.925</span></div>
+              <div className="lp2-calc-mini">
+                <div><span>{nl ? 'Bruto salaris' : 'Gross salary'}</span><span>€60.000</span></div>
+                <div><span>− {nl ? 'Schijf 1' : 'Bracket 1'} <span style={{ opacity: 0.6 }}>(35,82%)</span></span><span style={{ opacity: 0.6 }}>€13.769</span></div>
+                <div><span>− {nl ? 'Schijf 2' : 'Bracket 2'} <span style={{ opacity: 0.6 }}>(37,48%)</span></span><span style={{ opacity: 0.6 }}>€8.081</span></div>
+                <div><span style={{ color: '#4ade80' }}>+ {nl ? 'Heffingskortingen' : 'Tax credits'}</span><span style={{ color: '#4ade80' }}>€5.925</span></div>
               </div>
-              <div className="lp2-calc-result">
-                <span className="lp2-calc-rlbl">{nl ? 'Netto maandinkomen' : 'Net monthly income'}</span>
-                <span className="lp2-calc-big" style={{ color:'#60a5fa' }}>€{v1.toLocaleString('nl-NL')}<small>/mnd</small></span>
+              <div className="lp2-calc-stat">
+                <span>{nl ? 'Effectief tarief' : 'Effective rate'}</span>
+                <span style={{ color: '#60a5fa' }}>38,8%</span>
               </div>
             </div>
 
             {/* Box 3 */}
             <div className="lp2-calc-card" style={rv(calcIn, 80)}>
+              <div className="lp2-calc-accent" style={{ background: 'linear-gradient(90deg, #c084fc 0%, #a855f7 100%)' }} />
+              <div className="lp2-calc-hero">
+                <span className="lp2-calc-big" style={{ color:'#c084fc' }}>€{v2.toLocaleString('nl-NL')}<small>/jr</small></span>
+                <span className="lp2-calc-rlbl">{nl ? 'Box 3 belasting' : 'Box 3 tax'}</span>
+              </div>
               <div className="lp2-calc-tag" style={{ color:'#c084fc', background:'rgba(192,132,252,0.1)', borderColor:'rgba(192,132,252,0.2)' }}>
                 Box 3 — {nl ? 'Vermogen' : 'Wealth'}
               </div>
-              <div className="lp2-calc-rows">
-                <div className="lp2-calc-row"><span>{nl ? 'Beleggingen (5,88%)' : 'Investments (5.88%)'}</span><span>€60.000</span></div>
-                <div className="lp2-calc-row"><span>{nl ? 'Spaargeld (1,03%)' : 'Savings (1.03%)'}</span><span>€40.000</span></div>
-                <div className="lp2-calc-row lp2-calc-dim"><span>− {nl ? 'Vrijstelling' : 'Exemption'}</span><span>€57.684</span></div>
-                <div className="lp2-calc-row lp2-calc-dim"><span>{nl ? 'Tarief 36%' : 'Rate 36%'}</span><span>→</span></div>
+              <div className="lp2-calc-mini">
+                <div><span>{nl ? 'Beleggingen' : 'Investments'} <span style={{ opacity: 0.6 }}>(5,88%)</span></span><span>€60.000</span></div>
+                <div><span>{nl ? 'Spaargeld' : 'Savings'} <span style={{ opacity: 0.6 }}>(1,03%)</span></span><span>€40.000</span></div>
+                <div><span style={{ color: '#4ade80' }}>− {nl ? 'Vrijstelling' : 'Exemption'}</span><span style={{ color: '#4ade80', opacity: 0.8 }}>€57.684</span></div>
+                <div><span>{nl ? 'Grondslag' : 'Tax base'}</span><span>€1.666</span></div>
               </div>
-              <div className="lp2-calc-result">
-                <span className="lp2-calc-rlbl">{nl ? 'Box 3 belasting' : 'Box 3 tax'}</span>
-                <span className="lp2-calc-big" style={{ color:'#c084fc' }}>€{v2}<small>/jr</small></span>
+              <div className="lp2-calc-stat">
+                <span>{nl ? 'Tarief' : 'Rate'}</span>
+                <span style={{ color: '#c084fc' }}>36%</span>
               </div>
             </div>
 
             {/* FIRE */}
             <div className="lp2-calc-card" style={rv(calcIn, 160)}>
+              <div className="lp2-calc-accent" style={{ background: 'linear-gradient(90deg, #fb923c 0%, #f97316 100%)' }} />
+              <div className="lp2-calc-hero">
+                <span className="lp2-calc-big" style={{ color:'#fb923c' }}>{v3 > 0 ? v3 : '—'}</span>
+                <span className="lp2-calc-rlbl">{nl ? 'Verwacht FI-jaar' : 'Expected FI year'}</span>
+              </div>
               <div className="lp2-calc-tag" style={{ color:'#fb923c', background:'rgba(251,146,60,0.1)', borderColor:'rgba(251,146,60,0.2)' }}>
                 {nl ? '30-jaar Prognose · FIRE' : '30yr Forecast · FIRE'}
               </div>
-              <div className="lp2-calc-rows">
-                <div className="lp2-calc-row"><span>{nl ? 'Huidig vermogen' : 'Current wealth'}</span><span>€200.000</span></div>
-                <div className="lp2-calc-row"><span>{nl ? 'Maandelijkse inleg' : 'Monthly invest'}</span><span>€700</span></div>
-                <div className="lp2-calc-row"><span>{nl ? 'Maanduitgaven' : 'Monthly expenses'}</span><span>€2.500</span></div>
-                <div className="lp2-calc-row"><span>{nl ? 'Rendement' : 'Return'}</span><span>7%</span></div>
-                <div className="lp2-calc-row lp2-calc-dim"><span>{nl ? 'FIRE-drempel (4% SWR)' : 'FIRE target (4% SWR)'}</span><span>€750k</span></div>
+              <div className="lp2-calc-mini">
+                <div><span>{nl ? 'Huidig vermogen' : 'Starting wealth'}</span><span>€200.000</span></div>
+                <div><span>{nl ? 'Maandelijks inleggen' : 'Monthly invest'}</span><span>€700</span></div>
+                <div><span>{nl ? 'Maanduitgaven' : 'Monthly costs'}</span><span>€2.500</span></div>
+                <div><span>{nl ? 'FIRE-drempel (4% SWR)' : 'FIRE target (4% SWR)'}</span><span>€750k</span></div>
               </div>
-              <div className="lp2-calc-result">
-                <span className="lp2-calc-rlbl">{nl ? 'Verwacht FI-jaar' : 'Expected FI year'}</span>
-                <span className="lp2-calc-big" style={{ color:'#fb923c' }}>{v3 > 0 ? v3 : '—'}</span>
+              <div className="lp2-calc-stat">
+                <span>{nl ? 'Rendement' : 'Return'}</span>
+                <span style={{ color: '#fb923c' }}>7% / jr</span>
               </div>
             </div>
           </div>

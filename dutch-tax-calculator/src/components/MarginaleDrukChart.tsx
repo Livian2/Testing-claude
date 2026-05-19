@@ -101,10 +101,7 @@ function buildDataPoints(data: TaxFormData): DataPoint[] {
     return x - box1 + zorg + huur;
   }
 
-  // STEP=2000 gives ~75 sample points across 0–150k — visually identical to STEP=1000
-  // but halves the number of expensive tax calculations on every data change.
-  // Also share netIncome calls between adjacent points (was computed twice per point).
-  const STEP = 2000;
+  const STEP = DATA_STEP;
   const MAX  = 150000;
   const N    = Math.floor(MAX / STEP) + 1;
   const points: DataPoint[] = new Array(N);
@@ -131,6 +128,10 @@ function buildDataPoints(data: TaxFormData): DataPoint[] {
 
   return points;
 }
+
+// ─── Data constants ───────────────────────────────────────────────────────────
+
+const DATA_STEP = 2000; // must stay in sync with buildDataPoints
 
 // ─── SVG layout constants ─────────────────────────────────────────────────────
 
@@ -189,9 +190,11 @@ export default function MarginaleDrukChart({ data }: Props) {
     if (!div) return;
     const rect   = div.getBoundingClientRect();
     const pixelX = e.clientX - rect.left;
+    // Convert pixel → SVG viewBox space → data value
     const svgX   = (pixelX / rect.width) * VIEW_W;
     const dataX  = ((svgX - PAD_LEFT) / CHART_W) * X_MAX;
-    const idx    = Math.round(dataX / 1000);
+    // Find closest data point (DATA_STEP must match buildDataPoints)
+    const idx    = Math.round(dataX / DATA_STEP);
     setHoverIdx(Math.max(0, Math.min(points.length - 1, idx)));
   }, [points.length]);
 
