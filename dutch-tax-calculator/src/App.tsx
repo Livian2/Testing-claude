@@ -1,9 +1,6 @@
-import { useState, useMemo, useEffect, useRef, lazy, Suspense } from 'react';
-import { Flag, RefreshCw, Users, Download, Upload, Home, Moon, Sun, HelpCircle, Sparkles, BookOpen } from 'lucide-react';
+import { useState, useMemo, useEffect, useRef } from 'react';
+import { Flag, RefreshCw, Users, Download, Upload, Home, Moon, Sun, HelpCircle, Sparkles } from 'lucide-react';
 import WelcomeModal from './components/WelcomeModal';
-// AboutPage is large (~800 lines) and only shown to first-time users or on demand —
-// lazy-load it so the initial JS bundle excludes it.
-const AboutPage = lazy(() => import('./components/AboutPage'));
 import type { TaxFormData, FilingStatus, PrognoseConfig } from './types';
 import { calculateTaxes } from './utils/taxCalculations';
 import { useLanguage } from './i18n/LanguageContext';
@@ -55,13 +52,12 @@ const DEFAULT_DATA: TaxFormData = {
   schenkingen: { schenkingen: [] },
 };
 
-const APP_VERSION         = 'v1.16.1';
+const APP_VERSION         = 'v1.16.2';
 
 const STORAGE_KEY         = 'nl-belasting-data-v1';
 const PROGNOSE_STORAGE_KEY = 'nl-belasting-prognose-v1';
 const TABS_STORAGE_KEY    = 'nl-belasting-tabs-v1';
 const THEME_STORAGE_KEY   = 'nl-belasting-theme';
-const WELCOMED_KEY        = 'nl-belasting-welcomed';
 
 function loadInitialDark(): boolean {
   try {
@@ -150,19 +146,9 @@ export default function App() {
   const [tab, setTab]             = useState<AnyTab>('home');
   const [isDark, setIsDark]       = useState<boolean>(loadInitialDark);
   const [showWelcome, setShowWelcome] = useState<boolean>(false);
-  const [showAbout, setShowAbout] = useState<boolean>(() => {
-    try { return localStorage.getItem(WELCOMED_KEY) !== '1'; } catch { return true; }
-  });
   const importRef                 = useRef<HTMLInputElement>(null);
 
-  const markWelcomed = () => {
-    try { localStorage.setItem(WELCOMED_KEY, '1'); } catch { /* ignore */ }
-  };
-
-  const closeWelcome = () => {
-    markWelcomed();
-    setShowWelcome(false);
-  };
+  const closeWelcome = () => setShowWelcome(false);
 
   // Apply / remove .dark class on <html> and persist preference
   useEffect(() => {
@@ -297,15 +283,6 @@ export default function App() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200 dark:from-slate-950 dark:via-slate-900 dark:to-slate-900">
       {showWelcome && <WelcomeModal onClose={closeWelcome} />}
-      {showAbout && (
-        <Suspense fallback={<div className="fixed inset-0 z-50 bg-[#08080b]" />}>
-          <AboutPage
-            onClose={() => { markWelcomed(); setShowAbout(false); }}
-            onGetStarted={() => { markWelcomed(); setShowAbout(false); setTab('home'); }}
-            onOpenTab={(t) => { markWelcomed(); setShowAbout(false); setTab(t as Tab); }}
-          />
-        </Suspense>
-      )}
 
       {/* Header */}
       <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-200/80 dark:border-slate-700/80 sticky top-0 z-20 shadow-sm">
@@ -374,15 +351,6 @@ export default function App() {
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors cursor-pointer"
             >
               {lang === 'nl' ? '🇬🇧 EN' : '🇳🇱 NL'}
-            </button>
-
-            <button
-              onClick={() => setShowAbout(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-white border-0 cursor-pointer transition-colors"
-              title="Over de app"
-            >
-              <BookOpen size={13} />
-              <span className="hidden sm:inline">Uitleg</span>
             </button>
 
             <button
