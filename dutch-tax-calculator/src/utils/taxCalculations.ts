@@ -5,8 +5,7 @@ import type {
 } from '../types';
 import { berekenHypotheek } from './hypotheek';
 import { berekenDuoJaarbetaling } from './duo';
-import { jaarDeposit } from './afschrijvingen';
-import { totalAfschrijvingenGereserveerd, gereserveerdTotDatum } from './afschrijvingen';
+import { jaarDeposit, gereserveerdTotDatum } from './afschrijvingen';
 
 // ─── Schenkbelasting ──────────────────────────────────────────────────────
 // Tarieven en vrijstellingen: Belastingdienst 2025 (Successiewet 1956 art. 24/33)
@@ -216,7 +215,7 @@ export function calculateBox3(
   data: TaxFormData,
   positions?: Position[],
 ): Box3Result {
-  const { schulden, personal, afschrijvingen } = data;
+  const { schulden, personal } = data;
   const bankData = data.bankData ?? { spaarrekeningen: [], betaalrekeningen: [] };
   const isPartner = personal.filingStatus === 'partner';
   const exemption = isPartner ? BOX3_EXEMPTION_PARTNER : BOX3_EXEMPTION_SINGLE;
@@ -233,21 +232,15 @@ export function calculateBox3(
 
   const totalAssets = totalSavings + totalInvestments;
 
-  // Afschrijvingen gereserveerd: earmarked replacement savings (Box 3 peildatum = Jan 1)
-  const afschrijvingenGereserveerd = Math.min(
-    totalAfschrijvingenGereserveerd(afschrijvingen, personal.taxYear),
-    totalAssets,
-  );
+  const afschrijvingenGereserveerd = 0; // not deductible in Box 3
 
   const rawDebts   = [...schulden.duo, ...schulden.beleggingen].reduce((s, d) => s + d.bedrag, 0);
   const totalDebts = Math.max(0, rawDebts - threshold);
 
-  // Subtract earmarked reserves from the Box 3 grondslag
-  const adjustedAssets = Math.max(0, totalAssets - afschrijvingenGereserveerd);
-  const netWealth      = Math.max(0, adjustedAssets - totalDebts);
-  const taxableWealth  = Math.max(0, netWealth - exemption);
+  const netWealth     = Math.max(0, totalAssets - totalDebts);
+  const taxableWealth = Math.max(0, netWealth - exemption);
 
-  const drempelschuld = rawDebts - totalDebts; // amount removed by threshold
+  const drempelschuld = rawDebts - totalDebts;
 
   if (taxableWealth === 0) {
     return {
@@ -261,8 +254,8 @@ export function calculateBox3(
     };
   }
 
-  const savingsShare = adjustedAssets > 0 ? Math.max(0, totalSavings - afschrijvingenGereserveerd) / adjustedAssets : 0;
-  const investShare  = adjustedAssets > 0 ? totalInvestments / adjustedAssets : 0;
+  const savingsShare = totalAssets > 0 ? totalSavings / totalAssets : 0;
+  const investShare  = totalAssets > 0 ? totalInvestments / totalAssets : 0;
 
   const taxableSavings     = taxableWealth * savingsShare;
   const taxableInvestments = taxableWealth * investShare;

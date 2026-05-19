@@ -34,7 +34,7 @@ export default function TaxResults({ result }: Props) {
     box1, box3, toeslagen, totalTax, netDisposableIncome, totalExpenses,
     annualSavings, annualInvestments,
     portfolioCurrentValue,
-    actualSavingsInterest, currentNetWorth, wozAsset, hypotheekRestschuld, afschrijvingenActueel,
+    actualSavingsInterest, currentNetWorth, wozAsset, hypotheekRestschuld,
     duoJaarbetaling, duoLeningJaar, afschrijvingenJaarDeposit,
     schenkbelasting, schenkNetOntvangen,
   } = result;
@@ -70,7 +70,7 @@ export default function TaxResults({ result }: Props) {
 
   // Net worth breakdown — use rawDebts (actual debt, no Box 3 threshold applied)
   const totalAssets = box3.breakdown.savings + portfolioCurrentValue + Math.max(0, wozAsset);
-  const totalDebts  = Math.max(0, hypotheekRestschuld) + Math.max(0, box3.rawDebts) + Math.max(0, afschrijvingenActueel);
+  const totalDebts  = Math.max(0, hypotheekRestschuld) + Math.max(0, box3.rawDebts);
   const assetSegments = [
     { label: t.results.savingsBalance, value: box3.breakdown.savings,    color: 'bg-blue-400',   textColor: 'text-blue-700 dark:text-blue-300',   border: 'border-blue-200 dark:border-blue-800',   bg: 'bg-blue-50 dark:bg-blue-900/20' },
     { label: t.results.portfolioValue, value: portfolioCurrentValue,     color: 'bg-violet-400', textColor: 'text-violet-700 dark:text-violet-300', border: 'border-violet-200 dark:border-violet-800', bg: 'bg-violet-50 dark:bg-violet-900/20' },
@@ -80,7 +80,6 @@ export default function TaxResults({ result }: Props) {
   const debtSegments = [
     ...(hypotheekRestschuld > 0 ? [{ label: t.resultsExtra.hypotheekSchuld, value: hypotheekRestschuld, textColor: 'text-red-700 dark:text-red-300', border: 'border-red-200 dark:border-red-800', bg: 'bg-red-50 dark:bg-red-900/20' }] : []),
     ...(box3.rawDebts > 0        ? [{ label: t.results.debtsBox3,            value: box3.rawDebts,      textColor: 'text-orange-700 dark:text-orange-300', border: 'border-orange-200 dark:border-orange-800', bg: 'bg-orange-50 dark:bg-orange-900/20' }] : []),
-    ...(afschrijvingenActueel > 0 ? [{ label: t.results.depreciationRes,    value: afschrijvingenActueel, textColor: 'text-slate-600 dark:text-slate-400', border: 'border-slate-200 dark:border-slate-700', bg: 'bg-slate-50 dark:bg-slate-900' }] : []),
   ];
 
   return (
@@ -228,7 +227,6 @@ export default function TaxResults({ result }: Props) {
                     { label: t.results.savingsBalance,   value: box3.breakdown.savings,                sign: '+' as const, color: 'text-blue-600' },
                     { label: t.results.portfolioValue,   value: box3.breakdown.investments,            sign: '+' as const, color: 'text-indigo-600' },
                     ...(box3.totalDebts > 0   ? [{ label: t.results.debtsBox3,     value: box3.totalDebts,                    sign: '−' as const, color: 'text-red-500' }]   : []),
-                    ...(box3.afschrijvingenGereserveerd > 0 ? [{ label: t.results.reservations, value: box3.afschrijvingenGereserveerd, sign: '−' as const, color: 'text-red-500' }] : []),
                   ].map((r, i) => (
                     <div key={i} className="flex items-center gap-3 py-2.5 border-b border-slate-100 dark:border-slate-700 last:border-0">
                       <span className="flex-1 min-w-0 truncate text-sm text-slate-600 dark:text-slate-300">{r.label}</span>

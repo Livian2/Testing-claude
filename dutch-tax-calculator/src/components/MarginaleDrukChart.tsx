@@ -187,11 +187,14 @@ export default function MarginaleDrukChart({ data }: Props) {
   const handleMouseMove = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
     const svg = svgRef.current;
     if (!svg) return;
-    const rect  = svg.getBoundingClientRect();
-    const scaleX = VIEW_W / rect.width;
-    const svgX   = (e.clientX - rect.left) * scaleX;
-    const dataX  = ((svgX - PAD_LEFT) / CHART_W) * X_MAX;
-    const idx    = Math.round(dataX / 1000);
+    const ctm = svg.getScreenCTM();
+    if (!ctm) return;
+    const pt = svg.createSVGPoint();
+    pt.x = e.clientX;
+    pt.y = e.clientY;
+    const svgX  = pt.matrixTransform(ctm.inverse()).x;
+    const dataX = ((svgX - PAD_LEFT) / CHART_W) * X_MAX;
+    const idx   = Math.round(dataX / 1000);
     setHoverIdx(Math.max(0, Math.min(points.length - 1, idx)));
   }, [points.length]);
 
