@@ -494,6 +494,16 @@ select:focus-visible {
 }
 .lp2-nav-label { font-size: 0.8rem; font-weight: 600; color: var(--lp-muted); }
 .lp2-nav-actions { display: flex; align-items: center; gap: 0.625rem; }
+.lp2-lang-btn {
+  display: flex; align-items: center;
+  font-size: 0.75rem; font-weight: 700;
+  padding: 0.4rem 0.75rem; border-radius: 0.5rem;
+  border: 1px solid var(--lp-border2); background: rgba(255,255,255,0.04);
+  color: var(--lp-text); cursor: pointer;
+  transition: background 150ms ease, border-color 150ms ease;
+}
+.lp2-lang-btn:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.2); }
+
 .lp2-nav-cta {
   display: none; align-items: center; gap: 0.35rem;
   background: var(--lp-orange); color: white;

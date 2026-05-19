@@ -19,6 +19,7 @@ interface Props {
   };
   onClose: () => void;
   onOpenTab: (id: Tab) => void;
+  setLang: (l: 'nl' | 'en') => void;
 }
 
 /* ── Module spotlight data ──────────────────────────────────────────────── */
@@ -83,7 +84,7 @@ function rv(on: boolean, d = 0): React.CSSProperties {
 }
 
 /* ── Component ──────────────────────────────────────────────────────────── */
-export default function LandingPage({ ALL_TABS, TAB_LABELS, enabledTabs, lang, t, onClose, onOpenTab }: Props) {
+export default function LandingPage({ ALL_TABS, TAB_LABELS, enabledTabs, lang, t, onClose, onOpenTab, setLang }: Props) {
   const nl = lang === 'nl';
   const [heroIn, setHeroIn] = useState(false);
   useEffect(() => { const id = setTimeout(() => setHeroIn(true), 60); return () => clearTimeout(id); }, []);
@@ -140,6 +141,12 @@ export default function LandingPage({ ALL_TABS, TAB_LABELS, enabledTabs, lang, t
             <span className="lp2-nav-label">{nl ? 'Uitleg' : 'Guide'}</span>
           </div>
           <div className="lp2-nav-actions">
+            <button
+              onClick={() => setLang(lang === 'nl' ? 'en' : 'nl')}
+              className="lp2-lang-btn"
+            >
+              {lang === 'nl' ? '🇬🇧 EN' : '🇳🇱 NL'}
+            </button>
             <button onClick={() => onOpenTab('income' as Tab)} className="lp2-nav-cta">
               {nl ? 'Open calculator' : 'Open calculator'}
               <ArrowRight size={12} />
