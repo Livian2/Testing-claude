@@ -182,19 +182,16 @@ export default function MarginaleDrukChart({ data }: Props) {
   const points = useMemo(() => buildDataPoints(data), [data]);
 
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
-  const svgRef = useRef<SVGSVGElement>(null);
+  const chartDivRef = useRef<HTMLDivElement>(null);
 
-  const handleMouseMove = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
-    const svg = svgRef.current;
-    if (!svg) return;
-    const ctm = svg.getScreenCTM();
-    if (!ctm) return;
-    const pt = svg.createSVGPoint();
-    pt.x = e.clientX;
-    pt.y = e.clientY;
-    const svgX  = pt.matrixTransform(ctm.inverse()).x;
-    const dataX = ((svgX - PAD_LEFT) / CHART_W) * X_MAX;
-    const idx   = Math.round(dataX / 1000);
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const div = chartDivRef.current;
+    if (!div) return;
+    const rect   = div.getBoundingClientRect();
+    const pixelX = e.clientX - rect.left;
+    const svgX   = (pixelX / rect.width) * VIEW_W;
+    const dataX  = ((svgX - PAD_LEFT) / CHART_W) * X_MAX;
+    const idx    = Math.round(dataX / 1000);
     setHoverIdx(Math.max(0, Math.min(points.length - 1, idx)));
   }, [points.length]);
 
@@ -264,14 +261,17 @@ export default function MarginaleDrukChart({ data }: Props) {
           </div>
 
           {/* SVG Chart */}
-          <div className="relative w-full overflow-hidden rounded-xl bg-slate-900 dark:bg-slate-950">
+          <div
+            ref={chartDivRef}
+            className="relative w-full overflow-hidden rounded-xl bg-slate-900 dark:bg-slate-950"
+            style={{ cursor: 'crosshair' }}
+            onMouseMove={handleMouseMove}
+            onMouseLeave={handleMouseLeave}
+          >
             <svg
-              ref={svgRef}
               viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
               width="100%"
-              style={{ display: 'block', cursor: 'crosshair' }}
-              onMouseMove={handleMouseMove}
-              onMouseLeave={handleMouseLeave}
+              style={{ display: 'block', pointerEvents: 'none' }}
             >
               {/* Horizontal grid lines */}
               {yTicks.map(y => (
