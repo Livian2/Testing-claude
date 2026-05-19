@@ -29,17 +29,17 @@ const SPOT: Record<string, {
   result: string;
   lbl: { nl: string; en: string };
 }> = {
-  income:         { cat:{nl:'Box 1 · Inkomen',en:'Box 1 · Income'},        dot:'#38bdf8', calc:{nl:'Bruto €65.000 / jaar',en:'Gross €65,000 / year'},               result:'€3.494',  lbl:{nl:'netto / maand',en:'net / month'} },
+  income:         { cat:{nl:'Box 1 · Inkomen',en:'Box 1 · Income'},        dot:'#38bdf8', calc:{nl:'Bruto €60.000 / jaar',en:'Gross €60,000 / year'},               result:'€3.673',  lbl:{nl:'netto / maand',en:'net / month'} },
   woon:           { cat:{nl:'Box 1 · Wonen',en:'Box 1 · Housing'},          dot:'#f97316', calc:{nl:'Hypotheek €280k @ 3,8%',en:'Mortgage €280k @ 3.8%'},             result:'€3.527',  lbl:{nl:'HRA besparing / jr',en:'HRA saving / yr'} },
-  waardes:        { cat:{nl:'Box 3 · Vermogen',en:'Box 3 · Wealth'},        dot:'#a78bfa', calc:{nl:'Belegg. €60k + spaar €40k',en:'Invest €60k + save €40k'},        result:'€535',    lbl:{nl:'Box 3 belasting / jr',en:'Box 3 tax / yr'} },
-  expenses:       { cat:{nl:'Budget',en:'Budget'},                           dot:'#f43f5e', calc:{nl:'Netto €3.500 / maand',en:'Net €3,500 / month'},                  result:'23%',     lbl:{nl:'spaarquote',en:'savings rate'} },
+  waardes:        { cat:{nl:'Box 3 · Vermogen',en:'Box 3 · Wealth'},        dot:'#a78bfa', calc:{nl:'Belegg. €60k + spaar €40k',en:'Invest €60k + save €40k'},        result:'€600',    lbl:{nl:'Box 3 belasting / jr',en:'Box 3 tax / yr'} },
+  expenses:       { cat:{nl:'Budget',en:'Budget'},                           dot:'#f43f5e', calc:{nl:'Kosten €1.500 + sparen €300/mnd',en:'Costs €1,500 + savings €300/mo'}, result:'€1.800',  lbl:{nl:'maandelijks totaal',en:'monthly total'} },
   schulden:       { cat:{nl:'Schulden',en:'Debts'},                          dot:'#fbbf24', calc:{nl:'DUO €28k @ 2,56%',en:'Student loan €28k @ 2.56%'},               result:'€880',    lbl:{nl:'/ jaar aflossing',en:'/ year repaid'} },
   bank:           { cat:{nl:'Bankrekeningen',en:'Bank accounts'},            dot:'#2dd4bf', calc:{nl:'Spaarrekening €22k @ 2,1%',en:'Savings €22k @ 2.1%'},            result:'€462',    lbl:{nl:'rente / jaar',en:'interest / yr'} },
   portfolio:      { cat:{nl:'Beleggen',en:'Investing'},                      dot:'#34d399', calc:{nl:'100× VWRL @ €85 → €112',en:'100× VWRL @ €85 → €112'},           result:'+€2.700', lbl:{nl:'ongerealiseerde winst',en:'unrealised gain'} },
   afschrijvingen: { cat:{nl:'Planning',en:'Planning'},                       dot:'#94a3b8', calc:{nl:'Auto €22k, 7 jaar',en:'Car €22k, 7 years'},                      result:'€245',    lbl:{nl:'/ maand reserveren',en:'/ month to save'} },
   schenkingen:    { cat:{nl:'Belasting',en:'Tax'},                           dot:'#c084fc', calc:{nl:'Schenking €40k (ouders)',en:'Gift €40k (parents)'},               result:'€676',    lbl:{nl:'schenkbelasting',en:'gift tax'} },
   jaarruimte:     { cat:{nl:'Pensioen',en:'Pension'},                        dot:'#fb923c', calc:{nl:'Inkomen €65k · Factor A €1.400',en:'Income €65k · Factor A €1,400'}, result:'€4.626', lbl:{nl:'belastingbesparing',en:'tax saving'} },
-  prognose:       { cat:{nl:'30-jaar Prognose',en:'30-year Forecast'},       dot:'#f97316', calc:{nl:'€700/mnd · 7% rendement',en:'€700/mo · 7% return'},              result:'2041',    lbl:{nl:'verwacht FI-jaar',en:'expected FI year'} },
+  prognose:       { cat:{nl:'30-jaar Prognose',en:'30-year Forecast'},       dot:'#f97316', calc:{nl:'€200k + €700/mnd · €2.500 uitgaven · 7%',en:'€200k + €700/mo · €2,500 expenses · 7%'}, result:'2041',    lbl:{nl:'verwacht FI-jaar (4% SWR)',en:'expected FI year (4% SWR)'} },
   results:        { cat:{nl:'Belastingoverzicht',en:'Tax Overview'},         dot:'#60a5fa', calc:{nl:'Bruto €65k + WOZ €350k',en:'Gross €65k + property €350k'},       result:'€3.860',  lbl:{nl:'/ maand beschikbaar',en:'/ month available'} },
   marginale:      { cat:{nl:'Analyse',en:'Analysis'},                        dot:'#e879f9', calc:{nl:'Inkomen €40k → €41k',en:'Income €40k → €41k'},                  result:'49%',     lbl:{nl:'marginaal tarief',en:'marginal rate'} },
 };
@@ -116,8 +116,8 @@ export default function LandingPage({ ALL_TABS, TAB_LABELS, enabledTabs, lang, t
   const [trustRef, trustIn] = useInView();
   const [ctaRef, ctaIn] = useInView(0.3);
 
-  const v1 = useCountUp(3494, 1200, calcIn);
-  const v2 = useCountUp(535, 1000, calcIn);
+  const v1 = useCountUp(3673, 1200, calcIn);
+  const v2 = useCountUp(600,  1000, calcIn);
   const v3 = useCountUp(2041, 1400, calcIn);
 
   const tab = ALL_TABS[shownIdx];
@@ -334,10 +334,10 @@ export default function LandingPage({ ALL_TABS, TAB_LABELS, enabledTabs, lang, t
                 Box 1 — {nl ? 'Inkomen' : 'Income'}
               </div>
               <div className="lp2-calc-rows">
-                <div className="lp2-calc-row"><span>{nl ? 'Bruto salaris' : 'Gross salary'}</span><span>€65.000</span></div>
-                <div className="lp2-calc-row lp2-calc-dim"><span>− {nl ? 'Pensioenpremie' : 'Pension'}</span><span>€5.500</span></div>
-                <div className="lp2-calc-row lp2-calc-dim"><span>− {nl ? 'Box 1 belasting' : 'Box 1 tax'}</span><span>€17.572</span></div>
-                <div className="lp2-calc-row lp2-calc-dim"><span>− {nl ? 'Kortingen' : 'Credits'}</span><span>€4.096</span></div>
+                <div className="lp2-calc-row"><span>{nl ? 'Bruto salaris' : 'Gross salary'}</span><span>€60.000</span></div>
+                <div className="lp2-calc-row lp2-calc-dim"><span>− {nl ? 'Schijf 1 (35,82%)' : 'Bracket 1 (35.82%)'}</span><span>€13.769</span></div>
+                <div className="lp2-calc-row lp2-calc-dim"><span>− {nl ? 'Schijf 2 (37,48%)' : 'Bracket 2 (37.48%)'}</span><span>€8.081</span></div>
+                <div className="lp2-calc-row lp2-calc-dim"><span>− {nl ? 'Heffingskortingen' : 'Tax credits'}</span><span>€5.925</span></div>
               </div>
               <div className="lp2-calc-result">
                 <span className="lp2-calc-rlbl">{nl ? 'Netto maandinkomen' : 'Net monthly income'}</span>
@@ -358,7 +358,7 @@ export default function LandingPage({ ALL_TABS, TAB_LABELS, enabledTabs, lang, t
               </div>
               <div className="lp2-calc-result">
                 <span className="lp2-calc-rlbl">{nl ? 'Box 3 belasting' : 'Box 3 tax'}</span>
-                <span className="lp2-calc-big" style={{ color:'#c084fc' }}>€{v2.toLocaleString('nl-NL')}<small>/jr</small></span>
+                <span className="lp2-calc-big" style={{ color:'#c084fc' }}>€{v2}<small>/jr</small></span>
               </div>
             </div>
 
@@ -368,10 +368,11 @@ export default function LandingPage({ ALL_TABS, TAB_LABELS, enabledTabs, lang, t
                 {nl ? '30-jaar Prognose · FIRE' : '30yr Forecast · FIRE'}
               </div>
               <div className="lp2-calc-rows">
-                <div className="lp2-calc-row"><span>{nl ? 'Huidig vermogen' : 'Current wealth'}</span><span>€120.000</span></div>
+                <div className="lp2-calc-row"><span>{nl ? 'Huidig vermogen' : 'Current wealth'}</span><span>€200.000</span></div>
                 <div className="lp2-calc-row"><span>{nl ? 'Maandelijkse inleg' : 'Monthly invest'}</span><span>€700</span></div>
+                <div className="lp2-calc-row"><span>{nl ? 'Maanduitgaven' : 'Monthly expenses'}</span><span>€2.500</span></div>
                 <div className="lp2-calc-row"><span>{nl ? 'Rendement' : 'Return'}</span><span>7%</span></div>
-                <div className="lp2-calc-row lp2-calc-dim"><span>{nl ? 'FIRE-drempel (4%)' : 'FIRE target (4%)'}</span><span>€750k</span></div>
+                <div className="lp2-calc-row lp2-calc-dim"><span>{nl ? 'FIRE-drempel (4% SWR)' : 'FIRE target (4% SWR)'}</span><span>€750k</span></div>
               </div>
               <div className="lp2-calc-result">
                 <span className="lp2-calc-rlbl">{nl ? 'Verwacht FI-jaar' : 'Expected FI year'}</span>
