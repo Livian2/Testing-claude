@@ -55,7 +55,7 @@ const DEFAULT_DATA: TaxFormData = {
   schenkingen: { schenkingen: [] },
 };
 
-const APP_VERSION         = 'v1.14.9';
+const APP_VERSION         = 'v1.14.10';
 
 const STORAGE_KEY         = 'nl-belasting-data-v1';
 const PROGNOSE_STORAGE_KEY = 'nl-belasting-prognose-v1';
@@ -445,12 +445,14 @@ export default function App() {
 
       {/* Main content */}
       <main className="px-4 sm:px-6 py-6">
+        <div key={tab} className="animate-slide-up-fade">
         {tab === 'home' && (
           <div className="space-y-6">
             {/* Hero */}
             <div className="relative overflow-hidden bg-gradient-to-br from-orange-500 via-amber-500 to-orange-600 rounded-2xl px-6 py-8 sm:px-8 sm:py-10 shadow-xl shadow-orange-500/20">
-              <div className="absolute -top-12 -right-12 w-64 h-64 bg-white/10 rounded-full blur-3xl pointer-events-none" />
-              <div className="absolute -bottom-12 -left-12 w-64 h-64 bg-amber-300/20 rounded-full blur-3xl pointer-events-none" />
+              <div className="absolute -top-12 -right-12 w-64 h-64 bg-white/10 rounded-full blur-3xl pointer-events-none animate-float-1" />
+              <div className="absolute -bottom-12 -left-12 w-64 h-64 bg-amber-300/20 rounded-full blur-3xl pointer-events-none animate-float-2" />
+              <div className="shimmer-sweep" />
               <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div className="text-white">
                   <div className="flex items-center gap-2 mb-2">
@@ -481,16 +483,17 @@ export default function App() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
-              {ALL_TABS.map(tabMeta => {
+              {ALL_TABS.map((tabMeta, index) => {
                 const enabled = enabledTabs.has(tabMeta.id);
                 return (
                   <div
                     key={tabMeta.id}
-                    className={`group relative bg-white dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl p-4 flex flex-col gap-3 transition-all duration-200 border ${
+                    className={`group relative bg-white dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl p-4 flex flex-col gap-3 transition-all duration-200 border animate-card-entrance ${
                       enabled
                         ? 'border-slate-200 dark:border-slate-700 hover:border-orange-300 dark:hover:border-orange-700 hover:shadow-lg hover:shadow-orange-500/5 hover:-translate-y-0.5'
                         : 'border-slate-200/60 dark:border-slate-700/60 opacity-50 hover:opacity-75'
                     }`}
+                    style={{ '--card-delay': `${index * 40}ms` } as React.CSSProperties}
                   >
                     {enabled && (
                       <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-orange-400 to-amber-400 rounded-t-2xl" />
@@ -530,21 +533,21 @@ export default function App() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-2">
-              <div className="bg-white dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 flex items-start gap-3">
+              <div className="bg-white dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 flex items-start gap-3 animate-info-card-in" style={{ '--info-delay': '420ms' } as React.CSSProperties}>
                 <div className="bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-lg p-2 flex-shrink-0">🔒</div>
                 <div>
                   <p className="text-xs font-semibold text-slate-800 dark:text-slate-100 m-0">{t.home.localTitle}</p>
                   <p className="text-[11px] text-slate-500 dark:text-slate-400 m-0 leading-relaxed">{t.home.localDesc}</p>
                 </div>
               </div>
-              <div className="bg-white dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 flex items-start gap-3">
+              <div className="bg-white dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 flex items-start gap-3 animate-info-card-in" style={{ '--info-delay': '520ms' } as React.CSSProperties}>
                 <div className="bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg p-2 flex-shrink-0">⚡</div>
                 <div>
                   <p className="text-xs font-semibold text-slate-800 dark:text-slate-100 m-0">{t.home.liveTitle}</p>
                   <p className="text-[11px] text-slate-500 dark:text-slate-400 m-0 leading-relaxed">{t.home.liveDesc}</p>
                 </div>
               </div>
-              <div className="bg-white dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 flex items-start gap-3">
+              <div className="bg-white dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 flex items-start gap-3 animate-info-card-in" style={{ '--info-delay': '620ms' } as React.CSSProperties}>
                 <div className="bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-lg p-2 flex-shrink-0">💾</div>
                 <div>
                   <p className="text-xs font-semibold text-slate-800 dark:text-slate-100 m-0">{t.home.autoSaveTitle}</p>
@@ -655,6 +658,7 @@ export default function App() {
           />
         )}
         {tab === 'marginale' && <MarginaleDrukChart data={data} />}
+        </div>
       </main>
 
       <footer className="px-4 sm:px-6 py-6 text-center text-xs text-slate-400 dark:text-slate-500 border-t border-slate-200 dark:border-slate-700 mt-4">

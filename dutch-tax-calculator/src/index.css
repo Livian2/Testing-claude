@@ -44,6 +44,71 @@ body {
   animation: fadeIn 200ms ease-out;
 }
 
+/* Tab content transition — slide up + fade */
+@keyframes slideUpFade {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-slide-up-fade {
+  animation: slideUpFade 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Staggered card entrance */
+@keyframes cardEntrance {
+  from { opacity: 0; transform: translateY(14px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.animate-card-entrance {
+  animation: cardEntrance 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: var(--card-delay, 0ms);
+}
+
+/* Floating hero blobs */
+@keyframes floatBlob1 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  40%       { transform: translate(10px, -14px) scale(1.05); }
+  70%       { transform: translate(-8px, 6px) scale(0.96); }
+}
+@keyframes floatBlob2 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  35%       { transform: translate(-12px, 10px) scale(1.04); }
+  65%       { transform: translate(8px, -10px) scale(0.97); }
+}
+.animate-float-1 { animation: floatBlob1 9s ease-in-out infinite; }
+.animate-float-2 { animation: floatBlob2 11s ease-in-out infinite; }
+
+/* Hero shimmer sweep */
+@keyframes shimmerSweep {
+  0%   { transform: translateX(-120%) skewX(-18deg); opacity: 0; }
+  10%  { opacity: 1; }
+  90%  { opacity: 1; }
+  100% { transform: translateX(220%) skewX(-18deg); opacity: 0; }
+}
+.shimmer-sweep {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.shimmer-sweep::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 35%, rgba(255,255,255,0.18) 50%, transparent 65%);
+  animation: shimmerSweep 4.5s ease-in-out infinite;
+  animation-delay: 2s;
+}
+
+/* Bottom info cards staggered entrance */
+@keyframes infoCardIn {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-info-card-in {
+  animation: infoCardIn 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: var(--info-delay, 0ms);
+}
+
 /* Subtle focus rings */
 button:focus-visible,
 input:focus-visible,
