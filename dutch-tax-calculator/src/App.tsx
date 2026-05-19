@@ -55,7 +55,7 @@ const DEFAULT_DATA: TaxFormData = {
   schenkingen: { schenkingen: [] },
 };
 
-const APP_VERSION         = 'v1.14.10';
+const APP_VERSION         = 'v1.14.11';
 
 const STORAGE_KEY         = 'nl-belasting-data-v1';
 const PROGNOSE_STORAGE_KEY = 'nl-belasting-prognose-v1';
@@ -455,18 +455,19 @@ export default function App() {
               <div className="shimmer-sweep" />
               <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div className="text-white">
-                  <div className="flex items-center gap-2 mb-2">
+                  <div className="flex items-center gap-2 mb-2 animate-hero-item" style={{ '--hero-delay': '0ms' } as React.CSSProperties}>
                     <Sparkles size={18} className="text-white/90" />
                     <span className="text-xs font-semibold uppercase tracking-wider text-white/90">{t.home.taxYear}</span>
                   </div>
-                  <h2 className="text-2xl sm:text-3xl font-bold tracking-tight m-0">{t.home.welcome}</h2>
-                  <p className="text-sm sm:text-base text-white/85 mt-1.5 max-w-2xl">
+                  <h2 className="text-2xl sm:text-3xl font-bold tracking-tight m-0 animate-hero-item" style={{ '--hero-delay': '80ms' } as React.CSSProperties}>{t.home.welcome}</h2>
+                  <p className="text-sm sm:text-base text-white/85 mt-1.5 max-w-2xl animate-hero-item" style={{ '--hero-delay': '160ms' } as React.CSSProperties}>
                     {t.home.subtitle}
                   </p>
                 </div>
                 <button
                   onClick={() => setShowWelcome(true)}
-                  className="flex items-center gap-2 bg-white/15 hover:bg-white/25 backdrop-blur-sm text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors border border-white/20 cursor-pointer whitespace-nowrap"
+                  className="flex items-center gap-2 bg-white/15 hover:bg-white/25 backdrop-blur-sm text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors border border-white/20 cursor-pointer whitespace-nowrap animate-hero-item"
+                  style={{ '--hero-delay': '260ms' } as React.CSSProperties}
                 >
                   <HelpCircle size={16} /> {t.home.viewGuide}
                 </button>
@@ -488,9 +489,9 @@ export default function App() {
                 return (
                   <div
                     key={tabMeta.id}
-                    className={`group relative bg-white dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl p-4 flex flex-col gap-3 transition-all duration-200 border animate-card-entrance ${
+                    className={`group relative bg-white dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl p-4 flex flex-col gap-3 border animate-card-entrance home-tab-card ${
                       enabled
-                        ? 'border-slate-200 dark:border-slate-700 hover:border-orange-300 dark:hover:border-orange-700 hover:shadow-lg hover:shadow-orange-500/5 hover:-translate-y-0.5'
+                        ? 'card-enabled border-slate-200 dark:border-slate-700 hover:border-orange-300 dark:hover:border-orange-700'
                         : 'border-slate-200/60 dark:border-slate-700/60 opacity-50 hover:opacity-75'
                     }`}
                     style={{ '--card-delay': `${index * 40}ms` } as React.CSSProperties}
