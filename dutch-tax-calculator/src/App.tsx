@@ -52,7 +52,7 @@ const DEFAULT_DATA: TaxFormData = {
   schenkingen: { schenkingen: [] },
 };
 
-const APP_VERSION         = 'v1.16.2';
+const APP_VERSION         = 'v1.16.3';
 
 const STORAGE_KEY         = 'nl-belasting-data-v1';
 const PROGNOSE_STORAGE_KEY = 'nl-belasting-prognose-v1';
@@ -356,8 +356,8 @@ export default function App() {
             <button
               onClick={() => setShowWelcome(true)}
               className="flex items-center justify-center w-8 h-8 rounded-lg text-slate-500 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors bg-transparent border-0 cursor-pointer"
-              title="Snelle uitleg openen"
-              aria-label="Help"
+              title={t.home.viewGuide}
+              aria-label={t.home.viewGuide}
             >
               <HelpCircle size={16} />
             </button>
