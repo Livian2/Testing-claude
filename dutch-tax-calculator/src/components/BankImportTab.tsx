@@ -8,7 +8,8 @@ import { useLanguage } from '../i18n/LanguageContext';
 export type TxCategory =
   | 'groceries' | 'transport' | 'insurance' | 'healthcare'
   | 'education' | 'leisure' | 'housing' | 'phone'
-  | 'investments' | 'internal' | 'income' | 'other';
+  | 'investments' | 'internal' | 'income' | 'other'
+  | 'toeslagen' | 'duo_inkomen' | 'schenkingen';
 
 export interface BankTx {
   datum: string;         // YYYYMMDD
@@ -168,7 +169,10 @@ const RECLASSIFIABLE: { key: TxCategory; nlLabel: string }[] = [
   { key: 'housing',    nlLabel: 'Huur / hypotheek' },
   { key: 'phone',      nlLabel: 'Telefoon' },
   { key: 'investments',nlLabel: 'Beleggingen' },
-  { key: 'income',     nlLabel: 'Inkomsten' },
+  { key: 'income',      nlLabel: 'Inkomsten (bruto)' },
+  { key: 'toeslagen',  nlLabel: 'Toeslagen' },
+  { key: 'duo_inkomen',nlLabel: 'DUO lening ontvangen' },
+  { key: 'schenkingen',nlLabel: 'Schenkingen ontvangen' },
   { key: 'other',      nlLabel: 'Overig' },
   { key: 'internal',   nlLabel: '— Verbergen —' },
 ];
