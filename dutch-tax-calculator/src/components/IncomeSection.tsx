@@ -22,8 +22,6 @@ const nl = new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR', 
 
 export default function IncomeSection({ data, onChange }: Props) {
   const { t } = useLanguage();
-  const [open, setOpen] = useState<Set<keyof IncomeData>>(new Set());
-
   const OPTIONAL_FIELDS: ToggleField[] = [
     { key: 'freelanceIncome',      label: t.income.freelance,       hint: t.income.freelanceHint,       tip: t.income.freelanceTip },
     { key: 'rentalIncome',         label: t.income.rental,          hint: t.income.rentalHint,          tip: t.income.rentalTip },
@@ -31,6 +29,11 @@ export default function IncomeSection({ data, onChange }: Props) {
     { key: 'pensionContributions', label: t.income.pensionContrib,  hint: t.income.pensionContribHint,  tip: t.income.pensionContribTip },
     { key: 'duoLening',            label: t.income.duoLening,       hint: t.income.duoLeningHint,       tip: t.income.duoLeningTip },
   ];
+
+  // Start expanded for any field that already has a value, so saved values stay visible
+  const [open, setOpen] = useState<Set<keyof IncomeData>>(
+    () => new Set(OPTIONAL_FIELDS.filter(f => (data[f.key] as number) > 0).map(f => f.key))
+  );
 
   const set = (key: keyof IncomeData) => (v: number) => onChange({ ...data, [key]: v });
 
