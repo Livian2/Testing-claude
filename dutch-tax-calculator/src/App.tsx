@@ -53,7 +53,7 @@ const DEFAULT_DATA: TaxFormData = {
   schenkingen: { schenkingen: [] },
 };
 
-const APP_VERSION         = 'v1.19.5';
+const APP_VERSION         = 'v1.19.6';
 
 const STORAGE_KEY         = 'nl-belasting-data-v1';
 const PROGNOSE_STORAGE_KEY = 'nl-belasting-prognose-v1';
@@ -148,7 +148,7 @@ export default function App() {
   const [isDark, setIsDark]       = useState<boolean>(loadInitialDark);
   const [showWelcome, setShowWelcome]   = useState<boolean>(false);
   const [showLanding, setShowLanding]   = useState<boolean>(true);
-  const [panelWidth, setPanelWidth]     = useState(() => Math.round(window.innerWidth * 0.25));
+  const [panelWidth, setPanelWidth]     = useState(() => Math.round(window.innerWidth * 0.35));
   const [panelVisible, setPanelVisible] = useState(true);
   const importRef                       = useRef<HTMLInputElement>(null);
   const resizeDragRef                   = useRef<{ startX: number; startWidth: number } | null>(null);
