@@ -64,12 +64,9 @@ export default function TaxResults({ result }: Props) {
   const aktSchenk     = bankTxs.filter(t => t.category === 'schenkingen' && t.afBij === 'Bij').reduce((s, t) => s + t.bedrag, 0);
   const aktExpenses   = bankTxs.filter(t => !t.excluded && EXPENSE_CATS.has(t.category) && t.afBij === 'Af').reduce((s, t) => s + t.bedrag, 0);
   const aktInvest     = bankTxs.filter(t => t.category === 'investments' && t.afBij === 'Af').reduce((s, t) => s + t.bedrag, 0);
-  // Budget scaled to same period; use actual bank values where tagged, else fall back to budget
+  // Werkelijk = only real bank data; no fallback to budget estimates for income items
   const budgetScale   = bankMonths / 12;
-  const effToeslagen  = aktToeslagen  > 0 ? aktToeslagen  : toeslagen.total    * budgetScale;
-  const effDuoInkomen = aktDuoInkomen > 0 ? aktDuoInkomen : duoLeningJaar      * budgetScale;
-  const effSchenk     = aktSchenk     > 0 ? aktSchenk     : schenkNetOntvangen * budgetScale;
-  const aktNet        = aktIncome + effToeslagen + effDuoInkomen + effSchenk
+  const aktNet        = aktIncome + aktToeslagen + aktDuoInkomen + aktSchenk
                         - (box1.netTax + box3.netTax + duoJaarbetaling + afschrijvingenJaarDeposit) * budgetScale
                         - aktExpenses - aktInvest;
 
@@ -364,7 +361,7 @@ export default function TaxResults({ result }: Props) {
                   ? aktExpenses + aktInvest + (box1.netTax + box3.netTax + duoJaarbetaling + afschrijvingenJaarDeposit + schenkbelasting) * budgetScale
                   : box1.netTax + box3.netTax + totalExpenses + annualSavings + annualInvestments + duoJaarbetaling + afschrijvingenJaarDeposit + schenkbelasting;
                 const totalIn  = cfTab === 'werkelijk' && hasBankData
-                  ? aktIncome + effToeslagen + effDuoInkomen + effSchenk
+                  ? aktIncome + aktToeslagen + aktDuoInkomen + aktSchenk
                   : grossIncome + toeslagen.total + duoLeningJaar + schenkNetOntvangen;
                 const maxVal   = Math.max(totalIn, totalOut) || 1;
                 return (
@@ -403,13 +400,13 @@ export default function TaxResults({ result }: Props) {
 
                 const incomeRows: CfRow[] = [
                   { label: t.results.grossIncome,              budget: grossIncome * sc,              actual: isWerk ? aktIncome : null, sign: '+', color: 'text-green-600' },
-                  ...(toeslagen.total > 0
+                  ...(toeslagen.total > 0 || (isWerk && aktToeslagen > 0)
                     ? [{ label: t.results.toeslagen,           budget: toeslagen.total * sc,          actual: isWerk ? (aktToeslagen  > 0 ? aktToeslagen  : null) : null, sign: '+' as const, color: 'text-teal-600' }]
                     : []),
-                  ...(schenkNetOntvangen > 0
+                  ...(schenkNetOntvangen > 0 || (isWerk && aktSchenk > 0)
                     ? [{ label: t.resultsExtra.schenkNetOntvangen, budget: schenkNetOntvangen * sc,   actual: isWerk ? (aktSchenk     > 0 ? aktSchenk     : null) : null, sign: '+' as const, color: 'text-green-600' }]
                     : []),
-                  ...(duoLeningJaar > 0
+                  ...(duoLeningJaar > 0 || (isWerk && aktDuoInkomen > 0)
                     ? [{ label: t.resultsExtra.duoLeningInflow, budget: duoLeningJaar * sc,           actual: isWerk ? (aktDuoInkomen > 0 ? aktDuoInkomen : null) : null, sign: '+' as const, color: 'text-blue-500' }]
                     : []),
                 ];
