@@ -47,6 +47,7 @@ export interface HypotheekData {
   rentevastePeriode: number;  // years
   looptijd: number;           // total loan duration in MONTHS
   startJaar: number;
+  startMaand: number;         // 1–12
   extraAflossingMaandelijks?: number;  // extra monthly repayment paid on the 15th
   overgangsrechtVoor2013?: boolean;    // aflossingsvrij: true = pre-2013 transition rights (rente deductible)
 }

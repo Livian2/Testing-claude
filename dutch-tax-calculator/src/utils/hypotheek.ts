@@ -10,6 +10,7 @@ export interface HypotheekBerekening {
 
 export function berekenHypotheek(h: HypotheekData, taxYear: number): HypotheekBerekening {
   const { leningBedrag, rentePercentage, looptijd, startJaar } = h;
+  const startMaand = h.startMaand ?? 1;
   if (leningBedrag <= 0 || looptijd <= 0) {
     return { maandlast: 0, jaarRente: 0, jaarAflossing: 0, restschuldBegin: leningBedrag, restschuldEind: leningBedrag };
   }
@@ -17,7 +18,12 @@ export function berekenHypotheek(h: HypotheekData, taxYear: number): HypotheekBe
   const r  = rentePercentage / 100;
   const rm = r / 12;
   const n  = looptijd; // looptijd is opgeslagen in maanden
-  const jaarInLening = Math.max(0, taxYear - startJaar);
+  // months from loan start to Jan 1 of taxYear
+  const preMonths    = Math.max(0, (taxYear - startJaar) * 12 - (startMaand - 1));
+  // months of loan active during taxYear
+  const taxYearMonths = taxYear < startJaar ? 0
+    : taxYear === startJaar ? (13 - startMaand)
+    : 12;
   const extraMonthly = Math.max(0, h.extraAflossingMaandelijks ?? 0);
 
   // Pre-compute fixed schedule values
@@ -56,14 +62,14 @@ export function berekenHypotheek(h: HypotheekData, taxYear: number): HypotheekBe
   }
 
   // Simulate up to start of tax year
-  for (let m = 0; m < jaarInLening * 12; m++) stepMonth();
+  for (let m = 0; m < preMonths; m++) stepMonth();
 
   const restschuldBegin = state.balance;
   let jaarRente = 0;
   let jaarAflossing = 0;
   let firstMonthPayment = 0;
 
-  for (let m = 0; m < 12; m++) {
+  for (let m = 0; m < taxYearMonths; m++) {
     const r = stepMonth();
     if (m === 0) firstMonthPayment = r.payment;
     jaarRente     += r.interest;

@@ -22,7 +22,8 @@ const nl2 = new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR',
 
 const DEFAULT_HYP: Omit<HypotheekData, 'id' | 'label'> = {
   type: 'annuiteit', leningBedrag: 0, rentePercentage: 0,
-  rentevastePeriode: 10, looptijd: 360, startJaar: new Date().getFullYear(),
+  rentevastePeriode: 10, looptijd: 360,
+  startJaar: new Date().getFullYear(), startMaand: new Date().getMonth() + 1,
 };
 
 // ── Amortisation SVG chart ──────────────────────────────────────────────────
@@ -287,12 +288,23 @@ function HypotheekCard({
               )}
             </div>
             <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Startjaar hypotheek</label>
-              <input type="number" min="1990" max="2040" step="1" value={hyp.startJaar || ''}
-                onChange={e => onUpdate({ startJaar: parseInt(e.target.value) || taxYear })}
-                placeholder={String(taxYear)}
-                className="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white dark:bg-slate-700 dark:text-slate-100"
-              />
+              <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Startdatum hypotheek</label>
+              <div className="flex gap-2">
+                <select
+                  value={hyp.startMaand ?? 1}
+                  onChange={e => onUpdate({ startMaand: parseInt(e.target.value) })}
+                  className="flex-1 border border-slate-300 dark:border-slate-600 rounded-xl px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white dark:bg-slate-700 dark:text-slate-100"
+                >
+                  {['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'].map((m, i) => (
+                    <option key={i + 1} value={i + 1}>{m}</option>
+                  ))}
+                </select>
+                <input type="number" min="1990" max="2040" step="1" value={hyp.startJaar || ''}
+                  onChange={e => onUpdate({ startJaar: parseInt(e.target.value) || taxYear })}
+                  placeholder={String(taxYear)}
+                  className="w-20 border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white dark:bg-slate-700 dark:text-slate-100"
+                />
+              </div>
             </div>
             <CurrencyInput
               label={t.housing.extraRepayment}
@@ -359,7 +371,7 @@ export default function WoonSection({ data, taxYear, onChange }: Props) {
   const addHypotheek = () => {
     const newHyp: HypotheekData = {
       ...DEFAULT_HYP, id: uid(), label: `Hypotheek ${data.hypotheken.length + 1}`,
-      startJaar: taxYear,
+      startJaar: taxYear, startMaand: new Date().getMonth() + 1,
     };
     onChange({ ...data, hypotheken: [...data.hypotheken, newHyp] });
   };
