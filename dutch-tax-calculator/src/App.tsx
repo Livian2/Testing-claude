@@ -53,7 +53,7 @@ const DEFAULT_DATA: TaxFormData = {
   schenkingen: { schenkingen: [] },
 };
 
-const APP_VERSION         = 'v1.19.3';
+const APP_VERSION         = 'v1.19.4';
 
 const STORAGE_KEY         = 'nl-belasting-data-v1';
 const PROGNOSE_STORAGE_KEY = 'nl-belasting-prognose-v1';
@@ -148,7 +148,7 @@ export default function App() {
   const [isDark, setIsDark]       = useState<boolean>(loadInitialDark);
   const [showWelcome, setShowWelcome]   = useState<boolean>(false);
   const [showLanding, setShowLanding]   = useState<boolean>(true);
-  const [panelWidth, setPanelWidth]     = useState(420);
+  const [panelWidth, setPanelWidth]     = useState(() => Math.round(window.innerWidth * 0.75));
   const [panelVisible, setPanelVisible] = useState(true);
   const importRef                       = useRef<HTMLInputElement>(null);
   const resizeDragRef                   = useRef<{ startX: number; startWidth: number } | null>(null);
@@ -161,7 +161,7 @@ export default function App() {
     const onMove = (me: MouseEvent) => {
       if (!resizeDragRef.current) return;
       const dx = resizeDragRef.current.startX - me.clientX;
-      setPanelWidth(Math.max(280, Math.min(900, resizeDragRef.current.startWidth + dx)));
+      setPanelWidth(Math.max(280, Math.min(Math.round(window.innerWidth * 0.92), resizeDragRef.current.startWidth + dx)));
     };
     const onUp = () => { resizeDragRef.current = null; window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
     window.addEventListener('mousemove', onMove);
