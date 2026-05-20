@@ -53,12 +53,13 @@ const DEFAULT_DATA: TaxFormData = {
   schenkingen: { schenkingen: [] },
 };
 
-const APP_VERSION         = 'v1.20.1';
+const APP_VERSION         = 'v1.20.2';
 
 const STORAGE_KEY         = 'nl-belasting-data-v1';
 const PROGNOSE_STORAGE_KEY = 'nl-belasting-prognose-v1';
 const TABS_STORAGE_KEY    = 'nl-belasting-tabs-v1';
 const THEME_STORAGE_KEY   = 'nl-belasting-theme';
+const LANDING_SEEN_KEY    = 'nl-belasting-landing-seen';
 
 function loadInitialDark(): boolean {
   try {
@@ -147,13 +148,19 @@ export default function App() {
   const [tab, setTab]             = useState<AnyTab>('home');
   const [isDark, setIsDark]       = useState<boolean>(loadInitialDark);
   const [showWelcome, setShowWelcome]   = useState<boolean>(false);
-  const [showLanding, setShowLanding]   = useState<boolean>(true);
+  const [showLanding, setShowLanding]   = useState<boolean>(() => {
+    try { return !localStorage.getItem(LANDING_SEEN_KEY); } catch { return true; }
+  });
   const [panelWidth, setPanelWidth]     = useState(() => Math.round(window.innerWidth * 0.35));
   const [panelVisible, setPanelVisible] = useState(true);
   const importRef                       = useRef<HTMLInputElement>(null);
   const resizeDragRef                   = useRef<{ startX: number; startWidth: number } | null>(null);
 
   const closeWelcome = () => setShowWelcome(false);
+  const closeLanding = () => {
+    try { localStorage.setItem(LANDING_SEEN_KEY, '1'); } catch { /* ignore */ }
+    setShowLanding(false);
+  };
 
   const onResizeStart = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -308,8 +315,8 @@ export default function App() {
           enabledTabs={enabledTabs}
           lang={lang}
           t={t}
-          onClose={() => setShowLanding(false)}
-          onOpenTab={(id) => { setTab(id as Tab); setShowLanding(false); }}
+          onClose={closeLanding}
+          onOpenTab={(id) => { setTab(id as Tab); closeLanding(); }}
           setLang={setLang}
         />
       )}
