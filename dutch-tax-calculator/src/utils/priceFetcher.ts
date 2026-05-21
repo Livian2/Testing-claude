@@ -67,7 +67,7 @@ interface QuoteSummaryResult {
 async function fetchChart(ticker: string, withDivs: boolean = false): Promise<ChartResult | null> {
   try {
     const range    = withDivs ? '1y'  : '1d';
-    const interval = withDivs ? '3mo' : '1d';
+    const interval = withDivs ? '1d'  : '1d';
     const events   = withDivs ? '&events=div' : '';
     const url = `/api/finance/v8/finance/chart/${encodeURIComponent(ticker)}?interval=${interval}&range=${range}&includePrePost=false${events}`;
     const res = await fetch(url, { headers: { Accept: 'application/json' } });
