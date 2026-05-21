@@ -390,8 +390,8 @@ export default function PortfolioSection({ data, onChange }: Props) {
           currentCurrency:     q.currency,
           currentRate:         q.rate,
           fetchedAt:           result.timestamp,
-          dividendPerShareEur: q.dividendPerShareEur,
-          dividendYield:       q.dividendYield,
+          dividendPerShareEur: q.dividendPerShareEur ?? h.dividendPerShareEur,
+          dividendYield:       q.dividendYield       ?? h.dividendYield,
           exDivDate:           q.exDivDate,
           divPayDate:          q.divPayDate,
           country:             q.country ?? h.country,
@@ -668,6 +668,17 @@ export default function PortfolioSection({ data, onChange }: Props) {
                         className="border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1.5 text-sm bg-white dark:bg-slate-700 dark:text-slate-100 outline-none focus:ring-2 focus:ring-purple-400"
                         placeholder="0" value={h.pricePerUnit || ''}
                         onChange={e => updateHolding(h.id, { pricePerUnit: parseFloat(e.target.value) || 0 })} />
+                    </div>
+                    <div className="col-span-6 sm:col-span-2 flex flex-col gap-1">
+                      <label className="text-xs text-slate-500">Div/aandeel/jr (€)</label>
+                      <input type="number" min={0} step="0.01"
+                        className="border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1.5 text-sm bg-white dark:bg-slate-700 dark:text-slate-100 outline-none focus:ring-2 focus:ring-purple-400"
+                        placeholder="auto"
+                        value={h.dividendPerShareEur != null && h.dividendPerShareEur > 0 ? h.dividendPerShareEur : ''}
+                        onChange={e => {
+                          const v = parseFloat(e.target.value);
+                          updateHolding(h.id, { dividendPerShareEur: isNaN(v) ? undefined : v });
+                        }} />
                     </div>
                     <div className="col-span-1 flex items-end justify-center pb-0.5">
                       <button onClick={() => removeHolding(h.id)}
