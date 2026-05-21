@@ -64,11 +64,7 @@ export default function TaxResults({ result }: Props) {
   const aktSchenk     = bankTxs.filter(t => t.category === 'schenkingen' && t.afBij === 'Bij').reduce((s, t) => s + t.bedrag, 0);
   const aktExpenses   = bankTxs.filter(t => !t.excluded && EXPENSE_CATS.has(t.category) && t.afBij === 'Af').reduce((s, t) => s + t.bedrag, 0);
   const aktInvest     = bankTxs.filter(t => t.category === 'investments' && t.afBij === 'Af').reduce((s, t) => s + t.bedrag, 0);
-  // Werkelijk = only real bank data; no fallback to budget estimates for income items
   const budgetScale   = bankMonths / 12;
-  const aktNet        = aktIncome + aktToeslagen + aktDuoInkomen + aktSchenk
-                        - (box1.netTax + box3.netTax + duoJaarbetaling + afschrijvingenJaarDeposit) * budgetScale
-                        - aktExpenses - aktInvest;
 
   const hasToeslagen = toeslagen.total > 0 || toeslagen.hypotheekrenteaftrek > 0;
   const grossIncome  = box1.taxableIncome;
