@@ -386,12 +386,7 @@ export default function TaxResults({ result }: Props) {
                 );
               })()}
 
-              {/* Period note in werkelijk mode */}
-              {cfTab === 'werkelijk' && hasBankData && (
-                <p className="text-xs text-slate-400 dark:text-slate-500 mb-3 italic">
-                  Werkelijke bedragen over {bankMonths} {bankMonths === 1 ? 'maand' : 'maanden'}. Budget geschaald naar dezelfde periode voor vergelijking.
-                </p>
-              )}
+              {/* Period note removed — scaling annotation no longer shown */}
 
               {(() => {
                 const isWerk = cfTab === 'werkelijk' && hasBankData;
@@ -434,7 +429,7 @@ export default function TaxResults({ result }: Props) {
 
                 const totalIncome  = incomeRows.reduce((s, r) => s + (isWerk && r.actual !== null ? r.actual : r.budget), 0);
                 const totalOutflow = outflowRows.reduce((s, r) => s + Math.abs(isWerk && r.actual !== null ? r.actual : r.budget), 0);
-                const netActual    = isWerk ? aktNet : totalIncome - totalOutflow;
+                const netActual    = totalIncome - totalOutflow;
 
                 const renderRow = (row: CfRow, i: number) => {
                   const displayVal = isWerk && row.actual !== null ? row.actual : row.budget;
