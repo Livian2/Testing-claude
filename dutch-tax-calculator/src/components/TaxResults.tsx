@@ -434,7 +434,7 @@ export default function TaxResults({ result }: Props) {
 
                 const totalIncome  = incomeRows.reduce((s, r) => s + (isWerk && r.actual !== null ? r.actual : r.budget), 0);
                 const totalOutflow = outflowRows.reduce((s, r) => s + Math.abs(isWerk && r.actual !== null ? r.actual : r.budget), 0);
-                const netActual    = isWerk ? aktNet : netDisposableIncome;
+                const netActual    = isWerk ? aktNet : totalIncome - totalOutflow;
 
                 const renderRow = (row: CfRow, i: number) => {
                   const displayVal = isWerk && row.actual !== null ? row.actual : row.budget;

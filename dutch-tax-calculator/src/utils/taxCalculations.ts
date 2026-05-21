@@ -540,10 +540,21 @@ export function calculateTaxes(data: TaxFormData): TaxResult {
   // DUO lending inflow: monthly loan disbursement received (non-taxable cash inflow)
   const duoLeningJaar = (income.duoLening ?? 0) * 12;
 
+  // Schenkbelasting — single pass (must be before netDisposableIncome)
+  const schenkItems = data.schenkingen?.schenkingen ?? [];
+  let schenkbelasting   = 0;
+  let schenkNetOntvangen = 0;
+  for (const item of schenkItems) {
+    const c = berekenSchenking(item, personal.taxYear);
+    schenkbelasting    += c.belasting;
+    schenkNetOntvangen += c.netOntvangen;
+  }
+
   const netDisposableIncome =
     grossIncome - totalTax + toeslagen.total - totalExpenses
     - annualSavings - annualInvestments
-    - duoJaarbetaling - afschrijvingenJaarDeposit + duoLeningJaar;
+    - duoJaarbetaling - afschrijvingenJaarDeposit + duoLeningJaar
+    + schenkNetOntvangen - schenkbelasting;
 
   const wozAsset = woon.woningType === 'hypotheek' ? (woon.wozWaarde ?? 0) : 0;
 
@@ -554,16 +565,6 @@ export function calculateTaxes(data: TaxFormData): TaxResult {
   const currentNetWorth =
     totalSavingsBalance + portfolioCurrentValue + wozAsset
     - totalSchulden - hypotheekRestschuld - afschrijvingenActueel;
-
-  // Schenkbelasting — single pass
-  const schenkItems = data.schenkingen?.schenkingen ?? [];
-  let schenkbelasting   = 0;
-  let schenkNetOntvangen = 0;
-  for (const item of schenkItems) {
-    const c = berekenSchenking(item, personal.taxYear);
-    schenkbelasting    += c.belasting;
-    schenkNetOntvangen += c.netOntvangen;
-  }
 
   return {
     box1, box3, toeslagen, totalTax, netDisposableIncome, totalExpenses,
