@@ -31,6 +31,7 @@ export default function ExpensesSection({ data, onChange, savings, onSavingsChan
     { key: 'healthcare', label: t.expenses.healthcare, tip: t.expenses.healthcareTooltip },
     { key: 'education',  label: t.expenses.education,  tip: t.expenses.educationTooltip },
     { key: 'leisure',    label: t.expenses.leisure,    tip: t.expenses.leisureTooltip },
+    { key: 'phone',      label: t.expenses.phone },
     { key: 'other',      label: t.expenses.other },
   ];
 

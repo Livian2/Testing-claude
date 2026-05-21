@@ -110,6 +110,7 @@ export interface ExpensesData {
   healthcare: number;
   education: number;
   leisure: number;
+  phone: number;
   other: number;
 }
 

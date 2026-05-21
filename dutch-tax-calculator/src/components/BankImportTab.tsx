@@ -200,7 +200,7 @@ const CAT_CONFIGS: CatConfig[] = [
   { key: 'healthcare', expKey: 'healthcare', nlLabel: 'Zorg',               color: 'bg-rose-500',    bg: 'bg-rose-50 dark:bg-rose-900/20',      border: 'border-rose-200 dark:border-rose-800',  text: 'text-rose-700 dark:text-rose-300' },
   { key: 'leisure',    expKey: 'leisure',   nlLabel: 'Vrije tijd',          color: 'bg-purple-500',  bg: 'bg-purple-50 dark:bg-purple-900/20',  border: 'border-purple-200 dark:border-purple-800', text: 'text-purple-700 dark:text-purple-300' },
   { key: 'education',  expKey: 'education', nlLabel: 'Opleiding',           color: 'bg-indigo-500',  bg: 'bg-indigo-50 dark:bg-indigo-900/20',  border: 'border-indigo-200 dark:border-indigo-800', text: 'text-indigo-700 dark:text-indigo-300' },
-  { key: 'phone',      nlLabel: 'Telefoon / internet',  color: 'bg-cyan-500',    bg: 'bg-cyan-50 dark:bg-cyan-900/20',      border: 'border-cyan-200 dark:border-cyan-800',  text: 'text-cyan-700 dark:text-cyan-300' },
+  { key: 'phone',      expKey: 'phone', nlLabel: 'Telefoon / internet',  color: 'bg-cyan-500',    bg: 'bg-cyan-50 dark:bg-cyan-900/20',      border: 'border-cyan-200 dark:border-cyan-800',  text: 'text-cyan-700 dark:text-cyan-300' },
   { key: 'other',      expKey: 'other',     nlLabel: 'Overig',              color: 'bg-slate-400',   bg: 'bg-slate-50 dark:bg-slate-900',       border: 'border-slate-200 dark:border-slate-700', text: 'text-slate-600 dark:text-slate-300' },
 ];
 

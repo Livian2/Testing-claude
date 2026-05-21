@@ -40,7 +40,7 @@ const DEFAULT_DATA: TaxFormData = {
   },
   expenses: {
     groceries: 0, transport: 0, insurance: 0,
-    healthcare: 0, education: 0, leisure: 0, other: 0,
+    healthcare: 0, education: 0, leisure: 0, phone: 0, other: 0,
   },
   savings: { monthlySavingsContribution: 0, maandelijksBeleggen: 0 },
   bankData: { spaarrekeningen: [], betaalrekeningen: [] },
@@ -53,7 +53,7 @@ const DEFAULT_DATA: TaxFormData = {
   schenkingen: { schenkingen: [] },
 };
 
-const APP_VERSION         = 'v1.20.9';
+const APP_VERSION         = 'v1.21.0';
 
 const STORAGE_KEY         = 'nl-belasting-data-v1';
 const PROGNOSE_STORAGE_KEY = 'nl-belasting-prognose-v1';

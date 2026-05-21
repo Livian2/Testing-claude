@@ -488,7 +488,7 @@ export function calculateTaxes(data: TaxFormData): TaxResult {
   const totalExpenses =
     (expenses.groceries + expenses.transport + expenses.insurance +
      expenses.healthcare + expenses.education + expenses.leisure +
-     expenses.other) * 12 + totalWoonlasten;
+     expenses.phone + expenses.other) * 12 + totalWoonlasten;
 
   const annualSavings      = savings.monthlySavingsContribution * 12;
   const annualInvestments  = savings.maandelijksBeleggen * 12;
