@@ -53,7 +53,7 @@ const DEFAULT_DATA: TaxFormData = {
   schenkingen: { schenkingen: [] },
 };
 
-const APP_VERSION         = 'v1.20.3';
+const APP_VERSION         = 'v1.20.4';
 
 const STORAGE_KEY         = 'nl-belasting-data-v1';
 const PROGNOSE_STORAGE_KEY = 'nl-belasting-prognose-v1';
@@ -242,7 +242,9 @@ export default function App() {
   }), [t]);
 
   const handleExport = () => {
-    const payload = JSON.stringify({ data, prognose }, null, 2);
+    let bankTxs: unknown[] = [];
+    try { bankTxs = JSON.parse(localStorage.getItem('dutch-tax-bank-txs-v1') || '[]'); } catch { /* ignore */ }
+    const payload = JSON.stringify({ data, prognose, bankTxs }, null, 2);
     const blob = new Blob([payload], { type: 'application/json' });
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a');
@@ -258,7 +260,7 @@ export default function App() {
     const reader = new FileReader();
     reader.onload = ev => {
       try {
-        const parsed = JSON.parse(ev.target?.result as string) as { data?: Partial<TaxFormData>; prognose?: Partial<PrognoseConfig> };
+        const parsed = JSON.parse(ev.target?.result as string) as { data?: Partial<TaxFormData>; prognose?: Partial<PrognoseConfig>; bankTxs?: unknown[] };
         if (parsed.data) {
           setData({
             ...DEFAULT_DATA,
@@ -277,6 +279,9 @@ export default function App() {
           });
         }
         if (parsed.prognose) setPrognose({ ...DEFAULT_PROGNOSE, ...parsed.prognose });
+        if (Array.isArray(parsed.bankTxs) && parsed.bankTxs.length > 0) {
+          try { localStorage.setItem('dutch-tax-bank-txs-v1', JSON.stringify(parsed.bankTxs)); } catch { /* quota */ }
+        }
       } catch { /* invalid file — ignore */ }
     };
     reader.readAsText(file);
@@ -356,15 +361,6 @@ export default function App() {
               ))}
             </div>
 
-            <button
-              onClick={handleExport}
-              className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors px-2 py-1.5 bg-transparent border-0 cursor-pointer"
-              title={t.export}
-            >
-              <Download size={14} />
-              <span className="hidden sm:inline">{t.export}</span>
-            </button>
-
             <label
               className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors px-2 py-1.5 cursor-pointer"
               title={t.import}
@@ -373,6 +369,15 @@ export default function App() {
               <span className="hidden sm:inline">{t.import}</span>
               <input ref={importRef} type="file" accept=".json" className="hidden" onChange={handleImport} />
             </label>
+
+            <button
+              onClick={handleExport}
+              className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors px-2 py-1.5 bg-transparent border-0 cursor-pointer"
+              title={t.export}
+            >
+              <Download size={14} />
+              <span className="hidden sm:inline">{t.export}</span>
+            </button>
 
             <button
               onClick={() => setData(DEFAULT_DATA)}
