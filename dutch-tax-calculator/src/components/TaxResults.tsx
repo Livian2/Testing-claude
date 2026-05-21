@@ -65,6 +65,7 @@ export default function TaxResults({ result }: Props) {
   const aktSchenk     = bankTxs.filter(t => t.category === 'schenkingen' && t.afBij === 'Bij').reduce((s, t) => s + t.bedrag, 0);
   const aktExpenses   = bankTxs.filter(t => !t.excluded && EXPENSE_CATS.has(t.category) && t.afBij === 'Af').reduce((s, t) => s + t.bedrag, 0);
   const aktInvest     = bankTxs.filter(t => t.category === 'investments' && t.afBij === 'Af').reduce((s, t) => s + t.bedrag, 0);
+  const aktSavings    = bankTxs.filter(t => t.category === 'savings').reduce((s, t) => s + (t.afBij === 'Af' ? t.bedrag : -t.bedrag), 0);
   const budgetScale   = bankMonths / 12;
 
   const hasToeslagen = toeslagen.total > 0 || toeslagen.hypotheekrenteaftrek > 0;
@@ -408,8 +409,8 @@ export default function TaxResults({ result }: Props) {
                   { label: t.results.box1Tax,                  budget: -box1.netTax * sc,             actual: null, sign: '−', color: 'text-red-500' },
                   { label: t.results.box3Tax,                  budget: -box3.netTax * sc,             actual: null, sign: '−', color: 'text-red-500' },
                   { label: t.results.totalExpenses,            budget: -totalExpenses * sc,           actual: isWerk ? -aktExpenses : null, sign: '−', color: 'text-orange-500' },
-                  ...(annualSavings > 0
-                    ? [{ label: t.expenses.monthlySavings,     budget: -annualSavings * sc,           actual: null, sign: '−' as const, color: 'text-blue-500' }]
+                  ...(annualSavings > 0 || (isWerk && aktSavings > 0)
+                    ? [{ label: t.expenses.monthlySavings,     budget: -annualSavings * sc,           actual: isWerk ? -aktSavings : null, sign: '−' as const, color: 'text-blue-500' }]
                     : []),
                   ...(annualInvestments > 0 || (isWerk && aktInvest > 0)
                     ? [{ label: t.expenses.monthlyInvest,      budget: -annualInvestments * sc,       actual: isWerk ? -aktInvest : null, sign: '−' as const, color: 'text-violet-500' }]
