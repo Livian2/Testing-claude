@@ -45,7 +45,7 @@ const nl0 = new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR',
 
 type InnerTab = 'holdings' | 'transactions' | 'import' | 'overview' | 'analyse';
 type FetchState = 'idle' | 'loading' | 'ok' | 'error';
-type SortCol = 'name' | 'qty' | 'marketValue' | 'gainPct' | 'gainAbs';
+type SortCol = 'name' | 'qty' | 'marketValue' | 'gainPct' | 'gainAbs' | 'dividend';
 
 const fmtDate = (iso: string): string =>
   new Date(iso + 'T00:00:00').toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -452,6 +452,16 @@ export default function PortfolioSection({ data, onChange }: Props) {
 
   const sortedPositions = useMemo(() => {
     const dir = sortDir === 'asc' ? 1 : -1;
+    const divByName: Record<string, number>   = {};
+    const divByTicker: Record<string, number> = {};
+    for (const h of data.holdings) {
+      if (h.name   && h.dividendPerShareEur) divByName[h.name]     = h.dividendPerShareEur;
+      if (h.ticker && h.dividendPerShareEur) divByTicker[h.ticker] = h.dividendPerShareEur;
+    }
+    const annualDiv = (p: { name: string; ticker?: string; quantity: number }) => {
+      const dps = (p.ticker && divByTicker[p.ticker]) || divByName[p.name] || 0;
+      return p.quantity * dps;
+    };
     return [...positions].sort((a, b) => {
       switch (sortCol) {
         case 'name':        return dir * a.name.localeCompare(b.name);
@@ -467,10 +477,11 @@ export default function PortfolioSection({ data, onChange }: Props) {
           const gb = b.avgCost > 0 && b.currentPrice > 0 ? b.quantity * (b.currentPrice - b.avgCost) : -Infinity;
           return dir * (ga - gb);
         }
+        case 'dividend': return dir * (annualDiv(a) - annualDiv(b));
         default: return 0;
       }
     });
-  }, [positions, sortCol, sortDir]);
+  }, [positions, sortCol, sortDir, data.holdings]);
 
   // Filter transactions by current type once — was filtered twice (empty check + map)
   const filteredTxs = useMemo(
@@ -922,7 +933,9 @@ export default function PortfolioSection({ data, onChange }: Props) {
                           )}
                         </span>
                       </th>
-                      <th className="text-right py-2 pr-3 font-medium hidden md:table-cell">{t.portfolioExtra.colDivYr}</th>
+                      <th className="text-right py-2 pr-3 font-medium hidden md:table-cell">
+                        <SortHeader label={t.portfolioExtra.colDivYr} col="dividend" sortCol={sortCol} sortDir={sortDir} onSort={toggleSort} align="right" />
+                      </th>
                       {/* Rendement % — sortable */}
                       <th className="text-right py-2 pr-3 font-medium hidden sm:table-cell">
                         <SortHeader label={t.portfolioExtra.colReturn} col="gainPct" sortCol={sortCol} sortDir={sortDir} onSort={toggleSort} align="right" />
