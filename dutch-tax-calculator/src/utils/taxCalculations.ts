@@ -254,15 +254,19 @@ export function calculateBox3(
     };
   }
 
-  const savingsShare = totalAssets > 0 ? totalSavings / totalAssets : 0;
-  const investShare  = totalAssets > 0 ? totalInvestments / totalAssets : 0;
+  // Belastingdienst formula: scale ALL categories by grondslag/rendementsgrondslag.
+  // rendementsgrondslag (netWealth) = bezittingen − schulden (after drempel).
+  // taxableWealth (grondslag) = netWealth − heffingsvrijdom.
+  // The same scale factor applies to savings, investments AND debts.
+  const scale = netWealth > 0 ? taxableWealth / netWealth : 0;
 
-  const taxableSavings     = taxableWealth * savingsShare;
-  const taxableInvestments = taxableWealth * investShare;
+  const taxableSavings     = totalSavings     * scale;
+  const taxableInvestments = totalInvestments * scale;
+  const taxableDebts       = totalDebts       * scale;
 
   const savingsFictitious     = taxableSavings     * BOX3_RATES_2026.savings;
   const investmentsFictitious = taxableInvestments * BOX3_RATES_2026.investments;
-  const debtsFictitious       = totalDebts         * BOX3_RATES_2026.debtRate;
+  const debtsFictitious       = taxableDebts       * BOX3_RATES_2026.debtRate;
 
   const fictitiousReturn = savingsFictitious + investmentsFictitious - debtsFictitious;
   const grossTax         = Math.max(0, fictitiousReturn * BOX3_TAX_RATE);
