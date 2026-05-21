@@ -53,7 +53,7 @@ const DEFAULT_DATA: TaxFormData = {
   schenkingen: { schenkingen: [] },
 };
 
-const APP_VERSION         = 'v1.20.4';
+const APP_VERSION         = 'v1.20.5';
 
 const STORAGE_KEY         = 'nl-belasting-data-v1';
 const PROGNOSE_STORAGE_KEY = 'nl-belasting-prognose-v1';
@@ -365,7 +365,7 @@ export default function App() {
               className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors px-2 py-1.5 cursor-pointer"
               title={t.import}
             >
-              <Upload size={14} />
+              <Download size={14} />
               <span className="hidden sm:inline">{t.import}</span>
               <input ref={importRef} type="file" accept=".json" className="hidden" onChange={handleImport} />
             </label>
@@ -375,7 +375,7 @@ export default function App() {
               className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors px-2 py-1.5 bg-transparent border-0 cursor-pointer"
               title={t.export}
             >
-              <Download size={14} />
+              <Upload size={14} />
               <span className="hidden sm:inline">{t.export}</span>
             </button>
 
