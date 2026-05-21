@@ -50,10 +50,25 @@ export default function CurrencyInput({
         )}
         <input
           type="text"
-          inputMode="numeric"
+          inputMode="decimal"
           value={display}
           placeholder="0"
           onFocus={() => setEditStr(value === 0 ? '' : String(value))}
+          onKeyDown={e => {
+            if (e.code === 'NumpadDecimal') {
+              e.preventDefault();
+              const input = e.target as HTMLInputElement;
+              const start = input.selectionStart ?? (editStr ?? '').length;
+              const end   = input.selectionEnd ?? start;
+              const cur   = editStr ?? '';
+              if (!cur.includes(',')) {
+                const next = cur.slice(0, start) + ',' + cur.slice(end);
+                setEditStr(next);
+                onChange(parseNL(next));
+                requestAnimationFrame(() => input.setSelectionRange(start + 1, start + 1));
+              }
+            }
+          }}
           onChange={e => {
             const raw = e.target.value.replace(/[^\d,]/g, '');
             setEditStr(raw);
