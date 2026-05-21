@@ -35,6 +35,7 @@ export default function TaxResults({ result }: Props) {
     annualSavings, annualInvestments,
     portfolioCurrentValue,
     actualSavingsInterest, currentNetWorth, wozAsset, hypotheekRestschuld,
+    afschrijvingenActueel,
     duoJaarbetaling, duoLeningJaar, afschrijvingenJaarDeposit,
     schenkbelasting, schenkNetOntvangen,
   } = result;
@@ -71,7 +72,7 @@ export default function TaxResults({ result }: Props) {
 
   // Net worth breakdown — use rawDebts (actual debt, no Box 3 threshold applied)
   const totalAssets = box3.breakdown.savings + portfolioCurrentValue + Math.max(0, wozAsset);
-  const totalDebts  = Math.max(0, hypotheekRestschuld) + Math.max(0, box3.rawDebts);
+  const totalDebts  = Math.max(0, hypotheekRestschuld) + Math.max(0, box3.rawDebts) + Math.max(0, afschrijvingenActueel);
   const assetSegments = [
     { label: t.results.savingsBalance, value: box3.breakdown.savings,    color: 'bg-blue-400',   textColor: 'text-blue-700 dark:text-blue-300',   border: 'border-blue-200 dark:border-blue-800',   bg: 'bg-blue-50 dark:bg-blue-900/20' },
     { label: t.results.portfolioValue, value: portfolioCurrentValue,     color: 'bg-violet-400', textColor: 'text-violet-700 dark:text-violet-300', border: 'border-violet-200 dark:border-violet-800', bg: 'bg-violet-50 dark:bg-violet-900/20' },
@@ -79,8 +80,9 @@ export default function TaxResults({ result }: Props) {
   ].filter(s => s.value > 0);
 
   const debtSegments = [
-    ...(hypotheekRestschuld > 0 ? [{ label: t.resultsExtra.hypotheekSchuld, value: hypotheekRestschuld, textColor: 'text-red-700 dark:text-red-300', border: 'border-red-200 dark:border-red-800', bg: 'bg-red-50 dark:bg-red-900/20' }] : []),
-    ...(box3.rawDebts > 0        ? [{ label: t.results.debtsBox3,            value: box3.rawDebts,      textColor: 'text-orange-700 dark:text-orange-300', border: 'border-orange-200 dark:border-orange-800', bg: 'bg-orange-50 dark:bg-orange-900/20' }] : []),
+    ...(hypotheekRestschuld > 0    ? [{ label: t.resultsExtra.hypotheekSchuld,       value: hypotheekRestschuld,   textColor: 'text-red-700 dark:text-red-300',    border: 'border-red-200 dark:border-red-800',    bg: 'bg-red-50 dark:bg-red-900/20'    }] : []),
+    ...(box3.rawDebts > 0          ? [{ label: t.results.debtsBox3,                  value: box3.rawDebts,         textColor: 'text-orange-700 dark:text-orange-300', border: 'border-orange-200 dark:border-orange-800', bg: 'bg-orange-50 dark:bg-orange-900/20' }] : []),
+    ...(afschrijvingenActueel > 0  ? [{ label: t.resultsExtra.savingsProvisions,     value: afschrijvingenActueel, textColor: 'text-amber-700 dark:text-amber-300', border: 'border-amber-200 dark:border-amber-800', bg: 'bg-amber-50 dark:bg-amber-900/20' }] : []),
   ];
 
   return (
