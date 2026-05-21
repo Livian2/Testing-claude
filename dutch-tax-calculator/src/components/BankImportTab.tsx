@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
-import { Upload, Trash2, ChevronDown, ChevronRight, TrendingUp, AlertTriangle, GripVertical } from 'lucide-react';
+import { Upload, Trash2, ChevronDown, ChevronRight, TrendingUp, AlertTriangle, GripVertical, X } from 'lucide-react';
 import type { ExpensesData, SavingsData, WoonData } from '../types';
 import { useLanguage } from '../i18n/LanguageContext';
 
@@ -291,6 +291,12 @@ export default function BankImportTab({ expenses, savings, woon }: Props) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
   }
 
+  function deleteTx(key: string) {
+    const next = txs.filter(tx => txKey(tx) !== key);
+    setTxs(next);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+  }
+
   function toggleCat(cat: TxCategory) {
     setExpanded(prev => {
       const next = new Set(prev);
@@ -515,6 +521,10 @@ export default function BankImportTab({ expenses, savings, woon }: Props) {
                       >
                         {RECLASSIFIABLE.map(c => <option key={c.key} value={c.key}>{c.nlLabel}</option>)}
                       </select>
+                      <button onClick={e => { e.stopPropagation(); deleteTx(txKey(tx)); }}
+                        className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-red-400 hover:text-red-600 dark:hover:text-red-400 p-0.5 rounded bg-transparent border-0 cursor-pointer">
+                        <X size={12} />
+                      </button>
                     </div>
                   ))}
                   <div className="flex items-center gap-2 pt-1.5 mt-1 border-t border-slate-100 dark:border-slate-700 px-2">
@@ -560,6 +570,10 @@ export default function BankImportTab({ expenses, savings, woon }: Props) {
                     className="shrink-0 text-xs border border-violet-200 dark:border-violet-600 rounded-md px-1 py-0.5 bg-white dark:bg-slate-700 cursor-pointer opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity">
                     {RECLASSIFIABLE.map(c => <option key={c.key} value={c.key}>{c.nlLabel}</option>)}
                   </select>
+                  <button onClick={e => { e.stopPropagation(); deleteTx(txKey(tx)); }}
+                    className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-red-400 hover:text-red-600 dark:hover:text-red-400 p-0.5 rounded bg-transparent border-0 cursor-pointer">
+                    <X size={12} />
+                  </button>
                 </div>
               ))}
             </div>
@@ -601,6 +615,10 @@ export default function BankImportTab({ expenses, savings, woon }: Props) {
                     className="shrink-0 text-xs border border-blue-200 dark:border-blue-600 rounded-md px-1 py-0.5 bg-white dark:bg-slate-700 cursor-pointer opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity">
                     {RECLASSIFIABLE.map(c => <option key={c.key} value={c.key}>{c.nlLabel}</option>)}
                   </select>
+                  <button onClick={e => { e.stopPropagation(); deleteTx(txKey(tx)); }}
+                    className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-red-400 hover:text-red-600 dark:hover:text-red-400 p-0.5 rounded bg-transparent border-0 cursor-pointer">
+                    <X size={12} />
+                  </button>
                 </div>
               ))}
             </div>
@@ -654,6 +672,10 @@ export default function BankImportTab({ expenses, savings, woon }: Props) {
                         className="shrink-0 text-xs border border-green-200 dark:border-green-600 rounded-md px-1 py-0.5 bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 cursor-pointer opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity">
                         {RECLASSIFIABLE.map(c => <option key={c.key} value={c.key}>{c.nlLabel}</option>)}
                       </select>
+                      <button onClick={e => { e.stopPropagation(); deleteTx(txKey(tx)); }}
+                        className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-red-400 hover:text-red-600 dark:hover:text-red-400 p-0.5 rounded bg-transparent border-0 cursor-pointer">
+                        <X size={12} />
+                      </button>
                     </div>
                   ))}
                   <div className="flex items-center gap-2 pt-1.5 mt-1 border-t border-green-200 dark:border-green-700 px-2">
