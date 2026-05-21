@@ -316,7 +316,7 @@ export default function BankImportTab({ expenses, savings, woon }: Props) {
 
   const incomeTotal    = activeTxs.filter(x => ['income','toeslagen','duo_inkomen','schenkingen'].includes(x.category) && x.afBij === 'Bij').reduce((s, x) => s + x.bedrag, 0);
   const investTotal    = sumCat('investments');
-  const savingsTotal   = activeTxs.filter(x => x.category === 'savings' && x.afBij === 'Af').reduce((s, x) => s + x.bedrag, 0);
+  const savingsTotal   = activeTxs.filter(x => x.category === 'savings').reduce((s, x) => s + (x.afBij === 'Af' ? x.bedrag : -x.bedrag), 0);
   const totalSpending  = CAT_CONFIGS.filter(c => c.key !== 'investments').reduce((s, c) => s + sumCat(c.key), 0);
 
   const housingMonthly = calcMonthlyHousing(woon);
