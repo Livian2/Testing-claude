@@ -178,14 +178,9 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
     const aowCalendarYear      = currentYear + Math.max(0, aowLeeftijd - leeftijd);
     const pensioenCalendarYear = currentYear + Math.max(0, pensioenLeeftijd - leeftijd);
 
-    // Annual expenses for withdrawal modelling
+    // Annual base expenses for withdrawal modelling (housing added per-year below)
     const e = data.expenses;
-    const annualExp  = (e.groceries + e.transport + e.insurance + e.healthcare + e.education + e.leisure + e.other) * 12;
-    const swrDecimal = swr / 100;
-    const heffingsvrij = isPartner ? 114_000 : 57_000;
-    const taxableW   = Math.max(0, annualExp / swrDecimal - heffingsvrij);
-    const box3Drag   = taxableW * 0.0588 * 0.36;
-    const fireNum    = (annualExp + box3Drag) / swrDecimal;
+    const baseExp = (e.groceries + e.transport + e.insurance + e.healthcare + e.education + e.leisure + (e.phone ?? 0) + e.other) * 12;
 
     // Cache growth factors (was recomputed each iteration)
     const savingsGrowth = 1 + config.spaarrente / 100;
@@ -193,6 +188,21 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
 
     // ── Pre-compute per-year debt schedules outside the main loop ──
     const numYears = config.jaren;
+
+    // Pre-compute annual housing cost per year.
+    // Rent: constant. Mortgage: maandlast × 12 drops to 0 after payoff; extras persist.
+    const extraAnnualHousing = (data.woon.gwe + data.woon.vve + data.woon.overig) * 12;
+    const housingByYear = new Float64Array(numYears + 1);
+    if (data.woon.woningType === 'huur') {
+      housingByYear.fill((data.woon.maandhuur + data.woon.gwe + data.woon.vve + data.woon.overig) * 12);
+    } else {
+      for (let i = 0; i <= numYears; i++) {
+        const y = currentYear + i;
+        let hypPayment = 0;
+        for (const h of data.woon.hypotheken) hypPayment += berekenHypotheek(h, y).maandlast;
+        housingByYear[i] = hypPayment * 12 + extraAnnualHousing;
+      }
+    }
     const duoByYear = new Float64Array(numYears + 1);
     for (const duo of data.schulden.duo) {
       const sim = simuleerDuo(duo, startInkomen, inkomensstijging, currentYear, isPartner);
@@ -234,6 +244,9 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
       afschrByYear[i] = s;
     }
 
+    const swrDecimal   = swr / 100;
+    const heffingsvrij = isPartner ? 114_000 : 57_000;
+
     const result: ProjectionPoint[] = [];
     let fired = false;
     let prevSavings = initSavings;
@@ -242,8 +255,13 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
     for (let i = 0; i <= numYears; i++) {
       const year = currentYear + i;
 
-      // FIRE uses only liquid (investable) assets — WOZ is excluded
-      if (!fired && i > 0 && (prevSavings + prevInvestments) >= fireNum) {
+      // FIRE uses only liquid (investable) assets — WOZ is excluded.
+      // Threshold is year-specific: expenses drop when mortgage is paid off.
+      const yearExp      = baseExp + housingByYear[i];
+      const taxableW_y   = Math.max(0, yearExp / swrDecimal - heffingsvrij);
+      const box3Drag_y   = taxableW_y * 0.0588 * 0.36;
+      const fireNum_y    = (yearExp + box3Drag_y) / swrDecimal;
+      if (!fired && i > 0 && (prevSavings + prevInvestments) >= fireNum_y) {
         fired = true;
       }
 
@@ -259,7 +277,7 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
       } else {
         const aowIncome      = year > aowCalendarYear      ? aowJaar      : 0;
         const pensioenIncome = year > pensioenCalendarYear ? pensioenJaar : 0;
-        const required       = Math.max(0, annualExp - aowIncome - pensioenIncome);
+        const required       = Math.max(0, yearExp - aowIncome - pensioenIncome);
         const grownSavings     = Math.max(0, prevSavings)     * savingsGrowth;
         const grownInvestments = Math.max(0, prevInvestments) * investGrowth;
         const totalLiquid      = grownSavings + grownInvestments;
@@ -300,8 +318,16 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
   // ── FIRE calculations ──────────────────────────────────────────────────────
   const annualExpenses = useMemo(() => {
     const e = data.expenses;
-    return (e.groceries + e.transport + e.insurance + e.healthcare + e.education + e.leisure + e.other) * 12;
-  }, [data.expenses]);
+    const base = (e.groceries + e.transport + e.insurance + e.healthcare + e.education + e.leisure + (e.phone ?? 0) + e.other) * 12;
+    // Add current housing cost
+    const extra = (data.woon.gwe + data.woon.vve + data.woon.overig) * 12;
+    if (data.woon.woningType === 'huur') {
+      return base + (data.woon.maandhuur + data.woon.gwe + data.woon.vve + data.woon.overig) * 12;
+    }
+    let hypAnnual = 0;
+    for (const h of data.woon.hypotheken) hypAnnual += berekenHypotheek(h, currentYear).maandlast * 12;
+    return base + hypAnnual + extra;
+  }, [data.expenses, data.woon, currentYear]);
 
   const isPartnerFire = data.personal.filingStatus === 'partner';
   const heffingsvrijdom = isPartnerFire ? 114_000 : 57_000;
