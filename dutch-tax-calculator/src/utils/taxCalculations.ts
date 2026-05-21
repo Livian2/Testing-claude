@@ -204,11 +204,11 @@ export function calculateBox1(
 
 // ─── Box 3 ─────────────────────────────────────────────────────────────────
 
-const BOX3_RATES_2026 = { savings: 0.0103, investments: 0.0588, debtRate: 0.0262 };
+const BOX3_RATES_2026 = { savings: 0.0128, investments: 0.0600, debtRate: 0.0270 };
 const BOX3_TAX_RATE          = 0.36;
-const BOX3_DEBT_THRESHOLD    = 3700;
-const BOX3_EXEMPTION_SINGLE  = 57684;
-const BOX3_EXEMPTION_PARTNER = 115368;
+const BOX3_DEBT_THRESHOLD    = 3800;
+const BOX3_EXEMPTION_SINGLE  = 59357;
+const BOX3_EXEMPTION_PARTNER = 118714;
 
 // Optional precomputed inputs allow calculateTaxes to avoid duplicate work.
 export function calculateBox3(

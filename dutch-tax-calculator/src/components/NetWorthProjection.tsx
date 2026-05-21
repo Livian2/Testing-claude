@@ -245,7 +245,7 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
     }
 
     const swrDecimal   = swr / 100;
-    const heffingsvrij = isPartner ? 114_000 : 57_000;
+    const heffingsvrij = isPartner ? 118_714 : 59_357;
 
     const result: ProjectionPoint[] = [];
     let fired = false;
@@ -259,7 +259,7 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
       // Threshold is year-specific: expenses drop when mortgage is paid off.
       const yearExp      = baseExp + housingByYear[i];
       const taxableW_y   = Math.max(0, yearExp / swrDecimal - heffingsvrij);
-      const box3Drag_y   = taxableW_y * 0.0588 * 0.36;
+      const box3Drag_y   = taxableW_y * 0.0600 * 0.36;
       const fireNum_y    = (yearExp + box3Drag_y) / swrDecimal;
       if (!fired && i > 0 && (prevSavings + prevInvestments) >= fireNum_y) {
         fired = true;
@@ -330,13 +330,13 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
   }, [data.expenses, data.woon, currentYear]);
 
   const isPartnerFire = data.personal.filingStatus === 'partner';
-  const heffingsvrijdom = isPartnerFire ? 114_000 : 57_000;
+  const heffingsvrijdom = isPartnerFire ? 118_714 : 59_357;
 
   const fireNumber = useMemo(() => {
     const swrDecimal = swr / 100;
     const bruteFireNumber = annualExpenses / swrDecimal;
     const taxableWealth = Math.max(0, bruteFireNumber - heffingsvrijdom);
-    const box3TaxDrag = taxableWealth * 0.0588 * 0.36;
+    const box3TaxDrag = taxableWealth * 0.0600 * 0.36;
     return (annualExpenses + box3TaxDrag) / swrDecimal;
   }, [annualExpenses, swr, heffingsvrijdom]);
 
