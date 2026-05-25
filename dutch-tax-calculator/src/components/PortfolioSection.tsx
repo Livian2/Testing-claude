@@ -435,19 +435,19 @@ export default function PortfolioSection({ data, onChange }: Props) {
     setEtfFetchState('loading');
     setEtfProgress({ done: 0, total: allTickers.length });
     try {
-      let accumulated: Record<string, EtfHoldingsResult> = { ...etfHoldings };
-      const fresh = await fetchEtfHoldings(allTickers, (done, total) => {
+      const base = { ...etfHoldings };
+      const fresh = await fetchEtfHoldings(allTickers, (done, total, partial) => {
         setEtfProgress({ done, total });
-        // Persist partial results as they come in so the UI updates live
-        accumulated = { ...accumulated, ...fresh };
-        setEtfHoldings({ ...accumulated });
+        // Live update as batches complete — `partial` is passed in, no TDZ issue
+        setEtfHoldings({ ...base, ...partial });
       });
       const merged = { ...etfHoldings, ...fresh };
       setEtfHoldings(merged);
       localStorage.setItem('dutch-tax-etf-holdings-v1', JSON.stringify(merged));
       setEtfFetchState('ok');
       setEtfProgress(null);
-    } catch {
+    } catch (err) {
+      console.error('ETF holdings fetch failed:', err);
       setEtfFetchState('error');
       setEtfProgress(null);
     }

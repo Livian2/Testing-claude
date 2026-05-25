@@ -391,6 +391,8 @@ async function fetchOneEtfHoldings(ticker: string): Promise<EtfHoldingsResult | 
         quoteSummary?: {
           result?: Array<{
             topHoldings?: {
+              // Yahoo Finance uses `holdings`; some responses also expose `stockHoldings`.
+              holdings?: Array<{ symbol?: string; holdingName?: string; holdingPercent?: YFNum }>;
               stockHoldings?: Array<{ symbol?: string; holdingName?: string; holdingPercent?: YFNum }>;
             };
           }>;
@@ -401,7 +403,8 @@ async function fetchOneEtfHoldings(ticker: string): Promise<EtfHoldingsResult | 
       const r = json?.quoteSummary?.result?.[0];
       if (!r?.topHoldings) continue;
 
-      const holdings: EtfStockHolding[] = (r.topHoldings.stockHoldings ?? [])
+      const rawHoldings = r.topHoldings.holdings ?? r.topHoldings.stockHoldings ?? [];
+      const holdings: EtfStockHolding[] = rawHoldings
         .filter(h => h.symbol && extractPct(h.holdingPercent) > 0)
         .map(h => ({
           symbol: h.symbol!,
@@ -420,11 +423,11 @@ async function fetchOneEtfHoldings(ticker: string): Promise<EtfHoldingsResult | 
 /**
  * Fetch top holdings for tickers in small sequential batches to avoid
  * Yahoo Finance rate-limiting 76+ parallel requests.
- * onProgress is called after each ticker with (loaded, total).
+ * onProgress is called after each batch with (done, total, partialResults).
  */
 export async function fetchEtfHoldings(
   tickers: string[],
-  onProgress?: (done: number, total: number) => void,
+  onProgress?: (done: number, total: number, partial: Record<string, EtfHoldingsResult>) => void,
 ): Promise<Record<string, EtfHoldingsResult>> {
   const unique = [...new Set(tickers.filter(Boolean))];
   if (!unique.length) return {};
@@ -436,7 +439,7 @@ export async function fetchEtfHoldings(
     const batch = unique.slice(i, i + BATCH);
     const settled = await Promise.all(batch.map(t => fetchOneEtfHoldings(t)));
     settled.forEach((r, idx) => { if (r) result[batch[idx]] = r; });
-    onProgress?.(Math.min(i + BATCH, unique.length), unique.length);
+    onProgress?.(Math.min(i + BATCH, unique.length), unique.length, { ...result });
     if (i + BATCH < unique.length) await new Promise(res => setTimeout(res, 300));
   }
 
