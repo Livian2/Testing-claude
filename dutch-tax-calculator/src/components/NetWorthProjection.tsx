@@ -246,9 +246,8 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
 
     const swrDecimal      = swr / 100;
     const heffingsvrij    = isPartner ? 118_714 : 59_357;
-    // Forced retirement year: stop contributing and start withdrawing at this age even if
-    // the FIRE number hasn't been reached — models "retire at target age regardless".
-    const fireLeeftijdYear = currentYear + Math.max(0, gewensteFireLeeftijd - leeftijd);
+    // Index at which forced retirement kicks in (stop contributing, start withdrawing)
+    const retirementIdx   = Math.max(1, gewensteFireLeeftijd - leeftijd);
 
     const result: ProjectionPoint[] = [];
     let fired = false;
@@ -264,8 +263,8 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
       const taxableW_y   = Math.max(0, yearExp / swrDecimal - heffingsvrij);
       const box3Drag_y   = taxableW_y * 0.0600 * 0.36;
       const fireNum_y    = (yearExp + box3Drag_y) / swrDecimal;
-      // Trigger retirement when FIRE number is reached OR when target retirement age is hit
-      if (!fired && i > 0 && ((prevSavings + prevInvestments) >= fireNum_y || year > fireLeeftijdYear)) {
+      // Trigger at the earlier of: FIRE number reached OR target retirement age
+      if (!fired && i > 0 && ((prevSavings + prevInvestments) >= fireNum_y || i >= retirementIdx)) {
         fired = true;
       }
 
