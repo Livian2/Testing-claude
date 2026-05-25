@@ -369,6 +369,15 @@ export async function fetchEtfHoldings(tickers: string[]): Promise<Record<string
   const unique = [...new Set(tickers.filter(Boolean))];
   if (!unique.length) return {};
 
+  // Yahoo Finance sometimes returns holdingPercent as a plain number (formatted=false)
+  // and sometimes as {raw: 0.0466, fmt: "4.66%"} regardless of the formatted flag.
+  type YFNum = number | { raw: number } | null | undefined;
+  const extractPct = (v: YFNum): number => {
+    if (typeof v === 'number') return v;
+    if (v && typeof v === 'object' && 'raw' in v) return (v as { raw: number }).raw;
+    return 0;
+  };
+
   const result: Record<string, EtfHoldingsResult> = {};
   await Promise.all(unique.map(async (ticker) => {
     const BASES = [
@@ -378,7 +387,7 @@ export async function fetchEtfHoldings(tickers: string[]): Promise<Record<string
     ];
     for (const base of BASES) {
       try {
-        const url = `${base}${encodeURIComponent(ticker)}?modules=topHoldings&formatted=false&lang=en-US&region=US`;
+        const url = `${base}${encodeURIComponent(ticker)}?modules=topHoldings&lang=en-US&region=US`;
         const res = await fetch(url, {
           headers: { Accept: 'application/json', 'Accept-Language': 'en-US,en;q=0.9' },
         });
@@ -387,7 +396,7 @@ export async function fetchEtfHoldings(tickers: string[]): Promise<Record<string
           quoteSummary?: {
             result?: Array<{
               topHoldings?: {
-                stockHoldings?: Array<{ symbol?: string; holdingName?: string; holdingPercent?: number }>;
+                stockHoldings?: Array<{ symbol?: string; holdingName?: string; holdingPercent?: YFNum }>;
               };
             }>;
             error?: unknown;
@@ -398,11 +407,11 @@ export async function fetchEtfHoldings(tickers: string[]): Promise<Record<string
         if (!r?.topHoldings) continue;
 
         const holdings: EtfStockHolding[] = (r.topHoldings.stockHoldings ?? [])
-          .filter(h => h.symbol && (h.holdingPercent ?? 0) > 0)
+          .filter(h => h.symbol && extractPct(h.holdingPercent) > 0)
           .map(h => ({
             symbol: h.symbol!,
             holdingName: h.holdingName ?? h.symbol!,
-            holdingPercent: h.holdingPercent!,
+            holdingPercent: extractPct(h.holdingPercent),
           }));
 
         if (holdings.length > 0) {
