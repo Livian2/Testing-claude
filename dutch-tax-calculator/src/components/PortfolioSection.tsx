@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import type { PortfolioData, Holding, Transaction, AssetType, TransactionType } from '../types';
 import { computePositions } from '../utils/taxCalculations';
-import { fetchPricesWithFX, resolveIsins, resolveBareTickers, looksLikeIsin, fetchEtfHoldings } from '../utils/priceFetcher';
+import { fetchPricesWithFX, resolveIsins, resolveBareTickers, looksLikeIsin, fetchEtfHoldings, countryFromSuffix } from '../utils/priceFetcher';
 import type { EtfHoldingsResult } from '../utils/priceFetcher';
 import { useLanguage } from '../i18n/LanguageContext';
 import SectionCard from './SectionCard';
@@ -301,7 +301,7 @@ export default function PortfolioSection({ data, onChange }: Props) {
   const autoFetched = useRef(false);
   const [etfHoldings, setEtfHoldings] = useState<Record<string, EtfHoldingsResult>>(() => {
     try {
-      const stored = JSON.parse(localStorage.getItem('dutch-tax-etf-holdings-v1') || '{}') as Record<string, EtfHoldingsResult>;
+      const stored = JSON.parse(localStorage.getItem('dutch-tax-etf-holdings-v2') || '{}') as Record<string, EtfHoldingsResult>;
       // Discard entries with empty holdings arrays (stale cache from before the parsing fix)
       return Object.fromEntries(Object.entries(stored).filter(([, v]) => v.holdings?.length > 0));
     } catch { return {}; }
@@ -443,7 +443,7 @@ export default function PortfolioSection({ data, onChange }: Props) {
       });
       const merged = { ...etfHoldings, ...fresh };
       setEtfHoldings(merged);
-      localStorage.setItem('dutch-tax-etf-holdings-v1', JSON.stringify(merged));
+      localStorage.setItem('dutch-tax-etf-holdings-v2', JSON.stringify(merged));
       setEtfFetchState('ok');
       setEtfProgress(null);
     } catch (err) {
@@ -1190,6 +1190,22 @@ const PIE_COLORS = [
   '#c026d3', '#65a30d',
 ];
 
+// Map Yahoo Finance sector keys to Dutch display names
+const SECTOR_DISPLAY: Record<string, string> = {
+  technology:             'Technologie',
+  consumer_cyclical:      'Consument (cyclisch)',
+  financial_services:     'Financiën',
+  healthcare:             'Gezondheidszorg',
+  industrials:            'Industrie',
+  consumer_defensive:     'Consument (def.)',
+  energy:                 'Energie',
+  basic_materials:        'Grondstoffen',
+  communication_services: 'Communicatie',
+  utilities:              'Nutsbedrijven',
+  real_estate:            'Vastgoed',
+  realestate:             'Vastgoed',
+};
+
 
 const nl0geo = new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
 
@@ -1375,10 +1391,64 @@ function AnalyseTab({
     if (h.name)   { countryByName[h.name]     = h.country; sectorByName[h.name]     = h.sector; }
   }
 
-  const countryMap = buildBreakdown(positions, p =>
-    (p.ticker && countryByTicker[p.ticker]) || (p.name && countryByName[p.name]) || undefined);
-  const sectorMap  = buildBreakdown(positions, p =>
-    (p.ticker && sectorByTicker[p.ticker]) || (p.name && sectorByName[p.name]) || undefined);
+  // Helper: add value into a breakdown map
+  const addToMap = (
+    map: Map<string, { total: number; items: { name: string; ticker: string; value: number }[] }>,
+    key: string, name: string, ticker: string, val: number,
+  ) => {
+    const entry = map.get(key) ?? { total: 0, items: [] };
+    entry.total += val;
+    const ex = entry.items.find(it => it.ticker === ticker && it.name === name);
+    if (ex) ex.value += val;
+    else entry.items.push({ name, ticker, value: val });
+    map.set(key, entry);
+  };
+
+  // Geography: distribute ETF value across underlying stock countries (via exchange suffix)
+  const countryMap = (() => {
+    const map = new Map<string, { total: number; items: { name: string; ticker: string; value: number }[] }>();
+    for (const pos of positions) {
+      if (pos.currentValue <= 0) continue;
+      const etfData = pos.ticker ? etfHoldingsMap[pos.ticker] : undefined;
+      if (etfData && etfData.holdings.length > 0) {
+        let covered = 0;
+        for (const h of etfData.holdings) {
+          const val = pos.currentValue * h.holdingPercent;
+          covered += val;
+          addToMap(map, countryFromSuffix(h.symbol) ?? 'Onbekend', pos.name, pos.ticker || pos.name, val);
+        }
+        const rem = pos.currentValue - covered;
+        if (rem > 0.5) addToMap(map, 'Onbekend', pos.name, pos.ticker || pos.name, rem);
+      } else {
+        const c = (pos.ticker && countryByTicker[pos.ticker]) || countryByName[pos.name] || 'Onbekend';
+        addToMap(map, c, pos.name, pos.ticker || pos.name, pos.currentValue);
+      }
+    }
+    return map;
+  })();
+
+  // Sector: use ETF sectorWeightings if available, else fall back to position sector
+  const sectorMap = (() => {
+    const map = new Map<string, { total: number; items: { name: string; ticker: string; value: number }[] }>();
+    for (const pos of positions) {
+      if (pos.currentValue <= 0) continue;
+      const etfData = pos.ticker ? etfHoldingsMap[pos.ticker] : undefined;
+      if (etfData?.sectorWeightings && Object.keys(etfData.sectorWeightings).length > 0) {
+        let covered = 0;
+        for (const [key, pct] of Object.entries(etfData.sectorWeightings)) {
+          const val = pos.currentValue * pct;
+          covered += val;
+          addToMap(map, SECTOR_DISPLAY[key] ?? key, pos.name, pos.ticker || pos.name, val);
+        }
+        const rem = pos.currentValue - covered;
+        if (rem > 0.5) addToMap(map, 'Onbekend', pos.name, pos.ticker || pos.name, rem);
+      } else {
+        const s = (pos.ticker && sectorByTicker[pos.ticker]) || sectorByName[pos.name];
+        addToMap(map, s ?? 'Onbekend', pos.name, pos.ticker || pos.name, pos.currentValue);
+      }
+    }
+    return map;
+  })();
 
   // Show badges for ETF-type holdings + any ticker that already has loaded holdings data
   const etfPositionTickers = useMemo(() => {
@@ -1650,7 +1720,7 @@ function AnalyseTab({
             rows={geo.rows}
             total={geo.total}
             hasPrefix
-            unknownNote={geo.hasUnknown ? '❓ Onbekend = holdings zonder landdata — ververs prijzen om landdata op te halen.' : undefined}
+            unknownNote="ETF-posities zijn uitgesplitst op basis van onderliggende top holdings. Beurssuffix bepaalt land (geen suffix = VS). Niet-geladen ETFs tonen hun eigen landdata."
           />
         </div>
       )}
@@ -1664,7 +1734,7 @@ function AnalyseTab({
           <BreakdownChart
             rows={sector.rows}
             total={sector.total}
-            unknownNote={sector.hasUnknown ? '❓ Onbekend = holdings zonder sectordata — ververs prijzen om sectordata op te halen.' : undefined}
+            unknownNote="ETF-posities zijn uitgesplitst op basis van sectorgewichten (Yahoo Finance). Niet-geladen ETFs tonen hun eigen sectordata."
           />
         </div>
       )}

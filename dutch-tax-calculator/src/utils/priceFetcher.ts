@@ -108,7 +108,7 @@ const SUFFIX_COUNTRY: Record<string, string> = {
 };
 
 /** Infer country from a ticker's exchange suffix. Returns null if no suffix known. */
-function countryFromSuffix(ticker: string): string | null {
+export function countryFromSuffix(ticker: string): string | null {
   for (const [sfx, country] of Object.entries(SUFFIX_COUNTRY)) {
     if (ticker.endsWith(sfx)) return country;
   }
@@ -361,6 +361,7 @@ export interface EtfStockHolding {
 export interface EtfHoldingsResult {
   ticker: string;
   holdings: EtfStockHolding[];
+  sectorWeightings?: Record<string, number>; // Yahoo sector key → fraction, e.g. {technology: 0.25}
   fetchedAt: string;
 }
 
@@ -391,9 +392,9 @@ async function fetchOneEtfHoldings(ticker: string): Promise<EtfHoldingsResult | 
         quoteSummary?: {
           result?: Array<{
             topHoldings?: {
-              // Yahoo Finance uses `holdings`; some responses also expose `stockHoldings`.
               holdings?: Array<{ symbol?: string; holdingName?: string; holdingPercent?: YFNum }>;
               stockHoldings?: Array<{ symbol?: string; holdingName?: string; holdingPercent?: YFNum }>;
+              sectorWeightings?: Array<Record<string, number>>;
             };
           }>;
           error?: unknown;
@@ -412,8 +413,21 @@ async function fetchOneEtfHoldings(ticker: string): Promise<EtfHoldingsResult | 
           holdingPercent: extractPct(h.holdingPercent),
         }));
 
+      const rawSectors: Array<Record<string, number>> = r.topHoldings.sectorWeightings ?? [];
+      const sectorWeightings: Record<string, number> = {};
+      for (const entry of rawSectors) {
+        for (const [key, val] of Object.entries(entry)) {
+          sectorWeightings[key] = extractPct(val as YFNum);
+        }
+      }
+
       if (holdings.length > 0) {
-        return { ticker, holdings, fetchedAt: new Date().toISOString() };
+        return {
+          ticker,
+          holdings,
+          sectorWeightings: Object.keys(sectorWeightings).length > 0 ? sectorWeightings : undefined,
+          fetchedAt: new Date().toISOString(),
+        };
       }
     } catch { continue; }
   }

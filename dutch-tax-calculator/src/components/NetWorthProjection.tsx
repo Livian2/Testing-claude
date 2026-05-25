@@ -244,8 +244,11 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
       afschrByYear[i] = s;
     }
 
-    const swrDecimal   = swr / 100;
-    const heffingsvrij = isPartner ? 118_714 : 59_357;
+    const swrDecimal      = swr / 100;
+    const heffingsvrij    = isPartner ? 118_714 : 59_357;
+    // Forced retirement year: stop contributing and start withdrawing at this age even if
+    // the FIRE number hasn't been reached — models "retire at target age regardless".
+    const fireLeeftijdYear = currentYear + Math.max(0, gewensteFireLeeftijd - leeftijd);
 
     const result: ProjectionPoint[] = [];
     let fired = false;
@@ -261,7 +264,8 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
       const taxableW_y   = Math.max(0, yearExp / swrDecimal - heffingsvrij);
       const box3Drag_y   = taxableW_y * 0.0600 * 0.36;
       const fireNum_y    = (yearExp + box3Drag_y) / swrDecimal;
-      if (!fired && i > 0 && (prevSavings + prevInvestments) >= fireNum_y) {
+      // Trigger retirement when FIRE number is reached OR when target retirement age is hit
+      if (!fired && i > 0 && ((prevSavings + prevInvestments) >= fireNum_y || year > fireLeeftijdYear)) {
         fired = true;
       }
 
@@ -313,7 +317,7 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
       prevInvestments = investments;
     }
     return result;
-  }, [data, config, currentYear, jaarlijksSparen, jaarlijksBeleggen, swr, leeftijd, aowBedragMaand, pensioenBedragMaand, aowLeeftijd, pensioenLeeftijd]);
+  }, [data, config, currentYear, jaarlijksSparen, jaarlijksBeleggen, swr, leeftijd, gewensteFireLeeftijd, aowBedragMaand, pensioenBedragMaand, aowLeeftijd, pensioenLeeftijd]);
 
   // ── FIRE calculations ──────────────────────────────────────────────────────
   const annualExpenses = useMemo(() => {
@@ -799,6 +803,25 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
                 <line x1={padL} y1={y0} x2={W - padR} y2={y0}
                   stroke="rgba(255,255,255,0.2)" strokeWidth={1} strokeDasharray="6 4" />
               )}
+
+              {/* Retirement (target FIRE age) vertical dashed line */}
+              {(() => {
+                const retI = Math.max(0, gewensteFireLeeftijd - leeftijd);
+                if (retI > 0 && retI <= config.jaren) {
+                  const retX = xPos(retI);
+                  return (
+                    <g>
+                      <line x1={retX} y1={padT} x2={retX} y2={padT + chartH}
+                        stroke="#f59e0b" strokeWidth={1.5} strokeDasharray="5 3" strokeOpacity={0.75} />
+                      <text x={retX + 4} y={padT + 14} fontSize={9} fill="#f59e0b" fillOpacity={0.9}
+                        fontFamily="system-ui, sans-serif" fontWeight="600">
+                        Uittreden {currentYear + retI}
+                      </text>
+                    </g>
+                  );
+                }
+                return null;
+              })()}
 
               {/* AOW phase background band */}
               {(() => {
