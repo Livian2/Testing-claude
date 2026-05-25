@@ -351,3 +351,66 @@ export async function fetchYahooPrices(tickers: string[]): Promise<Record<string
     Object.entries(result.quotes).map(([k, v]) => [k, v.priceEur])
   );
 }
+
+export interface EtfStockHolding {
+  symbol: string;
+  holdingName: string;
+  holdingPercent: number; // fraction, e.g. 0.042 = 4.2%
+}
+
+export interface EtfHoldingsResult {
+  ticker: string;
+  holdings: EtfStockHolding[];
+  fetchedAt: string;
+}
+
+/** Fetch top holdings for ETF tickers via Yahoo Finance topHoldings module. */
+export async function fetchEtfHoldings(tickers: string[]): Promise<Record<string, EtfHoldingsResult>> {
+  const unique = [...new Set(tickers.filter(Boolean))];
+  if (!unique.length) return {};
+
+  const result: Record<string, EtfHoldingsResult> = {};
+  await Promise.all(unique.map(async (ticker) => {
+    const BASES = [
+      '/api/finance/v10/finance/quoteSummary/',
+      '/api/finance2/v10/finance/quoteSummary/',
+      '/api/finance/v11/finance/quoteSummary/',
+    ];
+    for (const base of BASES) {
+      try {
+        const url = `${base}${encodeURIComponent(ticker)}?modules=topHoldings&formatted=false&lang=en-US&region=US`;
+        const res = await fetch(url, {
+          headers: { Accept: 'application/json', 'Accept-Language': 'en-US,en;q=0.9' },
+        });
+        if (!res.ok) continue;
+        const json = await res.json() as {
+          quoteSummary?: {
+            result?: Array<{
+              topHoldings?: {
+                stockHoldings?: Array<{ symbol?: string; holdingName?: string; holdingPercent?: number }>;
+              };
+            }>;
+            error?: unknown;
+          };
+        };
+        if (json?.quoteSummary?.error) continue;
+        const r = json?.quoteSummary?.result?.[0];
+        if (!r?.topHoldings) continue;
+
+        const holdings: EtfStockHolding[] = (r.topHoldings.stockHoldings ?? [])
+          .filter(h => h.symbol && (h.holdingPercent ?? 0) > 0)
+          .map(h => ({
+            symbol: h.symbol!,
+            holdingName: h.holdingName ?? h.symbol!,
+            holdingPercent: h.holdingPercent!,
+          }));
+
+        if (holdings.length > 0) {
+          result[ticker] = { ticker, holdings, fetchedAt: new Date().toISOString() };
+          return;
+        }
+      } catch { continue; }
+    }
+  }));
+  return result;
+}

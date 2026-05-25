@@ -2,11 +2,12 @@ import { useState, useEffect, useRef, useMemo, lazy, Suspense } from 'react';
 import {
   TrendingUp, Plus, Trash2, ArrowUpCircle, ArrowDownCircle,
   LayoutList, RefreshCw, AlertCircle, CheckCircle2, FileUp, Clock, Globe, Layers,
-  ChevronUp, ChevronDown, ChevronsUpDown,
+  ChevronUp, ChevronDown, ChevronsUpDown, Search, Building2,
 } from 'lucide-react';
 import type { PortfolioData, Holding, Transaction, AssetType, TransactionType } from '../types';
 import { computePositions } from '../utils/taxCalculations';
-import { fetchPricesWithFX, resolveIsins, resolveBareTickers, looksLikeIsin } from '../utils/priceFetcher';
+import { fetchPricesWithFX, resolveIsins, resolveBareTickers, looksLikeIsin, fetchEtfHoldings } from '../utils/priceFetcher';
+import type { EtfHoldingsResult } from '../utils/priceFetcher';
 import { useLanguage } from '../i18n/LanguageContext';
 import SectionCard from './SectionCard';
 import PieChart from './PieChart';
@@ -298,6 +299,10 @@ export default function PortfolioSection({ data, onChange }: Props) {
   const [sortCol, setSortCol]       = useState<SortCol>('marketValue');
   const [sortDir, setSortDir]       = useState<'asc' | 'desc'>('desc');
   const autoFetched = useRef(false);
+  const [etfHoldings, setEtfHoldings] = useState<Record<string, EtfHoldingsResult>>(() => {
+    try { return JSON.parse(localStorage.getItem('dutch-tax-etf-holdings-v1') || '{}'); } catch { return {}; }
+  });
+  const [etfFetchState, setEtfFetchState] = useState<FetchState>('idle');
 
   const setHoldings = (holdings: Holding[])         => onChange({ ...data, holdings });
   const setTxs      = (transactions: Transaction[]) => onChange({ ...data, transactions });
@@ -414,6 +419,23 @@ export default function PortfolioSection({ data, onChange }: Props) {
   };
 
   const handleRefreshPrices = () => doFetch(data.holdings);
+
+  const handleFetchEtfHoldings = async () => {
+    const etfTickers = data.holdings
+      .filter(h => h.type === 'etf' && h.ticker)
+      .map(h => h.ticker!);
+    if (!etfTickers.length) return;
+    setEtfFetchState('loading');
+    try {
+      const fresh = await fetchEtfHoldings(etfTickers);
+      const merged = { ...etfHoldings, ...fresh };
+      setEtfHoldings(merged);
+      localStorage.setItem('dutch-tax-etf-holdings-v1', JSON.stringify(merged));
+      setEtfFetchState('ok');
+    } catch {
+      setEtfFetchState('error');
+    }
+  };
 
   // Auto-fetch once on mount when tickers are present
   useEffect(() => {
@@ -1116,7 +1138,13 @@ export default function PortfolioSection({ data, onChange }: Props) {
       )}
 
       {tab === 'analyse' && (
-        <AnalyseTab positions={positions} holdings={data.holdings} />
+        <AnalyseTab
+          positions={positions}
+          holdings={data.holdings}
+          etfHoldingsMap={etfHoldings}
+          onFetchEtfHoldings={handleFetchEtfHoldings}
+          etfFetchState={etfFetchState}
+        />
       )}
     </SectionCard>
   );
@@ -1299,7 +1327,26 @@ function buildBreakdown(
   return map;
 }
 
-function AnalyseTab({ positions, holdings }: { positions: import('../types').Position[]; holdings: import('../types').Holding[] }) {
+interface StockExposure {
+  symbol: string;
+  name: string;
+  totalEur: number;
+  totalPct: number;
+  isDirect: boolean;
+  sources: { label: string; etfPct: number; eur: number }[];
+}
+
+function AnalyseTab({
+  positions, holdings, etfHoldingsMap, onFetchEtfHoldings, etfFetchState,
+}: {
+  positions: import('../types').Position[];
+  holdings: import('../types').Holding[];
+  etfHoldingsMap: Record<string, EtfHoldingsResult>;
+  onFetchEtfHoldings: () => void;
+  etfFetchState: FetchState;
+}) {
+  const [query, setQuery] = useState('');
+
   // Build lookup maps once
   const countryByTicker: Record<string, string | undefined> = {};
   const countryByName:   Record<string, string | undefined> = {};
@@ -1314,6 +1361,75 @@ function AnalyseTab({ positions, holdings }: { positions: import('../types').Pos
     (p.ticker && countryByTicker[p.ticker]) || (p.name && countryByName[p.name]) || undefined);
   const sectorMap  = buildBreakdown(positions, p =>
     (p.ticker && sectorByTicker[p.ticker]) || (p.name && sectorByName[p.name]) || undefined);
+
+  // ETF tickers that the user holds (type=etf with a ticker)
+  const etfPositionTickers = useMemo(() =>
+    holdings.filter(h => h.type === 'etf' && h.ticker).map(h => h.ticker!),
+    [holdings]
+  );
+
+  // Build stock exposure map: symbol → StockExposure
+  const exposureMap = useMemo(() => {
+    const totalPortfolio = positions.reduce((s, p) => s + p.currentValue, 0);
+    if (totalPortfolio === 0) return new Map<string, StockExposure>();
+
+    const map = new Map<string, StockExposure>();
+
+    const upsert = (symbol: string, name: string, addEur: number, source: StockExposure['sources'][0], isDirect: boolean) => {
+      const key = symbol.toUpperCase();
+      const existing = map.get(key);
+      if (existing) {
+        existing.totalEur += addEur;
+        existing.totalPct = existing.totalEur / totalPortfolio * 100;
+        existing.isDirect = existing.isDirect || isDirect;
+        existing.sources.push(source);
+      } else {
+        map.set(key, {
+          symbol,
+          name,
+          totalEur: addEur,
+          totalPct: addEur / totalPortfolio * 100,
+          isDirect,
+          sources: [source],
+        });
+      }
+    };
+
+    for (const pos of positions) {
+      if (pos.currentValue <= 0) continue;
+      const etfData = pos.ticker ? etfHoldingsMap[pos.ticker] : undefined;
+
+      if (etfData && etfData.holdings.length > 0) {
+        // ETF position: expand into underlying stocks
+        for (const h of etfData.holdings) {
+          const contrib = pos.currentValue * h.holdingPercent;
+          upsert(h.symbol, h.holdingName, contrib,
+            { label: pos.ticker || pos.name, etfPct: h.holdingPercent * 100, eur: contrib },
+            false);
+        }
+      } else {
+        // Direct stock/other position
+        const sym = pos.ticker || pos.name;
+        upsert(sym, pos.name, pos.currentValue,
+          { label: 'Direct', etfPct: 0, eur: pos.currentValue },
+          true);
+      }
+    }
+
+    return map;
+  }, [positions, etfHoldingsMap]);
+
+  // Sorted list + search filter
+  const displayRows = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const all = [...exposureMap.values()].sort((a, b) => b.totalEur - a.totalEur);
+    if (!q) return all.slice(0, 30);
+    return all.filter(e =>
+      e.symbol.toLowerCase().includes(q) || e.name.toLowerCase().includes(q)
+    ).slice(0, 100);
+  }, [exposureMap, query]);
+
+  const totalPortfolio = positions.reduce((s, p) => s + p.currentValue, 0);
 
   const THRESHOLD = 0.02;
 
@@ -1330,13 +1446,11 @@ function AnalyseTab({ positions, holdings }: { positions: import('../types').Pos
     const otherItems: { name: string; ticker: string; value: number }[] = [];
 
     sorted.forEach(([key, data], i) => {
-      if (key === 'Onbekend') return; // handled separately
+      if (key === 'Onbekend') return;
       if (data.total / total >= THRESHOLD || i < 3) {
         main.push({
           label: key,
-          prefix: labelKey === 'country'
-            ? (countryFlag(key) || undefined)
-            : undefined,
+          prefix: labelKey === 'country' ? (countryFlag(key) || undefined) : undefined,
           value: data.total,
           color: PIE_COLORS[main.length % PIE_COLORS.length],
           positions: data.items,
@@ -1359,18 +1473,135 @@ function AnalyseTab({ positions, holdings }: { positions: import('../types').Pos
 
   const geo    = toRows(countryMap, 'country');
   const sector = toRows(sectorMap,  'sector');
-  const noData = geo.total === 0 && sector.total === 0;
 
-  if (noData) {
-    return (
-      <div className="py-16 text-center text-slate-400 dark:text-slate-500 text-sm">
-        Geen koersdata beschikbaar — ververs prijzen eerst.
-      </div>
-    );
-  }
+  const loadedEtfs  = etfPositionTickers.filter(t => etfHoldingsMap[t]);
+  const missingEtfs = etfPositionTickers.filter(t => !etfHoldingsMap[t]);
 
   return (
     <div className="divide-y divide-slate-100 dark:divide-slate-700">
+
+      {/* ── Stock exposure search ── */}
+      <div className="pb-4">
+        <p className="pt-4 pb-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide flex items-center gap-1.5">
+          <Building2 size={12} /> Aandelenblootstelling
+        </p>
+
+        {/* ETF status + load button */}
+        {etfPositionTickers.length > 0 ? (
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            {etfPositionTickers.map(t => {
+              const loaded = !!etfHoldingsMap[t];
+              return (
+                <span key={t} className={`text-xs px-2 py-0.5 rounded-full font-mono font-medium ${
+                  loaded
+                    ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
+                    : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400'
+                }`}>
+                  {t} {loaded ? `✓ ${etfHoldingsMap[t].holdings.length}` : '—'}
+                </span>
+              );
+            })}
+            <button
+              onClick={onFetchEtfHoldings}
+              disabled={etfFetchState === 'loading'}
+              className="flex items-center gap-1.5 text-xs bg-indigo-600 text-white px-3 py-1 rounded-lg hover:bg-indigo-700 cursor-pointer border-0 disabled:opacity-60"
+            >
+              <RefreshCw size={11} className={etfFetchState === 'loading' ? 'animate-spin' : ''} />
+              {etfFetchState === 'loading' ? 'Laden…' : missingEtfs.length > 0 ? 'Laad ETF-posities' : 'Ververs'}
+            </button>
+            {etfFetchState === 'error' && (
+              <span className="text-xs text-red-500">Ophalen mislukt</span>
+            )}
+          </div>
+        ) : (
+          <p className="text-xs text-slate-400 dark:text-slate-500 mb-3">
+            Geen ETF-posities met ticker gevonden. Voeg ETF-posities toe op het Posities-tabblad.
+          </p>
+        )}
+
+        {/* Search input */}
+        {(loadedEtfs.length > 0 || exposureMap.size > 0) && (
+          <>
+            <div className="relative mb-3">
+              <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+                placeholder="Zoek aandeel (naam of ticker)…"
+                className="w-full pl-8 pr-3 py-2 text-sm border border-slate-200 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 placeholder-slate-400 outline-none focus:ring-2 focus:ring-indigo-400"
+              />
+            </div>
+
+            {displayRows.length === 0 ? (
+              <p className="text-sm text-slate-400 dark:text-slate-500 text-center py-4">
+                {query ? 'Geen resultaten gevonden.' : 'Geen data — ververs prijzen en laad ETF-posities.'}
+              </p>
+            ) : (
+              <>
+                {!query && (
+                  <p className="text-xs text-slate-400 dark:text-slate-500 mb-2">
+                    Top {displayRows.length} posities op basis van blootstelling
+                    {missingEtfs.length > 0 && ` · ${missingEtfs.length} ETF${missingEtfs.length > 1 ? "'s" : ''} nog niet geladen`}
+                  </p>
+                )}
+                <div className="space-y-1">
+                  {displayRows.map(row => {
+                    const barW = totalPortfolio > 0 ? Math.min(100, (row.totalEur / totalPortfolio) * 100) : 0;
+                    return (
+                      <div key={row.symbol} className="rounded-xl border border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-3 py-2.5">
+                        <div className="flex items-center gap-2">
+                          {/* Name + symbol */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-baseline gap-2 min-w-0">
+                              <span className="text-sm font-medium text-slate-800 dark:text-slate-100 truncate">{row.name}</span>
+                              {row.symbol !== row.name && (
+                                <span className="text-xs font-mono text-slate-400 dark:text-slate-500 shrink-0">{row.symbol}</span>
+                              )}
+                            </div>
+                            {/* Exposure bar */}
+                            <div className="mt-1.5 flex items-center gap-2">
+                              <div className="flex-1 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                                <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${barW}%` }} />
+                              </div>
+                              <span className="text-xs font-semibold tabular-nums text-indigo-600 dark:text-indigo-400 w-10 text-right">{row.totalPct.toFixed(2)}%</span>
+                              <span className="text-xs tabular-nums text-slate-500 dark:text-slate-400 w-20 text-right">{nl0geo.format(row.totalEur)}</span>
+                            </div>
+                          </div>
+                          {/* Source badges */}
+                          <div className="flex flex-wrap gap-1 justify-end max-w-[140px]">
+                            {row.sources.slice(0, 4).map((s, i) => (
+                              <span key={i} className={`text-[10px] px-1.5 py-0.5 rounded font-medium whitespace-nowrap ${
+                                s.label === 'Direct'
+                                  ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300'
+                                  : 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300'
+                              }`}>
+                                {s.label}{s.etfPct > 0 ? ` ${s.etfPct.toFixed(1)}%` : ''}
+                              </span>
+                            ))}
+                            {row.sources.length > 4 && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-500">
+                                +{row.sources.length - 4}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                {!query && exposureMap.size > 30 && (
+                  <p className="text-xs text-slate-400 dark:text-slate-500 mt-2 text-center">
+                    {exposureMap.size - 30} meer — gebruik de zoekbalk om te filteren
+                  </p>
+                )}
+              </>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* ── Geography breakdown ── */}
       {geo.total > 0 && (
         <div>
           <p className="px-4 pt-4 pb-1 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide flex items-center gap-1.5">
@@ -1384,6 +1615,8 @@ function AnalyseTab({ positions, holdings }: { positions: import('../types').Pos
           />
         </div>
       )}
+
+      {/* ── Sector breakdown ── */}
       {sector.total > 0 && (
         <div>
           <p className="px-4 pt-4 pb-1 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide flex items-center gap-1.5">
@@ -1394,6 +1627,12 @@ function AnalyseTab({ positions, holdings }: { positions: import('../types').Pos
             total={sector.total}
             unknownNote={sector.hasUnknown ? '❓ Onbekend = holdings zonder sectordata — ververs prijzen om sectordata op te halen.' : undefined}
           />
+        </div>
+      )}
+
+      {geo.total === 0 && sector.total === 0 && loadedEtfs.length === 0 && exposureMap.size === 0 && (
+        <div className="py-12 text-center text-slate-400 dark:text-slate-500 text-sm">
+          Geen koersdata beschikbaar — ververs prijzen en laad ETF-posities.
         </div>
       )}
     </div>
