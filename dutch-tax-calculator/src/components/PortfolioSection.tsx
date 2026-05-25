@@ -1505,8 +1505,8 @@ function AnalyseTab({
           <Building2 size={12} /> Aandelenblootstelling
         </p>
 
-        {/* ETF status + load button */}
-        {etfPositionTickers.length > 0 ? (
+        {/* ETF status + load button — always show button when any holding has a ticker */}
+        {holdings.some(h => h.ticker) ? (
           <div className="mb-3 flex flex-wrap items-center gap-2">
             {etfPositionTickers.map(t => {
               const loaded = !!etfHoldingsMap[t];
@@ -1528,7 +1528,7 @@ function AnalyseTab({
               <RefreshCw size={11} className={etfFetchState === 'loading' ? 'animate-spin' : ''} />
               {etfFetchState === 'loading'
                 ? etfProgress ? `${etfProgress.done}/${etfProgress.total}` : 'Laden…'
-                : missingEtfs.length > 0 ? 'Laad ETF-posities' : 'Ververs'}
+                : loadedEtfs.length === 0 ? 'Laad ETF-posities' : 'Ververs'}
             </button>
             {etfFetchState === 'error' && (
               <span className="text-xs text-red-500">Ophalen mislukt</span>
@@ -1542,9 +1542,14 @@ function AnalyseTab({
                   />
                 </div>
                 <p className="text-[10px] text-slate-400 mt-0.5">
-                  {etfProgress.done} van {etfProgress.total} tickers gecontroleerd
+                  {etfProgress.done} van {etfProgress.total} tickers gecontroleerd — ETF's die topholdings teruggeven verschijnen als badges
                 </p>
               </div>
+            )}
+            {etfFetchState === 'idle' && loadedEtfs.length === 0 && (
+              <p className="w-full text-xs text-slate-400 dark:text-slate-500 mt-1">
+                Klik op de knop om te zoeken welke posities ETF's zijn en hun onderliggende aandelen te laden.
+              </p>
             )}
           </div>
         ) : (
