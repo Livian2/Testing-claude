@@ -365,61 +365,80 @@ export interface EtfHoldingsResult {
 }
 
 /** Fetch top holdings for ETF tickers via Yahoo Finance topHoldings module. */
-export async function fetchEtfHoldings(tickers: string[]): Promise<Record<string, EtfHoldingsResult>> {
+// Yahoo Finance sometimes returns holdingPercent as {raw: 0.0466, fmt: "4.66%"} instead of a plain number.
+type YFNum = number | { raw: number } | null | undefined;
+const extractPct = (v: YFNum): number => {
+  if (typeof v === 'number') return v;
+  if (v && typeof v === 'object' && 'raw' in v) return (v as { raw: number }).raw;
+  return 0;
+};
+
+const HOLDING_BASES = [
+  '/api/finance/v10/finance/quoteSummary/',
+  '/api/finance2/v10/finance/quoteSummary/',
+  '/api/finance/v11/finance/quoteSummary/',
+];
+
+async function fetchOneEtfHoldings(ticker: string): Promise<EtfHoldingsResult | null> {
+  for (const base of HOLDING_BASES) {
+    try {
+      const url = `${base}${encodeURIComponent(ticker)}?modules=topHoldings&lang=en-US&region=US`;
+      const res = await fetch(url, {
+        headers: { Accept: 'application/json', 'Accept-Language': 'en-US,en;q=0.9' },
+      });
+      if (!res.ok) continue;
+      const json = await res.json() as {
+        quoteSummary?: {
+          result?: Array<{
+            topHoldings?: {
+              stockHoldings?: Array<{ symbol?: string; holdingName?: string; holdingPercent?: YFNum }>;
+            };
+          }>;
+          error?: unknown;
+        };
+      };
+      if (json?.quoteSummary?.error) continue;
+      const r = json?.quoteSummary?.result?.[0];
+      if (!r?.topHoldings) continue;
+
+      const holdings: EtfStockHolding[] = (r.topHoldings.stockHoldings ?? [])
+        .filter(h => h.symbol && extractPct(h.holdingPercent) > 0)
+        .map(h => ({
+          symbol: h.symbol!,
+          holdingName: h.holdingName ?? h.symbol!,
+          holdingPercent: extractPct(h.holdingPercent),
+        }));
+
+      if (holdings.length > 0) {
+        return { ticker, holdings, fetchedAt: new Date().toISOString() };
+      }
+    } catch { continue; }
+  }
+  return null;
+}
+
+/**
+ * Fetch top holdings for tickers in small sequential batches to avoid
+ * Yahoo Finance rate-limiting 76+ parallel requests.
+ * onProgress is called after each ticker with (loaded, total).
+ */
+export async function fetchEtfHoldings(
+  tickers: string[],
+  onProgress?: (done: number, total: number) => void,
+): Promise<Record<string, EtfHoldingsResult>> {
   const unique = [...new Set(tickers.filter(Boolean))];
   if (!unique.length) return {};
 
-  // Yahoo Finance sometimes returns holdingPercent as a plain number (formatted=false)
-  // and sometimes as {raw: 0.0466, fmt: "4.66%"} regardless of the formatted flag.
-  type YFNum = number | { raw: number } | null | undefined;
-  const extractPct = (v: YFNum): number => {
-    if (typeof v === 'number') return v;
-    if (v && typeof v === 'object' && 'raw' in v) return (v as { raw: number }).raw;
-    return 0;
-  };
-
   const result: Record<string, EtfHoldingsResult> = {};
-  await Promise.all(unique.map(async (ticker) => {
-    const BASES = [
-      '/api/finance/v10/finance/quoteSummary/',
-      '/api/finance2/v10/finance/quoteSummary/',
-      '/api/finance/v11/finance/quoteSummary/',
-    ];
-    for (const base of BASES) {
-      try {
-        const url = `${base}${encodeURIComponent(ticker)}?modules=topHoldings&lang=en-US&region=US`;
-        const res = await fetch(url, {
-          headers: { Accept: 'application/json', 'Accept-Language': 'en-US,en;q=0.9' },
-        });
-        if (!res.ok) continue;
-        const json = await res.json() as {
-          quoteSummary?: {
-            result?: Array<{
-              topHoldings?: {
-                stockHoldings?: Array<{ symbol?: string; holdingName?: string; holdingPercent?: YFNum }>;
-              };
-            }>;
-            error?: unknown;
-          };
-        };
-        if (json?.quoteSummary?.error) continue;
-        const r = json?.quoteSummary?.result?.[0];
-        if (!r?.topHoldings) continue;
+  const BATCH = 3;
 
-        const holdings: EtfStockHolding[] = (r.topHoldings.stockHoldings ?? [])
-          .filter(h => h.symbol && extractPct(h.holdingPercent) > 0)
-          .map(h => ({
-            symbol: h.symbol!,
-            holdingName: h.holdingName ?? h.symbol!,
-            holdingPercent: extractPct(h.holdingPercent),
-          }));
+  for (let i = 0; i < unique.length; i += BATCH) {
+    const batch = unique.slice(i, i + BATCH);
+    const settled = await Promise.all(batch.map(t => fetchOneEtfHoldings(t)));
+    settled.forEach((r, idx) => { if (r) result[batch[idx]] = r; });
+    onProgress?.(Math.min(i + BATCH, unique.length), unique.length);
+    if (i + BATCH < unique.length) await new Promise(res => setTimeout(res, 300));
+  }
 
-        if (holdings.length > 0) {
-          result[ticker] = { ticker, holdings, fetchedAt: new Date().toISOString() };
-          return;
-        }
-      } catch { continue; }
-    }
-  }));
   return result;
 }

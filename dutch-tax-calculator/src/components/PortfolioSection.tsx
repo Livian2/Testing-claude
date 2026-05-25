@@ -307,6 +307,7 @@ export default function PortfolioSection({ data, onChange }: Props) {
     } catch { return {}; }
   });
   const [etfFetchState, setEtfFetchState] = useState<FetchState>('idle');
+  const [etfProgress, setEtfProgress]     = useState<{ done: number; total: number } | null>(null);
 
   const setHoldings = (holdings: Holding[])         => onChange({ ...data, holdings });
   const setTxs      = (transactions: Transaction[]) => onChange({ ...data, transactions });
@@ -425,22 +426,30 @@ export default function PortfolioSection({ data, onChange }: Props) {
   const handleRefreshPrices = () => doFetch(data.holdings);
 
   const handleFetchEtfHoldings = async () => {
-    // Fetch for all holdings with tickers — not just etf type, because users
-    // may tag funds as "stocks" or "other". fetchEtfHoldings silently skips
-    // tickers that return no topHoldings (plain stocks).
-    const etfTickers = data.holdings
-      .filter(h => h.ticker)
-      .map(h => h.ticker!);
-    if (!etfTickers.length) return;
+    // Fetch for all holdings with tickers — regardless of tagged type, because users
+    // may have ETFs tagged as "stocks". fetchEtfHoldings uses small batches (3 at a
+    // time) to avoid Yahoo Finance rate-limiting. Plain stocks return no topHoldings
+    // and are silently skipped.
+    const allTickers = [...new Set(data.holdings.filter(h => h.ticker).map(h => h.ticker!))];
+    if (!allTickers.length) return;
     setEtfFetchState('loading');
+    setEtfProgress({ done: 0, total: allTickers.length });
     try {
-      const fresh = await fetchEtfHoldings(etfTickers);
+      let accumulated: Record<string, EtfHoldingsResult> = { ...etfHoldings };
+      const fresh = await fetchEtfHoldings(allTickers, (done, total) => {
+        setEtfProgress({ done, total });
+        // Persist partial results as they come in so the UI updates live
+        accumulated = { ...accumulated, ...fresh };
+        setEtfHoldings({ ...accumulated });
+      });
       const merged = { ...etfHoldings, ...fresh };
       setEtfHoldings(merged);
       localStorage.setItem('dutch-tax-etf-holdings-v1', JSON.stringify(merged));
       setEtfFetchState('ok');
+      setEtfProgress(null);
     } catch {
       setEtfFetchState('error');
+      setEtfProgress(null);
     }
   };
 
@@ -1151,6 +1160,7 @@ export default function PortfolioSection({ data, onChange }: Props) {
           etfHoldingsMap={etfHoldings}
           onFetchEtfHoldings={handleFetchEtfHoldings}
           etfFetchState={etfFetchState}
+          etfProgress={etfProgress}
         />
       )}
     </SectionCard>
@@ -1344,13 +1354,14 @@ interface StockExposure {
 }
 
 function AnalyseTab({
-  positions, holdings, etfHoldingsMap, onFetchEtfHoldings, etfFetchState,
+  positions, holdings, etfHoldingsMap, onFetchEtfHoldings, etfFetchState, etfProgress,
 }: {
   positions: import('../types').Position[];
   holdings: import('../types').Holding[];
   etfHoldingsMap: Record<string, EtfHoldingsResult>;
   onFetchEtfHoldings: () => void;
   etfFetchState: FetchState;
+  etfProgress: { done: number; total: number } | null;
 }) {
   const [query, setQuery] = useState('');
 
@@ -1369,11 +1380,12 @@ function AnalyseTab({
   const sectorMap  = buildBreakdown(positions, p =>
     (p.ticker && sectorByTicker[p.ticker]) || (p.name && sectorByName[p.name]) || undefined);
 
-  // All tickers across holdings — fetching topHoldings works regardless of tagged type
-  const etfPositionTickers = useMemo(() =>
-    [...new Set(holdings.filter(h => h.ticker).map(h => h.ticker!))],
-    [holdings]
-  );
+  // Show badges for ETF-type holdings + any ticker that already has loaded holdings data
+  const etfPositionTickers = useMemo(() => {
+    const etfTagged = holdings.filter(h => h.type === 'etf' && h.ticker).map(h => h.ticker!);
+    const loaded    = Object.keys(etfHoldingsMap);
+    return [...new Set([...etfTagged, ...loaded])];
+  }, [holdings, etfHoldingsMap]);
 
   // Build stock exposure map: symbol → StockExposure
   const exposureMap = useMemo(() => {
@@ -1514,10 +1526,25 @@ function AnalyseTab({
               className="flex items-center gap-1.5 text-xs bg-indigo-600 text-white px-3 py-1 rounded-lg hover:bg-indigo-700 cursor-pointer border-0 disabled:opacity-60"
             >
               <RefreshCw size={11} className={etfFetchState === 'loading' ? 'animate-spin' : ''} />
-              {etfFetchState === 'loading' ? 'Laden…' : missingEtfs.length > 0 ? 'Laad ETF-posities' : 'Ververs'}
+              {etfFetchState === 'loading'
+                ? etfProgress ? `${etfProgress.done}/${etfProgress.total}` : 'Laden…'
+                : missingEtfs.length > 0 ? 'Laad ETF-posities' : 'Ververs'}
             </button>
             {etfFetchState === 'error' && (
               <span className="text-xs text-red-500">Ophalen mislukt</span>
+            )}
+            {etfProgress && (
+              <div className="w-full mt-1">
+                <div className="h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-indigo-500 rounded-full transition-all duration-300"
+                    style={{ width: `${(etfProgress.done / etfProgress.total) * 100}%` }}
+                  />
+                </div>
+                <p className="text-[10px] text-slate-400 mt-0.5">
+                  {etfProgress.done} van {etfProgress.total} tickers gecontroleerd
+                </p>
+              </div>
             )}
           </div>
         ) : (
