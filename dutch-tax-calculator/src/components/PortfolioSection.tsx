@@ -300,7 +300,11 @@ export default function PortfolioSection({ data, onChange }: Props) {
   const [sortDir, setSortDir]       = useState<'asc' | 'desc'>('desc');
   const autoFetched = useRef(false);
   const [etfHoldings, setEtfHoldings] = useState<Record<string, EtfHoldingsResult>>(() => {
-    try { return JSON.parse(localStorage.getItem('dutch-tax-etf-holdings-v1') || '{}'); } catch { return {}; }
+    try {
+      const stored = JSON.parse(localStorage.getItem('dutch-tax-etf-holdings-v1') || '{}') as Record<string, EtfHoldingsResult>;
+      // Discard entries with empty holdings arrays (stale cache from before the parsing fix)
+      return Object.fromEntries(Object.entries(stored).filter(([, v]) => v.holdings?.length > 0));
+    } catch { return {}; }
   });
   const [etfFetchState, setEtfFetchState] = useState<FetchState>('idle');
 
@@ -421,8 +425,11 @@ export default function PortfolioSection({ data, onChange }: Props) {
   const handleRefreshPrices = () => doFetch(data.holdings);
 
   const handleFetchEtfHoldings = async () => {
+    // Fetch for all holdings with tickers — not just etf type, because users
+    // may tag funds as "stocks" or "other". fetchEtfHoldings silently skips
+    // tickers that return no topHoldings (plain stocks).
     const etfTickers = data.holdings
-      .filter(h => h.type === 'etf' && h.ticker)
+      .filter(h => h.ticker)
       .map(h => h.ticker!);
     if (!etfTickers.length) return;
     setEtfFetchState('loading');
@@ -1362,9 +1369,9 @@ function AnalyseTab({
   const sectorMap  = buildBreakdown(positions, p =>
     (p.ticker && sectorByTicker[p.ticker]) || (p.name && sectorByName[p.name]) || undefined);
 
-  // ETF tickers that the user holds (type=etf with a ticker)
+  // All tickers across holdings — fetching topHoldings works regardless of tagged type
   const etfPositionTickers = useMemo(() =>
-    holdings.filter(h => h.type === 'etf' && h.ticker).map(h => h.ticker!),
+    [...new Set(holdings.filter(h => h.ticker).map(h => h.ticker!))],
     [holdings]
   );
 
@@ -1515,7 +1522,7 @@ function AnalyseTab({
           </div>
         ) : (
           <p className="text-xs text-slate-400 dark:text-slate-500 mb-3">
-            Geen ETF-posities met ticker gevonden. Voeg ETF-posities toe op het Posities-tabblad.
+            Geen posities met ticker gevonden. Voeg een ticker toe op het Posities-tabblad.
           </p>
         )}
 
