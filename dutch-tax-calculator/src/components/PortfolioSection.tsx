@@ -463,7 +463,7 @@ export default function PortfolioSection({ data, onChange }: Props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const assetLabels: Record<AssetType, string> = {
+  const assetLabels: Record<AssetType, string> = useMemo(() => ({
     savings:    t.portfolio.assetSavings,
     stocks:     t.portfolio.assetStocks,
     etf:        t.portfolio.assetEtf,
@@ -471,7 +471,7 @@ export default function PortfolioSection({ data, onChange }: Props) {
     realEstate: t.portfolio.assetRealEstate,
     crypto:     t.portfolio.assetCrypto,
     other:      t.portfolio.assetOther,
-  };
+  }), [t]);
 
   const positions = useMemo(
     () => computePositions(data.holdings, data.transactions),
@@ -1381,32 +1381,32 @@ function AnalyseTab({
 }) {
   const [query, setQuery] = useState('');
 
-  // Build lookup maps once
-  const countryByTicker: Record<string, string | undefined> = {};
-  const countryByName:   Record<string, string | undefined> = {};
-  const sectorByTicker:  Record<string, string | undefined> = {};
-  const sectorByName:    Record<string, string | undefined> = {};
-  for (const h of holdings) {
-    if (h.ticker) { countryByTicker[h.ticker] = h.country; sectorByTicker[h.ticker] = h.sector; }
-    if (h.name)   { countryByName[h.name]     = h.country; sectorByName[h.name]     = h.sector; }
-  }
+  const { countryMap, sectorMap } = useMemo(() => {
+    // Build lookup maps once
+    const countryByTicker: Record<string, string | undefined> = {};
+    const countryByName:   Record<string, string | undefined> = {};
+    const sectorByTicker:  Record<string, string | undefined> = {};
+    const sectorByName:    Record<string, string | undefined> = {};
+    for (const h of holdings) {
+      if (h.ticker) { countryByTicker[h.ticker] = h.country; sectorByTicker[h.ticker] = h.sector; }
+      if (h.name)   { countryByName[h.name]     = h.country; sectorByName[h.name]     = h.sector; }
+    }
 
-  // Helper: add value into a breakdown map
-  const addToMap = (
-    map: Map<string, { total: number; items: { name: string; ticker: string; value: number }[] }>,
-    key: string, name: string, ticker: string, val: number,
-  ) => {
-    const entry = map.get(key) ?? { total: 0, items: [] };
-    entry.total += val;
-    const ex = entry.items.find(it => it.ticker === ticker && it.name === name);
-    if (ex) ex.value += val;
-    else entry.items.push({ name, ticker, value: val });
-    map.set(key, entry);
-  };
+    // Helper: add value into a breakdown map
+    const addToMap = (
+      map: Map<string, { total: number; items: { name: string; ticker: string; value: number }[] }>,
+      key: string, name: string, ticker: string, val: number,
+    ) => {
+      const entry = map.get(key) ?? { total: 0, items: [] };
+      entry.total += val;
+      const ex = entry.items.find(it => it.ticker === ticker && it.name === name);
+      if (ex) ex.value += val;
+      else entry.items.push({ name, ticker, value: val });
+      map.set(key, entry);
+    };
 
-  // Geography: distribute ETF value across underlying stock countries (via exchange suffix)
-  const countryMap = (() => {
-    const map = new Map<string, { total: number; items: { name: string; ticker: string; value: number }[] }>();
+    // Geography: distribute ETF value across underlying stock countries (via exchange suffix)
+    const cMap = new Map<string, { total: number; items: { name: string; ticker: string; value: number }[] }>();
     for (const pos of positions) {
       if (pos.currentValue <= 0) continue;
       const etfData = pos.ticker ? etfHoldingsMap[pos.ticker] : undefined;
@@ -1415,21 +1415,18 @@ function AnalyseTab({
         for (const h of etfData.holdings) {
           const val = pos.currentValue * h.holdingPercent;
           covered += val;
-          addToMap(map, countryFromSuffix(h.symbol) ?? 'Onbekend', pos.name, pos.ticker || pos.name, val);
+          addToMap(cMap, countryFromSuffix(h.symbol) ?? 'Onbekend', pos.name, pos.ticker || pos.name, val);
         }
         const rem = pos.currentValue - covered;
-        if (rem > 0.5) addToMap(map, 'Onbekend', pos.name, pos.ticker || pos.name, rem);
+        if (rem > 0.5) addToMap(cMap, 'Onbekend', pos.name, pos.ticker || pos.name, rem);
       } else {
         const c = (pos.ticker && countryByTicker[pos.ticker]) || countryByName[pos.name] || 'Onbekend';
-        addToMap(map, c, pos.name, pos.ticker || pos.name, pos.currentValue);
+        addToMap(cMap, c, pos.name, pos.ticker || pos.name, pos.currentValue);
       }
     }
-    return map;
-  })();
 
-  // Sector: use ETF sectorWeightings if available, else fall back to position sector
-  const sectorMap = (() => {
-    const map = new Map<string, { total: number; items: { name: string; ticker: string; value: number }[] }>();
+    // Sector: use ETF sectorWeightings if available, else fall back to position sector
+    const sMap = new Map<string, { total: number; items: { name: string; ticker: string; value: number }[] }>();
     for (const pos of positions) {
       if (pos.currentValue <= 0) continue;
       const etfData = pos.ticker ? etfHoldingsMap[pos.ticker] : undefined;
@@ -1438,17 +1435,18 @@ function AnalyseTab({
         for (const [key, pct] of Object.entries(etfData.sectorWeightings)) {
           const val = pos.currentValue * pct;
           covered += val;
-          addToMap(map, SECTOR_DISPLAY[key] ?? key, pos.name, pos.ticker || pos.name, val);
+          addToMap(sMap, SECTOR_DISPLAY[key] ?? key, pos.name, pos.ticker || pos.name, val);
         }
         const rem = pos.currentValue - covered;
-        if (rem > 0.5) addToMap(map, 'Onbekend', pos.name, pos.ticker || pos.name, rem);
+        if (rem > 0.5) addToMap(sMap, 'Onbekend', pos.name, pos.ticker || pos.name, rem);
       } else {
         const s = (pos.ticker && sectorByTicker[pos.ticker]) || sectorByName[pos.name];
-        addToMap(map, s ?? 'Onbekend', pos.name, pos.ticker || pos.name, pos.currentValue);
+        addToMap(sMap, s ?? 'Onbekend', pos.name, pos.ticker || pos.name, pos.currentValue);
       }
     }
-    return map;
-  })();
+
+    return { countryMap: cMap, sectorMap: sMap };
+  }, [holdings, positions, etfHoldingsMap]);
 
   // Show badges for ETF-type holdings + any ticker that already has loaded holdings data
   const etfPositionTickers = useMemo(() => {
@@ -1518,7 +1516,10 @@ function AnalyseTab({
     ).slice(0, 100);
   }, [exposureMap, query]);
 
-  const totalPortfolio = positions.reduce((s, p) => s + p.currentValue, 0);
+  const totalPortfolio = useMemo(
+    () => positions.reduce((s, p) => s + p.currentValue, 0),
+    [positions],
+  );
 
   const THRESHOLD = 0.02;
 
@@ -1560,8 +1561,10 @@ function AnalyseTab({
     return { rows: main, total, hasUnknown };
   }
 
-  const geo    = toRows(countryMap, 'country');
-  const sector = toRows(sectorMap,  'sector');
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const geo    = useMemo(() => toRows(countryMap, 'country'), [countryMap]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const sector = useMemo(() => toRows(sectorMap,  'sector'),  [sectorMap]);
 
   const loadedEtfs  = etfPositionTickers.filter(t => etfHoldingsMap[t]);
   const missingEtfs = etfPositionTickers.filter(t => !etfHoldingsMap[t]);

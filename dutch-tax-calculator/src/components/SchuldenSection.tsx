@@ -331,6 +331,8 @@ interface ChartPoint {
   fase: DuoFase;
 }
 
+const FASE_PRIORITY: DuoFase[] = ['aangroei', 'aflossing', 'kwijtschelding', 'lening', 'voor-start', 'afgelost'];
+
 // Catmull-Rom → cubic bezier smooth path
 function smoothPath(pts: [number, number][]): string {
   if (pts.length < 2) return '';
@@ -501,14 +503,12 @@ function DuoSimulatieCard({
     let totaalBalans = 0;
     let dominantFase: DuoFase = 'afgelost';
 
-    const fasePriority: DuoFase[] = ['aangroei', 'aflossing', 'kwijtschelding', 'lening', 'voor-start', 'afgelost'];
-
     simulations.forEach(sim => {
       const pt = sim.punten.find(p => p.jaar === jaar);
       if (pt) {
         totaalBalans += pt.balans;
-        const pi = fasePriority.indexOf(pt.fase);
-        const di = fasePriority.indexOf(dominantFase);
+        const pi = FASE_PRIORITY.indexOf(pt.fase);
+        const di = FASE_PRIORITY.indexOf(dominantFase);
         if (pi < di) dominantFase = pt.fase;
       }
     });
@@ -682,8 +682,11 @@ function DuoSimulatieCard({
 
 export default function SchuldenSection({ data, taxYear, grossSalary, isPartner, onChange }: Props) {
   const { t } = useLanguage();
-  const totalDebts = [...data.duo, ...data.beleggingen].reduce((s, d) => s + d.bedrag, 0);
-  const totaalRente = [...data.duo, ...data.beleggingen].reduce((s, d) => s + d.bedrag * (d.rentePercentage / 100), 0);
+  let totalDebts = 0, totaalRente = 0;
+  for (const d of [...data.duo, ...data.beleggingen]) {
+    totalDebts += d.bedrag;
+    totaalRente += d.bedrag * (d.rentePercentage / 100);
+  }
   const box3Debts  = Math.max(0, totalDebts - 3700);
 
   return (

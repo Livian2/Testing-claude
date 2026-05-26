@@ -171,6 +171,8 @@ function fmtK(v: number): string {
 
 const DANGER_THRESHOLD = 0.80;
 
+const nlCur = new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function MarginaleDrukChart({ data }: Props) {
@@ -206,22 +208,27 @@ export default function MarginaleDrukChart({ data }: Props) {
   const hovPt   = hoverIdx !== null ? points[hoverIdx] : null;
 
   // Danger zones where marginalToeslagen > 80%
-  const dangerZones: { x1: number; x2: number }[] = [];
-  let inDanger = false;
-  let dangerStart = 0;
-  for (const pt of points) {
-    const isDanger = pt.marginalToeslagen > DANGER_THRESHOLD;
-    if (isDanger && !inDanger) { dangerStart = pt.inkomen; inDanger = true; }
-    else if (!isDanger && inDanger) { dangerZones.push({ x1: dangerStart, x2: pt.inkomen }); inDanger = false; }
-  }
-  if (inDanger) dangerZones.push({ x1: dangerStart, x2: X_MAX });
+  const dangerZones = useMemo(() => {
+    const zones: { x1: number; x2: number }[] = [];
+    let inDanger = false;
+    let dangerStart = 0;
+    for (const pt of points) {
+      const isDanger = pt.marginalToeslagen > DANGER_THRESHOLD;
+      if (isDanger && !inDanger) { dangerStart = pt.inkomen; inDanger = true; }
+      else if (!isDanger && inDanger) { zones.push({ x1: dangerStart, x2: pt.inkomen }); inDanger = false; }
+    }
+    if (inDanger) zones.push({ x1: dangerStart, x2: X_MAX });
+    return zones;
+  }, [points]);
 
   const yTicks = [0, 0.2, 0.4, 0.6, 0.8, 1.0, 1.2];
   const xTicks = [0, 25000, 50000, 75000, 100000, 125000, 150000];
 
-  const ptsBox1: [number, number][] = points.map(p => [xToSvg(p.inkomen), yToSvg(p.effectiefBox1)]);
-  const ptsKort: [number, number][] = points.map(p => [xToSvg(p.inkomen), yToSvg(p.marginalKortingen)]);
-  const ptsToes: [number, number][] = points.map(p => [xToSvg(p.inkomen), yToSvg(p.marginalToeslagen)]);
+  const { lineBox1, lineKort, lineToes } = useMemo(() => ({
+    lineBox1: polyline(points.map(p => [xToSvg(p.inkomen), yToSvg(p.effectiefBox1)])),
+    lineKort: polyline(points.map(p => [xToSvg(p.inkomen), yToSvg(p.marginalKortingen)])),
+    lineToes: polyline(points.map(p => [xToSvg(p.inkomen), yToSvg(p.marginalToeslagen)])),
+  }), [points]);
 
   const userX = xToSvg(grossIncome);
 
@@ -233,8 +240,6 @@ export default function MarginaleDrukChart({ data }: Props) {
   const zorgAtUser       = calcZorgtoeslag(grossIncome, isPartner);
   const zorgAt1k         = calcZorgtoeslag(grossIncome + 1000, isPartner);
   const zorgLossPerKeur  = zorgAtUser - zorgAt1k;
-
-  const nlCur = new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
 
   return (
     <div className="space-y-4">
@@ -355,7 +360,7 @@ export default function MarginaleDrukChart({ data }: Props) {
 
               {/* Blue: effectief Box 1 */}
               <polyline
-                points={polyline(ptsBox1)}
+                points={lineBox1}
                 fill="none"
                 stroke="#60a5fa"
                 strokeWidth={1.5}
@@ -364,7 +369,7 @@ export default function MarginaleDrukChart({ data }: Props) {
               />
               {/* Orange: marginale druk kortingen */}
               <polyline
-                points={polyline(ptsKort)}
+                points={lineKort}
                 fill="none"
                 stroke="#fb923c"
                 strokeWidth={2}
@@ -373,7 +378,7 @@ export default function MarginaleDrukChart({ data }: Props) {
               />
               {/* Teal: marginale druk toeslagen */}
               <polyline
-                points={polyline(ptsToes)}
+                points={lineToes}
                 fill="none"
                 stroke="#2dd4bf"
                 strokeWidth={2.5}

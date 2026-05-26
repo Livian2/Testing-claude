@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useMemo } from 'react';
 import { Upload, Trash2, ChevronDown, ChevronRight, TrendingUp, AlertTriangle, GripVertical, X } from 'lucide-react';
 import type { ExpensesData, SavingsData, WoonData } from '../types';
 import { useLanguage } from '../i18n/LanguageContext';
@@ -307,17 +307,23 @@ export default function BankImportTab({ expenses, savings, woon }: Props) {
 
   // ── Derived data ─────────────────────────────────────────────────────────────
 
-  const activeTxs  = txs.filter(t => !t.excluded);
-  const months     = monthsInPeriod(txs);
-  const period     = detectPeriod(txs);
+  const { activeTxs, months, period, sumCat, incomeTotal, investTotal, savingsTotal, totalSpending } = useMemo(() => {
+    const activeTxs = txs.filter(t => !t.excluded);
 
-  const sumCat = (cat: TxCategory) =>
-    activeTxs.filter(x => x.category === cat && x.afBij === 'Af').reduce((s, x) => s + x.bedrag, 0);
+    // Single pass: sum 'Af' amounts per category
+    const afByCat = new Map<TxCategory, number>();
+    for (const x of activeTxs) {
+      if (x.afBij === 'Af') afByCat.set(x.category, (afByCat.get(x.category) || 0) + x.bedrag);
+    }
+    const sumCat = (cat: TxCategory) => afByCat.get(cat) || 0;
 
-  const incomeTotal    = activeTxs.filter(x => ['income','toeslagen','duo_inkomen','schenkingen'].includes(x.category) && x.afBij === 'Bij').reduce((s, x) => s + x.bedrag, 0);
-  const investTotal    = sumCat('investments');
-  const savingsTotal   = activeTxs.filter(x => x.category === 'savings').reduce((s, x) => s + (x.afBij === 'Af' ? x.bedrag : -x.bedrag), 0);
-  const totalSpending  = CAT_CONFIGS.filter(c => c.key !== 'investments').reduce((s, c) => s + sumCat(c.key), 0);
+    const incomeTotal  = activeTxs.filter(x => ['income','toeslagen','duo_inkomen','schenkingen'].includes(x.category) && x.afBij === 'Bij').reduce((s, x) => s + x.bedrag, 0);
+    const investTotal  = sumCat('investments');
+    const savingsTotal = activeTxs.filter(x => x.category === 'savings').reduce((s, x) => s + (x.afBij === 'Af' ? x.bedrag : -x.bedrag), 0);
+    const totalSpending = CAT_CONFIGS.filter(c => c.key !== 'investments').reduce((s, c) => s + sumCat(c.key), 0);
+
+    return { activeTxs, months: monthsInPeriod(txs), period: detectPeriod(txs), sumCat, incomeTotal, investTotal, savingsTotal, totalSpending };
+  }, [txs]);
 
   const housingMonthly = calcMonthlyHousing(woon);
 

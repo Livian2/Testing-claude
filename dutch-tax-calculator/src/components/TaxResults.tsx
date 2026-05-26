@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Calculator, TrendingUp, TrendingDown, Info, Gift, Wallet } from 'lucide-react';
 import type { TaxResult } from '../types';
 import { fmt, fmtPct } from '../utils/taxCalculations';
@@ -43,30 +43,42 @@ export default function TaxResults({ result }: Props) {
   const [cfTab, setCfTab] = useState<'verwacht' | 'werkelijk'>('verwacht');
 
   // ── Bank actuals (from localStorage, raw totals — NOT annualized) ──────────
-  interface RawTx { datum: string; category: string; afBij: string; bedrag: number; excluded: boolean; }
-  const bankTxs: RawTx[] = (() => {
-    try { return JSON.parse(localStorage.getItem('dutch-tax-bank-txs-v1') || '[]'); } catch { return []; }
-  })();
-  const hasBankData = bankTxs.length > 0;
+  const {
+    hasBankData, budgetScale,
+    aktIncome, aktToeslagen, aktDuoInkomen, aktSchenk, aktExpenses, aktInvest, aktSavings,
+  } = useMemo(() => {
+    interface RawTx { datum: string; category: string; afBij: string; bedrag: number; excluded: boolean; }
+    let bankTxs: RawTx[];
+    try { bankTxs = JSON.parse(localStorage.getItem('dutch-tax-bank-txs-v1') || '[]'); } catch { bankTxs = []; }
 
-  const bankMonths = (() => {
-    if (!bankTxs.length) return 1;
-    const dates = bankTxs.map(t => +t.datum).sort();
-    const s = dates[0], e = dates[dates.length - 1];
-    const sy = Math.floor(s / 10000), sm = Math.floor((s % 10000) / 100);
-    const ey = Math.floor(e / 10000), em = Math.floor((e % 10000) / 100);
-    return Math.max(1, (ey - sy) * 12 + (em - sm) + 1);
-  })();
+    let bankMonths = 1;
+    if (bankTxs.length) {
+      const dates = bankTxs.map(t => +t.datum).sort();
+      const s = dates[0], e = dates[dates.length - 1];
+      const sy = Math.floor(s / 10000), sm = Math.floor((s % 10000) / 100);
+      const ey = Math.floor(e / 10000), em = Math.floor((e % 10000) / 100);
+      bankMonths = Math.max(1, (ey - sy) * 12 + (em - sm) + 1);
+    }
 
-  const EXPENSE_CATS = new Set(['groceries', 'transport', 'insurance', 'healthcare', 'education', 'leisure', 'other', 'housing', 'phone']);
-  const aktIncome     = bankTxs.filter(t => t.category === 'income'      && t.afBij === 'Bij').reduce((s, t) => s + t.bedrag, 0);
-  const aktToeslagen  = bankTxs.filter(t => t.category === 'toeslagen'   && t.afBij === 'Bij').reduce((s, t) => s + t.bedrag, 0);
-  const aktDuoInkomen = bankTxs.filter(t => t.category === 'duo_inkomen' && t.afBij === 'Bij').reduce((s, t) => s + t.bedrag, 0);
-  const aktSchenk     = bankTxs.filter(t => t.category === 'schenkingen' && t.afBij === 'Bij').reduce((s, t) => s + t.bedrag, 0);
-  const aktExpenses   = bankTxs.filter(t => !t.excluded && EXPENSE_CATS.has(t.category) && t.afBij === 'Af').reduce((s, t) => s + t.bedrag, 0);
-  const aktInvest     = bankTxs.filter(t => t.category === 'investments' && t.afBij === 'Af').reduce((s, t) => s + t.bedrag, 0);
-  const aktSavings    = bankTxs.filter(t => t.category === 'savings').reduce((s, t) => s + (t.afBij === 'Af' ? t.bedrag : -t.bedrag), 0);
-  const budgetScale   = bankMonths / 12;
+    const EXPENSE_CATS = new Set(['groceries', 'transport', 'insurance', 'healthcare', 'education', 'leisure', 'other', 'housing', 'phone']);
+    let income = 0, toesl = 0, duoInk = 0, schenk = 0, expenses = 0, invest = 0, savings = 0;
+    for (const tx of bankTxs) {
+      const bij = tx.afBij === 'Bij', af = tx.afBij === 'Af';
+      if (tx.category === 'income'      && bij) income += tx.bedrag;
+      else if (tx.category === 'toeslagen'   && bij) toesl += tx.bedrag;
+      else if (tx.category === 'duo_inkomen' && bij) duoInk += tx.bedrag;
+      else if (tx.category === 'schenkingen' && bij) schenk += tx.bedrag;
+      else if (tx.category === 'investments' && af) invest += tx.bedrag;
+      if (af && !tx.excluded && EXPENSE_CATS.has(tx.category)) expenses += tx.bedrag;
+      if (tx.category === 'savings') savings += af ? tx.bedrag : -tx.bedrag;
+    }
+    return {
+      hasBankData: bankTxs.length > 0,
+      budgetScale: bankMonths / 12,
+      aktIncome: income, aktToeslagen: toesl, aktDuoInkomen: duoInk, aktSchenk: schenk,
+      aktExpenses: expenses, aktInvest: invest, aktSavings: savings,
+    };
+  }, []);
 
   const hasToeslagen = toeslagen.total > 0 || toeslagen.hypotheekrenteaftrek > 0;
   const grossIncome  = box1.taxableIncome;

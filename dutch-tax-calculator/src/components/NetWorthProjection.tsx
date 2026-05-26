@@ -375,7 +375,6 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
   const chartH = H - padT - padB;
 
   const hasWoz   = points[0]?.wozWaarde > 0;
-  const box3Debt = (p: ProjectionPoint) => p.duoDebt + p.overigeDebt;
   // Single-pass min/max — was flatMap creating O(points × 6) temporary array
   let dataMin = 0;
   let dataMax = 0;
@@ -393,25 +392,31 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
   const yMin = dataMin - valuePad;
   const yMax = dataMax + valuePad;
 
-  const xPos = (i: number) => padL + (i / config.jaren) * chartW;
-  const yPos = (v: number) => padT + chartH - ((v - yMin) / (yMax - yMin)) * chartH;
+  const xPos = useCallback((i: number) => padL + (i / config.jaren) * chartW, [config.jaren, chartW]);
+  const yPos = useCallback((v: number) => padT + chartH - ((v - yMin) / (yMax - yMin)) * chartH, [chartH, yMin, yMax]);
 
-  const seriesPts = (vals: number[]): [number, number][] => vals.map((v, i) => [xPos(i), yPos(v)]);
-
-  const ptsMap: Record<SeriesKey, [number, number][]> = {
-    netWorth:    seriesPts(points.map(p => p.netWorth)),
-    investments: seriesPts(points.map(p => p.investments)),
-    savings:     seriesPts(points.map(p => p.savings)),
-    woz:         seriesPts(points.map(p => p.wozWaarde)),
-    hyp:         seriesPts(points.map(p => -p.hypotheekDebt)),
-    box3:        seriesPts(points.map(p => -box3Debt(p))),
-  };
+  const ptsMap = useMemo<Record<SeriesKey, [number, number][]>>(() => {
+    const map: Record<SeriesKey, [number, number][]> = {
+      netWorth: [], investments: [], savings: [], woz: [], hyp: [], box3: [],
+    };
+    points.forEach((p, i) => {
+      const x = xPos(i);
+      map.netWorth.push([x, yPos(p.netWorth)]);
+      map.investments.push([x, yPos(p.investments)]);
+      map.savings.push([x, yPos(p.savings)]);
+      map.woz.push([x, yPos(p.wozWaarde)]);
+      map.hyp.push([x, yPos(-p.hypotheekDebt)]);
+      map.box3.push([x, yPos(-(p.duoDebt + p.overigeDebt))]);
+    });
+    return map;
+  }, [points, xPos, yPos]);
 
   const ticks    = niceTickRange(yMin, yMax, 6);
   const spansZero = yMin < 0 && yMax > 0;
   const y0       = yPos(0);
   const xLabels: { i: number; label: string }[] = [];
-  for (let i = 0; i <= config.jaren; i += Math.ceil(config.jaren / 6)) xLabels.push({ i, label: String(currentYear + i) });
+  const xLabelStep = Math.ceil(config.jaren / 6);
+  for (let i = 0; i <= config.jaren; i += xLabelStep) xLabels.push({ i, label: String(currentYear + i) });
   if (xLabels[xLabels.length - 1]?.i !== config.jaren)
     xLabels.push({ i: config.jaren, label: String(currentYear + config.jaren) });
 

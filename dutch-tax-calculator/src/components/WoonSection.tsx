@@ -454,12 +454,14 @@ export default function WoonSection({ data, taxYear, onChange }: Props) {
 
               {/* HRA summary */}
               {(() => {
-                const totaalRente = data.hypotheken.reduce((s, h) => {
-                  if (h.leningBedrag <= 0) return s;
+                // Single pass: per-mortgage rente + deductibility, reused for total and breakdown
+                const perHyp = data.hypotheken.map(h => {
+                  if (h.leningBedrag <= 0) return null;
                   const deductible = h.type !== 'aflossingsvrijij' || (h.overgangsrechtVoor2013 ?? true);
-                  if (!deductible) return s;
-                  try { return s + berekenHypotheek(h, taxYear).jaarRente; } catch { return s; }
-                }, 0);
+                  try { return { h, deductible, rente: berekenHypotheek(h, taxYear).jaarRente }; }
+                  catch { return null; }
+                });
+                const totaalRente = perHyp.reduce((s, p) => s + (p && p.deductible ? p.rente : 0), 0);
                 if (totaalRente <= 0) return null;
                 const woz = data.wozWaarde ?? 0;
                 const ewf = woz > 12500 ? (woz <= 1310000 ? Math.round(woz * 0.0035) : Math.round(1310000 * 0.0035 + (woz - 1310000) * 0.0235)) : 0;
@@ -493,19 +495,12 @@ export default function WoonSection({ data, taxYear, onChange }: Props) {
                     </div>
                     {data.hypotheken.length > 1 && (
                       <div className="border-t border-green-200 dark:border-green-800 pt-2 space-y-1">
-                        {data.hypotheken.map(h => {
-                          if (h.leningBedrag <= 0) return null;
-                          const deductible = h.type !== 'aflossingsvrijij' || (h.overgangsrechtVoor2013 ?? true);
-                          try {
-                            const r = berekenHypotheek(h, taxYear).jaarRente;
-                            return (
-                              <div key={h.id} className="flex justify-between text-xs text-slate-600 dark:text-slate-300">
-                                <span>{h.label}{!deductible && <span className="ml-1 text-orange-600 dark:text-orange-400">(niet aftrekbaar)</span>}</span>
-                                <span className={`font-medium ${deductible ? '' : 'line-through text-slate-400'}`}>{nl.format(r)}/jaar</span>
-                              </div>
-                            );
-                          } catch { return null; }
-                        })}
+                        {perHyp.map(p => p && (
+                          <div key={p.h.id} className="flex justify-between text-xs text-slate-600 dark:text-slate-300">
+                            <span>{p.h.label}{!p.deductible && <span className="ml-1 text-orange-600 dark:text-orange-400">(niet aftrekbaar)</span>}</span>
+                            <span className={`font-medium ${p.deductible ? '' : 'line-through text-slate-400'}`}>{nl.format(p.rente)}/jaar</span>
+                          </div>
+                        ))}
                       </div>
                     )}
                     <p className="text-xs text-green-700 dark:text-green-300 border-t border-green-200 dark:border-green-800 pt-2">
