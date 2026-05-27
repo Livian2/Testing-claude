@@ -117,10 +117,13 @@ function eigenwoningEffect(
 
 // ─── 2026 Tax Parameters ───────────────────────────────────────────────────
 // Source: Belastingdienst.nl tabellen 2026 (vastgesteld)
+// Schijf 1: t/m €38.883 → 35,75% (gecombineerd IB + premies volksverzekeringen)
+// Schijf 2: €38.883 – €78.426 → 37,56% (alleen inkomstenbelasting)
+// Schijf 3: boven €78.426 → 49,50% (alleen inkomstenbelasting)
 
 const BOX1_BRACKETS_2026 = [
-  { limit: 38441,    rate: 0.3582 },
-  { limit: 78426,    rate: 0.3748 },
+  { limit: 38883,    rate: 0.3575 },
+  { limit: 78426,    rate: 0.3756 },
   { limit: Infinity, rate: 0.4950 },
 ];
 
@@ -157,13 +160,14 @@ function calcArbeidskorting(employmentIncome: number): number {
 // ─── Box 1 ─────────────────────────────────────────────────────────────────
 
 // OLA-style split rates 2026:
-// Combined schijf 1 = 35.82% = 8.17% (IB) + 27.65% (premies: AOW 17.9% + ANW 0.1% + WLZ 9.65%)
-// Schijf 2 and 3 are inkomstenbelasting only — premies only apply up to schijf-1 ceiling
-const IB_ONLY_RATES_2026  = [0.0817, 0.3748, 0.4950];
+// Combined schijf 1 = 35.75% = 8.10% (IB) + 27.65% (premies: AOW 17.9% + ANW 0.1% + WLZ 9.65%)
+// Verification: 0.0810 + 0.1790 + 0.0010 + 0.0965 = 0.3575 ✓
+// Schijf 2 and 3 are inkomstenbelasting only — premies only apply up to schijf-1 ceiling (€38.883)
+const IB_ONLY_RATES_2026  = [0.0810, 0.3756, 0.4950];
 const PREMIE_AOW_RATE     = 0.1790;
 const PREMIE_ANW_RATE     = 0.0010;
 const PREMIE_WLZ_RATE     = 0.0965;
-const PREMIE_MAX_BASIS    = 38441; // premies are capped at the schijf-1 ceiling
+const PREMIE_MAX_BASIS    = 38883; // premies are capped at the schijf-1 ceiling (= BOX1_BRACKETS_2026[0].limit)
 
 // verzamelinkomen is passed in from calculateTaxes (box1 + box3 fictitious return)
 // so the AHK afbouw uses the correct grondslag. Falls back to box1 taxableIncome if omitted.
@@ -324,11 +328,11 @@ export function calculateToeslagen(data: TaxFormData, box1: Box1Result, box3: Bo
   // Bij laag inkomen (bijv. €6.400) geeft de formule normPremie − 5,75% × 6.400 = €1.842 →
   // begrensd op het maximum → volledige toeslag. Pas bij inkomen boven ~€11.500 daalt de toeslag.
   const ZORG_DREMPEL_PCT    = 0.0575;           // drempelpercentage 2026
-  const ZORG_NORM_SINGLE    = 38441 * 0.0575;   // ≈ 2210, afgeleid zodat toeslag = 0 op inkomensgrens
+  const ZORG_NORM_SINGLE    = 38883 * 0.0575;   // ≈ 2236, afgeleid zodat toeslag = 0 op inkomensgrens (schijf-1 ceiling)
   const ZORG_NORM_PARTNER   = ZORG_NORM_SINGLE * 2;
   const ZORG_MAX_SINGLE     = 1548;             // 129 × 12
   const ZORG_MAX_PARTNER    = 3096;             // 2 × 1548
-  const ZORG_LIMIT_SINGLE   = 38441;
+  const ZORG_LIMIT_SINGLE   = 38883;
   const ZORG_LIMIT_PARTNER  = ZORG_NORM_PARTNER / ZORG_DREMPEL_PCT; // ≈ 76.882
   // Vermogensgrens zorgtoeslag 2026: grondslag sparen en beleggen (bezittingen − schulden, vóór heffingsvrijdom)
   const ZORG_VERM_SINGLE    = 140_250;
@@ -376,8 +380,8 @@ export function calculateToeslagen(data: TaxFormData, box1: Box1Result, box3: Bo
     let tax = 0;
     let rem = Math.max(0, income);
     if (rem > 78426)  { tax += (rem - 78426) * 0.4950; rem = 78426; }
-    if (rem > 38441)  { tax += (rem - 38441) * 0.3748; rem = 38441; }
-    tax += rem * 0.3582;
+    if (rem > 38883)  { tax += (rem - 38883) * 0.3756; rem = 38883; }
+    tax += rem * 0.3575;
     return tax;
   }
 
