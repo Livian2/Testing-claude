@@ -244,6 +244,14 @@ export interface Box1Result {
   grossIncomeBeforeDeductions: number;
   ewEffect: number;          // negative = HRA deduction, positive = Hillen addition
   pensionDeduction: number;
+  // OLA-style split: inkomstenbelasting vs premie volksverzekeringen
+  ibSchijven: { schijf: number; ibRate: number; base: number; ibTax: number }[];
+  ibSubtotaal: number;
+  premieGrondslag: number;   // income up to first bracket (premies only on schijf 1)
+  premieAOW: number;
+  premieANW: number;
+  premieWLZ: number;
+  premiesSubtotaal: number;
 }
 
 export interface Box3Result {

@@ -156,6 +156,15 @@ function calcArbeidskorting(employmentIncome: number): number {
 
 // ─── Box 1 ─────────────────────────────────────────────────────────────────
 
+// OLA-style split rates 2026:
+// Combined schijf 1 = 35.82% = 8.17% (IB) + 27.65% (premies: AOW 17.9% + ANW 0.1% + WLZ 9.65%)
+// Schijf 2 and 3 are inkomstenbelasting only — premies only apply up to schijf-1 ceiling
+const IB_ONLY_RATES_2026  = [0.0817, 0.3748, 0.4950];
+const PREMIE_AOW_RATE     = 0.1790;
+const PREMIE_ANW_RATE     = 0.0010;
+const PREMIE_WLZ_RATE     = 0.0965;
+const PREMIE_MAX_BASIS    = 38441; // premies are capped at the schijf-1 ceiling
+
 // verzamelinkomen is passed in from calculateTaxes (box1 + box3 fictitious return)
 // so the AHK afbouw uses the correct grondslag. Falls back to box1 taxableIncome if omitted.
 export function calculateBox1(
@@ -196,9 +205,26 @@ export function calculateBox1(
   const netTax                  = Math.max(0, grossTax - algemeneHeffingskorting - arbeidskorting);
   const effectiveRate           = taxableIncome > 0 ? netTax / taxableIncome : 0;
 
+  // OLA-style split: inkomstenbelasting per schijf (IB only, premies excluded)
+  const ibSchijven = brackets.map((b, j) => ({
+    schijf:  j + 1,
+    ibRate:  IB_ONLY_RATES_2026[j] ?? b.rate,
+    base:    b.base,
+    ibTax:   b.base * (IB_ONLY_RATES_2026[j] ?? b.rate),
+  }));
+  const ibSubtotaal = ibSchijven.reduce((s, b) => s + b.ibTax, 0);
+
+  // Premie volksverzekeringen — only on income up to PREMIE_MAX_BASIS (= schijf-1 ceiling)
+  const premieGrondslag = Math.min(taxableIncome, PREMIE_MAX_BASIS);
+  const premieAOW       = Math.round(premieGrondslag * PREMIE_AOW_RATE);
+  const premieANW       = Math.round(premieGrondslag * PREMIE_ANW_RATE);
+  const premieWLZ       = Math.round(premieGrondslag * PREMIE_WLZ_RATE);
+  const premiesSubtotaal = premieAOW + premieANW + premieWLZ;
+
   return {
     taxableIncome, grossTax, algemeneHeffingskorting, arbeidskorting, netTax, effectiveRate, brackets,
     grossIncomeBeforeDeductions: totalGrossIncome, ewEffect, pensionDeduction,
+    ibSchijven, ibSubtotaal, premieGrondslag, premieAOW, premieANW, premieWLZ, premiesSubtotaal,
   };
 }
 

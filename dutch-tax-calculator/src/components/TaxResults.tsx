@@ -149,15 +149,17 @@ export default function TaxResults({ result }: Props) {
             <div className="flex items-center gap-3 px-6 py-4 border-b-2 border-blue-400 bg-gradient-to-r from-blue-50 to-white dark:from-slate-800 dark:to-slate-800">
               <TrendingUp size={18} className="text-blue-500" />
               <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">{t.results.box1Title}</h3>
+              <span className="ml-auto text-xs text-slate-400 shrink-0">{fmtPct(box1.effectiveRate)} {t.results.effectiveRate.toLowerCase()}</span>
             </div>
             <div className="p-6 space-y-4">
+
+              {/* ── Summary pills ── */}
               <div className="grid grid-cols-2 gap-3">
                 <StatCard label={t.results.taxableIncome} value={fmt(box1.taxableIncome)} color="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300" />
-                <StatCard label={t.results.grossTax}      value={fmt(box1.grossTax)}      color="bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800 text-orange-700 dark:text-orange-300" />
-                <StatCard label={t.results.effectiveRate} value={fmtPct(box1.effectiveRate)} color="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200" />
                 <StatCard label={t.results.netBox1Tax}    value={fmt(box1.netTax)}          color="bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-700 dark:text-red-400" />
               </div>
 
+              {/* ── Income breakdown (only if deductions apply) ── */}
               {(box1.ewEffect !== 0 || box1.pensionDeduction > 0) && (
                 <div className="bg-slate-50 dark:bg-slate-900 rounded-xl p-4 border border-slate-100 dark:border-slate-700">
                   <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-3">{t.resultsExtra.incomeBreakdown}</p>
@@ -177,37 +179,89 @@ export default function TaxResults({ result }: Props) {
                 </div>
               )}
 
-              {box1.brackets.length > 0 && (
+              {/* ── Inkomstenbelasting box 1 (OLA-style) ── */}
+              {box1.ibSchijven.length > 0 && (
                 <div className="bg-slate-50 dark:bg-slate-900 rounded-xl p-4 border border-slate-100 dark:border-slate-700">
-                  <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-3">{t.results.brackets}</p>
-                  {box1.brackets.map((b, i) => (
-                    <div key={i} className="flex items-center gap-2 py-1.5 border-b border-slate-100 dark:border-slate-700 last:border-0">
-                      <span className="text-xs w-10 text-slate-500 dark:text-slate-400 font-mono shrink-0">{fmtPct(b.rate)}</span>
-                      <div className="flex-1 min-w-0 bg-slate-200 dark:bg-slate-700 rounded h-1.5 overflow-hidden">
-                        <div className="h-full bg-blue-400 rounded" style={{ width: `${Math.min(100, (b.base / 80000) * 100)}%` }} />
+                  <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-3 uppercase tracking-wide">{t.results.ibTitle}</p>
+                  <div className="space-y-0">
+                    {box1.ibSchijven.map((s, i) => (
+                      <div key={i} className="flex items-center gap-1.5 py-1.5 border-b border-slate-100 dark:border-slate-700 last:border-0 text-xs">
+                        <span className="w-16 shrink-0 text-slate-600 dark:text-slate-300">{(t.results.schijfLabels)[i] ?? `${i + 1}e schijf`}</span>
+                        <span className="w-12 shrink-0 text-right font-mono text-slate-500 dark:text-slate-400">{(s.ibRate * 100).toFixed(2).replace('.', ',')}%</span>
+                        <span className="text-slate-400 dark:text-slate-500 shrink-0">{t.results.schijfOf}</span>
+                        <span className="flex-1 text-right text-slate-600 dark:text-slate-300 tabular-nums">{fmt(s.base)}</span>
+                        <span className="text-slate-400 dark:text-slate-500 shrink-0">=</span>
+                        <span className="w-20 text-right font-semibold text-blue-700 dark:text-blue-400 tabular-nums shrink-0">{fmt(s.ibTax)}</span>
                       </div>
-                      <span className="text-xs text-right text-slate-600 dark:text-slate-300 shrink-0">{fmt(b.base)}</span>
-                      <span className="text-xs text-right font-medium text-blue-700 dark:text-blue-400 shrink-0">{fmt(b.tax)}</span>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
+                  <div className="flex items-center justify-between pt-2 mt-1 border-t border-slate-200 dark:border-slate-600">
+                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">{t.results.ibSubtotaal}</span>
+                    <span className="text-sm font-bold text-blue-700 dark:text-blue-400 tabular-nums">{fmt(box1.ibSubtotaal)}</span>
+                  </div>
                 </div>
               )}
 
-              <div className="bg-green-50 dark:bg-green-900/20 rounded-xl p-4 border border-green-100 dark:border-green-800 space-y-2">
-                <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-3">{t.results.kortingen}</p>
-                <div className="flex items-center gap-4 text-sm">
-                  <span className="text-slate-700 dark:text-slate-200">{t.results.ahk}</span>
-                  <span className="ml-auto shrink-0 font-semibold tabular-nums text-green-600">− {fmt(box1.algemeneHeffingskorting)}</span>
+              {/* ── Premie volksverzekeringen (OLA-style) ── */}
+              {box1.premieGrondslag > 0 && (
+                <div className="bg-slate-50 dark:bg-slate-900 rounded-xl p-4 border border-slate-100 dark:border-slate-700">
+                  <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-3 uppercase tracking-wide">{t.results.premieTitle}</p>
+                  <div className="space-y-0">
+                    {[
+                      { label: t.results.premieAOW, rate: 0.1790, tax: box1.premieAOW },
+                      { label: t.results.premieANW, rate: 0.0010, tax: box1.premieANW },
+                      { label: t.results.premieWLZ, rate: 0.0965, tax: box1.premieWLZ },
+                    ].map((p, i) => (
+                      <div key={i} className="flex items-center gap-1.5 py-1.5 border-b border-slate-100 dark:border-slate-700 last:border-0 text-xs">
+                        <span className="w-16 shrink-0 text-slate-600 dark:text-slate-300">{p.label}</span>
+                        <span className="w-12 shrink-0 text-right font-mono text-slate-500 dark:text-slate-400">{(p.rate * 100).toFixed(2).replace('.', ',')}%</span>
+                        <span className="text-slate-400 dark:text-slate-500 shrink-0">{t.results.schijfOf}</span>
+                        <span className="flex-1 text-right text-slate-600 dark:text-slate-300 tabular-nums">{fmt(box1.premieGrondslag)}</span>
+                        <span className="text-slate-400 dark:text-slate-500 shrink-0">=</span>
+                        <span className="w-20 text-right font-semibold text-indigo-700 dark:text-indigo-400 tabular-nums shrink-0">{fmt(p.tax)}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex items-center justify-between pt-2 mt-1 border-t border-slate-200 dark:border-slate-600">
+                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">{t.results.premiesSubtotaal}</span>
+                    <span className="text-sm font-bold text-indigo-700 dark:text-indigo-400 tabular-nums">{fmt(box1.premiesSubtotaal)}</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-4 text-sm border-b border-green-200 dark:border-green-800 pb-2">
-                  <span className="text-slate-700 dark:text-slate-200">{t.results.ak}</span>
-                  <span className="ml-auto shrink-0 font-semibold tabular-nums text-green-600">− {fmt(box1.arbeidskorting)}</span>
+              )}
+
+              {/* ── Totaal heffing voor kortingen ── */}
+              {(box1.ibSchijven.length > 0 || box1.premieGrondslag > 0) && (
+                <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-orange-50 dark:bg-orange-900/20 border border-orange-100 dark:border-orange-800">
+                  <span className="flex-1 text-sm font-semibold text-slate-700 dark:text-slate-200">{t.results.totalHeffingBox1}</span>
+                  <span className="text-base font-bold text-orange-700 dark:text-orange-400 tabular-nums">{fmt(box1.ibSubtotaal + box1.premiesSubtotaal)}</span>
                 </div>
-                <div className="flex items-center gap-4 text-sm font-semibold">
-                  <span className="text-slate-700 dark:text-slate-200">{t.results.totalKortingen}</span>
-                  <span className="ml-auto shrink-0 tabular-nums text-green-600">− {fmt(box1.algemeneHeffingskorting + box1.arbeidskorting)}</span>
+              )}
+
+              {/* ── Heffingskortingen (OLA-style) ── */}
+              <div className="bg-green-50 dark:bg-green-900/20 rounded-xl p-4 border border-green-100 dark:border-green-800">
+                <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-3 uppercase tracking-wide">{t.results.kortingen}</p>
+                <div className="space-y-0">
+                  <div className="flex items-center gap-3 py-1.5 border-b border-green-200 dark:border-green-800 text-sm">
+                    <span className="flex-1 text-slate-700 dark:text-slate-200">{t.results.ahk}</span>
+                    <span className="shrink-0 font-semibold tabular-nums text-green-600 dark:text-green-400">− {fmt(box1.algemeneHeffingskorting)}</span>
+                  </div>
+                  <div className="flex items-center gap-3 py-1.5 border-b border-green-200 dark:border-green-800 text-sm">
+                    <span className="flex-1 text-slate-700 dark:text-slate-200">{t.results.ak}</span>
+                    <span className="shrink-0 font-semibold tabular-nums text-green-600 dark:text-green-400">− {fmt(box1.arbeidskorting)}</span>
+                  </div>
+                  <div className="flex items-center gap-3 pt-2 mt-1 border-t border-green-300 dark:border-green-700 text-sm font-semibold">
+                    <span className="flex-1 text-slate-700 dark:text-slate-200">{t.results.totalKortingen}</span>
+                    <span className="shrink-0 tabular-nums text-green-700 dark:text-green-300">− {fmt(box1.algemeneHeffingskorting + box1.arbeidskorting)}</span>
+                  </div>
                 </div>
               </div>
+
+              {/* ── Netto Box 1 belasting ── */}
+              <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800">
+                <span className="flex-1 text-sm font-bold text-slate-800 dark:text-slate-100">{t.results.netBox1Tax}</span>
+                <span className="text-xl font-bold text-red-600 dark:text-red-400 tabular-nums">{fmt(box1.netTax)}</span>
+              </div>
+
             </div>
           </div>
 

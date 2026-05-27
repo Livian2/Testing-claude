@@ -432,7 +432,7 @@ export const translations = {
       kortingen:        'Heffingskortingen',
       ahk:              'Algemene heffingskorting',
       ak:               'Arbeidskorting',
-      totalKortingen:   'Totaal kortingen',
+      totalKortingen:   'Totaal heffingskortingen',
       cashflow:         'Cashflow overzicht',
       grossIncome:      'Bruto inkomen',
       toeslagen:        'Toeslagen',
@@ -457,6 +457,17 @@ export const translations = {
       depreciationRes:  'Afschrijvingsreservering',
       netDeductionHRA:  'Netto aftrekpost (rente − EWF)',
       ewfIncomeLine:    'Eigenwoninginkomen (Wet Hillen)',
+      // OLA-style Box 1 breakdown
+      ibTitle:            'Inkomstenbelasting box 1',
+      ibSubtotaal:        'Subtotaal inkomstenbelasting',
+      premieTitle:        'Premie volksverzekeringen',
+      premieAOW:          'Premie AOW',
+      premieANW:          'Premie ANW',
+      premieWLZ:          'Premie WLZ',
+      premiesSubtotaal:   'Subtotaal premies',
+      totalHeffingBox1:   'Totaal heffing (voor kortingen)',
+      schijfOf:           'van',
+      schijfLabels:       ['1e schijf', '2e schijf', '3e schijf'],
     },
 
     // ── Forecast ──────────────────────────────────────────────────────────────
@@ -1302,7 +1313,7 @@ export const translations = {
       kortingen:        'Tax credits',
       ahk:              'General tax credit (AHK)',
       ak:               'Employment tax credit (AK)',
-      totalKortingen:   'Total credits',
+      totalKortingen:   'Total tax credits',
       cashflow:         'Cashflow overview',
       grossIncome:      'Gross income',
       toeslagen:        'Allowances',
@@ -1327,6 +1338,17 @@ export const translations = {
       depreciationRes:  'Depreciation reserve',
       netDeductionHRA:  'Net deduction (interest − EWF)',
       ewfIncomeLine:    'Owner-occupied income (Wet Hillen)',
+      // OLA-style Box 1 breakdown
+      ibTitle:            'Income tax box 1',
+      ibSubtotaal:        'Subtotal income tax',
+      premieTitle:        'National insurance premiums',
+      premieAOW:          'AOW premium',
+      premieANW:          'ANW premium',
+      premieWLZ:          'WLZ premium',
+      premiesSubtotaal:   'Subtotal premiums',
+      totalHeffingBox1:   'Total tax (before credits)',
+      schijfOf:           'of',
+      schijfLabels:       ['Bracket 1', 'Bracket 2', 'Bracket 3'],
     },
 
     // ── Forecast ──────────────────────────────────────────────────────────────
