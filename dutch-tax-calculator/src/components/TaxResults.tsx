@@ -102,37 +102,37 @@ export default function TaxResults({ result }: Props) {
     <div className="space-y-4">
 
       {/* ── Hero (full width) ── */}
-      <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-6 text-white shadow-xl">
+      <div className="bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 rounded-2xl p-6 shadow-xl border border-slate-200 dark:border-transparent">
         <div className="flex items-center gap-2 mb-4">
-          <Calculator size={20} className="text-orange-400" />
-          <h2 className="text-base font-semibold text-slate-200">{t.resultsExtra.taxCalcTitle}</h2>
+          <Calculator size={20} className="text-orange-500 dark:text-orange-400" />
+          <h2 className="text-base font-semibold text-slate-700 dark:text-slate-200">{t.resultsExtra.taxCalcTitle}</h2>
         </div>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="min-w-0">
-            <p className="text-xs text-slate-400 mb-1 truncate">{t.results.totalTax}</p>
-            <p className="text-2xl lg:text-3xl font-bold text-red-400">{fmt(totalTax)}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-1 truncate">{t.results.totalTax}</p>
+            <p className="text-2xl lg:text-3xl font-bold text-red-600 dark:text-red-400">{fmt(totalTax)}</p>
           </div>
           <div className="min-w-0">
-            <p className="text-xs text-slate-400 mb-1 truncate">{t.results.box1Tax}</p>
-            <p className="text-2xl lg:text-3xl font-bold text-orange-400">{fmt(box1.netTax)}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-1 truncate">{t.results.box1Tax}</p>
+            <p className="text-2xl lg:text-3xl font-bold text-orange-600 dark:text-orange-400">{fmt(box1.netTax)}</p>
           </div>
           <div className="min-w-0">
-            <p className="text-xs text-slate-400 mb-1 truncate">{t.results.box3Tax}</p>
-            <p className="text-2xl lg:text-3xl font-bold text-purple-400">{fmt(box3.netTax)}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-1 truncate">{t.results.box3Tax}</p>
+            <p className="text-2xl lg:text-3xl font-bold text-purple-600 dark:text-purple-400">{fmt(box3.netTax)}</p>
           </div>
           <div className="min-w-0">
-            <p className="text-xs text-slate-400 mb-1 truncate">{t.results.netDisposable}</p>
-            <p className={`text-2xl lg:text-3xl font-bold ${netDisposableIncome >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-1 truncate">{t.results.netDisposable}</p>
+            <p className={`text-2xl lg:text-3xl font-bold ${netDisposableIncome >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
               {fmt(netDisposableIncome)}
             </p>
           </div>
         </div>
         {hasToeslagen && (
-          <div className="mt-4 pt-4 border-t border-slate-700 flex items-center gap-2">
-            <Gift size={15} className="text-teal-400 shrink-0" />
-            <span className="text-sm text-slate-300">
-              {toeslagen.total > 0 && <>{t.resultsExtra.toeslagenReceive} <span className="text-teal-400 font-bold">{fmt(toeslagen.total)}</span> {t.resultsExtra.toeslagenSuffix}</>}
-              {toeslagen.hypotheekrenteaftrek > 0 && <> {t.resultsExtra.hraAdvantage} <span className="text-blue-400 font-bold">{fmt(toeslagen.hypotheekrenteaftrek)}</span></>}
+          <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700 flex items-center gap-2">
+            <Gift size={15} className="text-teal-500 dark:text-teal-400 shrink-0" />
+            <span className="text-sm text-slate-600 dark:text-slate-300">
+              {toeslagen.total > 0 && <>{t.resultsExtra.toeslagenReceive} <span className="text-teal-600 dark:text-teal-400 font-bold">{fmt(toeslagen.total)}</span> {t.resultsExtra.toeslagenSuffix}</>}
+              {toeslagen.hypotheekrenteaftrek > 0 && <> {t.resultsExtra.hraAdvantage} <span className="text-blue-600 dark:text-blue-400 font-bold">{fmt(toeslagen.hypotheekrenteaftrek)}</span></>}
             </span>
           </div>
         )}

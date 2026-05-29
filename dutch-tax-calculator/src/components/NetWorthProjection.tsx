@@ -762,11 +762,87 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
         )}
       </div>
 
+      {/* ── FIRE Summary Card ── */}
+      {(() => {
+        const startLiquid  = (points[0]?.savings ?? 0) + (points[0]?.investments ?? 0);
+        const endLiquid    = (last?.savings ?? 0) + (last?.investments ?? 0);
+        const monthlyExp   = annualExpenses / 12;
+        const monthlyInv   = jaarlijksBeleggen / 12;
+        return (
+          <div className="rounded-2xl border border-orange-200 dark:border-orange-900/40 bg-gradient-to-br from-orange-50 to-amber-50 dark:from-slate-800 dark:to-slate-900 p-5 space-y-4">
+            {/* Header */}
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-bold text-orange-600 dark:text-orange-400 tracking-wide">{t.forecastExtra.fireCardTitle}</span>
+              {fireYear !== null && (
+                <span className="ml-auto text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-700/50">
+                  FI {fireYear}
+                </span>
+              )}
+            </div>
+
+            {/* 4 stat tiles */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {[
+                { label: t.forecastExtra.startCapital,    val: nl0.format(startLiquid),         accent: 'text-orange-600 dark:text-orange-300' },
+                { label: t.forecastExtra.fireDrempelLabel, val: nl0.format(fireNumber),          accent: 'text-amber-600 dark:text-amber-400' },
+                { label: t.forecastExtra.monthlyInvest,   val: `${nl0.format(monthlyInv)}/mnd`, accent: 'text-emerald-600 dark:text-emerald-400' },
+                { label: t.forecast.investReturn,         val: `${config.rendementBeleggingen}%`, accent: 'text-emerald-600 dark:text-emerald-400' },
+              ].map(({ label, val, accent }) => (
+                <div key={label} className="rounded-xl border border-orange-100 dark:border-orange-900/30 bg-white/70 dark:bg-slate-700/50 px-3 py-2.5">
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400 mb-1 truncate">{label}</p>
+                  <p className={`text-sm font-bold tabular-nums truncate ${accent}`}>{val}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Parameters row */}
+            <div className="rounded-xl border border-orange-100 dark:border-orange-900/30 bg-white/70 dark:bg-slate-700/50 px-4 py-2.5 space-y-1.5">
+              {[
+                { label: t.forecastExtra.monthlyExpenses,    val: `${nl0.format(monthlyExp)}/mnd` },
+                { label: `SWR`,                               val: `${swr}%` },
+                { label: `${t.forecastExtra.projectedWealthEnd} ${currentYear + config.jaren}`, val: nl0.format(endLiquid), highlight: true },
+              ].map(({ label, val, highlight }) => (
+                <div key={label} className={`flex items-center justify-between text-xs ${highlight ? 'border-t border-orange-200 dark:border-orange-700/40 pt-1.5 mt-1' : ''}`}>
+                  <span className={highlight ? 'font-semibold text-slate-700 dark:text-slate-200' : 'text-slate-600 dark:text-slate-400'}>{label}</span>
+                  <span className={highlight ? 'font-bold text-orange-600 dark:text-orange-400 tabular-nums' : 'text-slate-700 dark:text-slate-300 tabular-nums'}>{val}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Progress bar + FI year */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">{t.forecastExtra.progressToFire}</span>
+                <span className="text-[11px] font-bold text-orange-600 dark:text-orange-400">{fireProgress.toFixed(1)}%</span>
+              </div>
+              <div className="h-2.5 w-full bg-orange-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                <div className="h-full rounded-full transition-all duration-500"
+                  style={{
+                    width: `${fireProgress}%`,
+                    background: fireProgress >= 100 ? 'linear-gradient(90deg,#10b981,#059669)' : 'linear-gradient(90deg,#f97316,#f59e0b)',
+                  }}
+                />
+              </div>
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="text-slate-500 dark:text-slate-400">{t.forecastExtra.expectedFiYear}</span>
+                {fireYear !== null ? (
+                  <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                    {fireYear} <span className="font-normal text-slate-400">({t.forecastExtra.currentAge.toLowerCase()} {leeftijd + (fireYear - currentYear)})</span>
+                  </span>
+                ) : (
+                  <span className="text-slate-400 dark:text-slate-500">{t.forecastExtra.outsidePeriod}</span>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* ── Chart + table ── */}
       <div className="grid grid-cols-1 xl:grid-cols-[1fr_300px] gap-4 items-start">
 
         {/* Chart */}
-        <div className="flex flex-col rounded-xl overflow-hidden border border-slate-800 shadow-2xl">
+        <div className="flex flex-col rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-lg dark:shadow-2xl">
 
           {/* SVG */}
           <div className="relative bg-[#080e1a]" style={{ userSelect: 'none' }}>
@@ -979,7 +1055,7 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
           </div>
 
           {/* Legend */}
-          <div className="bg-[#0d1526] border-t border-slate-800 px-4 py-2.5">
+          <div className="bg-slate-50 dark:bg-[#0d1526] border-t border-slate-200 dark:border-slate-800 px-4 py-2.5">
             <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-1.5">
               {SERIES.filter(s => s.key !== 'woz' || hasWoz).map(({ color, label, dashed }) => (
                 <div key={label} className="flex items-center gap-1.5">
@@ -987,7 +1063,7 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
                     <line x1={0} y1={6} x2={20} y2={6} stroke={color} strokeWidth={dashed ? 1.5 : 2}
                       strokeDasharray={dashed ? '5 2' : undefined} />
                   </svg>
-                  <span className="text-[11px] text-slate-400 whitespace-nowrap">{label}</span>
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400 whitespace-nowrap">{label}</span>
                 </div>
               ))}
               {fireNumber > 0 && (
@@ -995,7 +1071,7 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
                   <svg width={20} height={12} style={{ flexShrink: 0 }}>
                     <line x1={0} y1={6} x2={20} y2={6} stroke="#f59e0b" strokeWidth={1.5} strokeDasharray="8 4" />
                   </svg>
-                  <span className="text-[11px] text-slate-400 whitespace-nowrap">{t.forecastExtra.fireTarget}</span>
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400 whitespace-nowrap">{t.forecastExtra.fireTarget}</span>
                 </div>
               )}
             </div>

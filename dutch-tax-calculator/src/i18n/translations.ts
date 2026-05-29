@@ -782,6 +782,14 @@ export const translations = {
       tooltipHypotheek:   'Hypotheek',
       tooltipBox3Sch:     'Box3 sch.',
       tooltipAfschrRes:   'Afschr.res.',
+      fireCardTitle:      '30-jr Prognose · FIRE',
+      startCapital:       'Startkapitaal',
+      fireDrempelLabel:   'FIRE drempel',
+      monthlyInvest:      'Maandelijks inleggen',
+      monthlyExpenses:    'Maanduitgaven',
+      projectedWealthEnd: 'Verwacht vermogen',
+      progressToFire:     'Voortgang naar FIRE',
+      expectedFiYear:     'Verwacht FI-jaar',
     },
 
     // ── TaxResults extra ─────────────────────────────────────────────────────
@@ -1663,6 +1671,14 @@ export const translations = {
       tooltipHypotheek:   'Mortgage',
       tooltipBox3Sch:     'Box3 debt',
       tooltipAfschrRes:   'Deprec.res.',
+      fireCardTitle:      '30yr Forecast · FIRE',
+      startCapital:       'Starting capital',
+      fireDrempelLabel:   'FIRE target',
+      monthlyInvest:      'Monthly invest',
+      monthlyExpenses:    'Monthly expenses',
+      projectedWealthEnd: 'Projected wealth',
+      progressToFire:     'Progress to FIRE',
+      expectedFiYear:     'Expected FI year',
     },
 
     // ── TaxResults extra ─────────────────────────────────────────────────────
