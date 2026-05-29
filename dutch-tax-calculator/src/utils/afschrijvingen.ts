@@ -1,4 +1,4 @@
-import type { AfschrijvingenData, AfschrijvingItem } from '../types';
+import type { AfschrijvingItem } from '../types';
 
 export function parseAfschrijvingDate(s: string): Date | null {
   if (!s) return null;
@@ -60,30 +60,6 @@ export function gereserveerdTotNu(item: AfschrijvingItem, rate: number, upToYear
   let total = 0;
   for (let y = startYear; y <= upToYear; y++) total += jaarDeposit(item, rate, y);
   return total;
-}
-
-/** Sum of all year deposits (= target "bedrag voor vervanging"). */
-export function totalVervanging(item: AfschrijvingItem, rate: number): number {
-  const purchase = parseAfschrijvingDate(item.aankoopdatum);
-  const replace  = getReplacementDate(item);
-  if (!purchase || !replace) return 0;
-  let total = 0;
-  for (let y = purchase.getFullYear(); y <= replace.getFullYear(); y++) {
-    total += jaarDeposit(item, rate, y);
-  }
-  return total;
-}
-
-/**
- * Total reserved across all items in all categories, as of Jan 1 of taxYear.
- * Box 3 peildatum = Jan 1, so we sum deposits through (taxYear − 1).
- */
-export function totalAfschrijvingenGereserveerd(data: AfschrijvingenData, taxYear: number): number {
-  const rate = data.rentePercentage / 100;
-  return data.categorieen
-    .flatMap(c => c.items)
-    .filter(item => item.enabled !== false)
-    .reduce((sum, item) => sum + gereserveerdTotNu(item, rate, taxYear - 1), 0);
 }
 
 /**

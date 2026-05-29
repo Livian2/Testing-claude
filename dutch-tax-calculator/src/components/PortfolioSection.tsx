@@ -19,16 +19,6 @@ interface Props {
   onChange: (d: PortfolioData) => void;
 }
 
-export const ASSET_LABELS: Record<AssetType, string> = {
-  savings:    'Spaarrekening',
-  stocks:     'Aandelen',
-  etf:        'ETF / Indexfonds',
-  bonds:      'Obligaties',
-  realEstate: 'Vastgoed',
-  crypto:     'Crypto',
-  other:      'Overig',
-};
-
 export const ASSET_COLORS: Record<AssetType, string> = {
   savings:    '#10b981',
   stocks:     '#3b82f6',
@@ -53,14 +43,22 @@ const fmtDate = (iso: string): string =>
 
 const isPast = (iso: string): boolean => new Date(iso + 'T00:00:00') < new Date();
 
+// Cache one Intl.NumberFormat per currency — creating them is expensive and
+// fmtLocal is called once per holding row on every render.
+const localFmtCache = new Map<string, Intl.NumberFormat>();
 const fmtLocal = (price: number, currency: string) => {
   if (currency === 'GBp' || currency === 'GBX') {
     return `${(price).toFixed(2)} GBp`;
   }
   try {
-    return new Intl.NumberFormat('nl-NL', {
-      style: 'currency', currency, minimumFractionDigits: 2, maximumFractionDigits: 2,
-    }).format(price);
+    let fmt = localFmtCache.get(currency);
+    if (!fmt) {
+      fmt = new Intl.NumberFormat('nl-NL', {
+        style: 'currency', currency, minimumFractionDigits: 2, maximumFractionDigits: 2,
+      });
+      localFmtCache.set(currency, fmt);
+    }
+    return fmt.format(price);
   } catch {
     return `${price.toFixed(2)} ${currency}`;
   }

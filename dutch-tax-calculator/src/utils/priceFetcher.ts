@@ -344,14 +344,6 @@ export async function fetchPricesWithFX(tickers: string[]): Promise<FetchResult>
   return { quotes, rates, timestamp: new Date().toISOString() };
 }
 
-/** Backward-compat wrapper: returns only the EUR prices. */
-export async function fetchYahooPrices(tickers: string[]): Promise<Record<string, number>> {
-  const result = await fetchPricesWithFX(tickers);
-  return Object.fromEntries(
-    Object.entries(result.quotes).map(([k, v]) => [k, v.priceEur])
-  );
-}
-
 export interface EtfStockHolding {
   symbol: string;
   holdingName: string;

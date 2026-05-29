@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { CreditCard, Plus, Trash2, ChevronDown, ChevronRight, GraduationCap, TrendingDown, BookOpen } from 'lucide-react';
 import type { SchuldenData, SchuldItem, DuoType } from '../types';
 import { simuleerDuo, berekenDuoJaarbetaling, DUO_DRAAGKRACHT_VRIJ, DUO_DRAAGKRACHT_PARTNER_VRIJ, type DuoFase } from '../utils/duo';
@@ -481,61 +481,81 @@ function DuoSimulatieCard({
   const drempel = isPartner ? DUO_DRAAGKRACHT_PARTNER_VRIJ : DUO_DRAAGKRACHT_VRIJ;
   const maandBetaling = berekenDuoJaarbetaling(grossSalary, isPartner) / 12;
 
-  const activeDuo = duo.filter(d => d.bedrag > 0);
-  const simulations = activeDuo.map(d =>
-    simuleerDuo(d, grossSalary, inkomensstijging / 100, taxYear, isPartner)
-  );
+  // All DUO simulations + derived chart/summary data are expensive (per-year simulation
+  // loops). Memoise so they only recompute when the inputs actually change — not on every
+  // unrelated re-render of this tab.
+  const {
+    activeDuo, chartStart, chartPoints, totalStartDebt, totalBalansAflossStart, totalKwijtschelding,
+    totalBetaald, totalRenteTotaal, allAfgelost, latestAfgelost,
+    hasLening, hasAangroei, hasAflossing, hasKwijtschelding, maxBal,
+  } = useMemo(() => {
+    const activeDuo = duo.filter(d => d.bedrag > 0);
+    const simulations = activeDuo.map(d =>
+      simuleerDuo(d, grossSalary, inkomensstijging / 100, taxYear, isPartner)
+    );
 
-  // Chart starts at the earliest of taxYear or any leningStartJaar (or startJaar fallback)
-  const minLeningStart = activeDuo.reduce((min, d) => Math.min(min, d.leningStartJaar ?? d.startJaar), taxYear);
-  const chartStart = Math.min(taxYear, minLeningStart);
+    // Chart starts at the earliest of taxYear or any leningStartJaar (or startJaar fallback)
+    const minLeningStart = activeDuo.reduce((min, d) => Math.min(min, d.leningStartJaar ?? d.startJaar), taxYear);
+    const chartStart = Math.min(taxYear, minLeningStart);
 
-  // Chart ends a few years past the latest aflossEind
-  const maxAflossEind = activeDuo.reduce((max, d) => {
-    const s = d.aflossingsStartJaar ?? d.startJaar;
-    return Math.max(max, s + d.looptijd);
-  }, 0);
-  const chartEnd = maxAflossEind + 2;
+    // Chart ends a few years past the latest aflossEind
+    const maxAflossEind = activeDuo.reduce((max, d) => {
+      const s = d.aflossingsStartJaar ?? d.startJaar;
+      return Math.max(max, s + d.looptijd);
+    }, 0);
+    const chartEnd = maxAflossEind + 2;
 
-  // Build combined chart points
-  const chartPoints: ChartPoint[] = [];
-  for (let jaar = chartStart; jaar <= chartEnd; jaar++) {
-    let totaalBalans = 0;
-    let dominantFase: DuoFase = 'afgelost';
+    // Build combined chart points
+    const chartPoints: ChartPoint[] = [];
+    for (let jaar = chartStart; jaar <= chartEnd; jaar++) {
+      let totaalBalans = 0;
+      let dominantFase: DuoFase = 'afgelost';
 
-    simulations.forEach(sim => {
-      const pt = sim.punten.find(p => p.jaar === jaar);
-      if (pt) {
-        totaalBalans += pt.balans;
-        const pi = FASE_PRIORITY.indexOf(pt.fase);
-        const di = FASE_PRIORITY.indexOf(dominantFase);
-        if (pi < di) dominantFase = pt.fase;
-      }
-    });
+      simulations.forEach(sim => {
+        const pt = sim.punten.find(p => p.jaar === jaar);
+        if (pt) {
+          totaalBalans += pt.balans;
+          const pi = FASE_PRIORITY.indexOf(pt.fase);
+          const di = FASE_PRIORITY.indexOf(dominantFase);
+          if (pi < di) dominantFase = pt.fase;
+        }
+      });
 
-    chartPoints.push({ jaar, balans: totaalBalans, fase: dominantFase });
-    if (totaalBalans === 0 && jaar > chartStart + 1) break;
-  }
+      chartPoints.push({ jaar, balans: totaalBalans, fase: dominantFase });
+      if (totaalBalans === 0 && jaar > chartStart + 1) break;
+    }
 
-  // Summary stats
-  const totalStartDebt       = activeDuo.reduce((s, d) => s + d.bedrag, 0);
-  const totalBalansAflossStart = simulations.reduce((s, sim) => s + sim.balansOpAflossStart, 0);
-  const totalKwijtschelding  = simulations.reduce((s, sim) => s + sim.kwijtscheldingsBedrag, 0);
-  const totalBetaald         = simulations.reduce((s, sim) => s + sim.betaaldTotaal, 0);
-  const totalRenteTotaal     = simulations.reduce((s, sim) => s + sim.renteTotaal, 0);
-  const allAfgelost          = simulations.every(s => s.afgelosdJaar !== null);
-  const latestAfgelost       = simulations.reduce<number | null>((best, sim) => {
-    if (!sim.afgelosdJaar) return best;
-    return best === null ? sim.afgelosdJaar : Math.max(best, sim.afgelosdJaar);
-  }, null);
+    // Summary stats — single pass over simulations
+    const totalStartDebt = activeDuo.reduce((s, d) => s + d.bedrag, 0);
+    let totalBalansAflossStart = 0, totalKwijtschelding = 0, totalBetaald = 0, totalRenteTotaal = 0;
+    let allAfgelost = true;
+    let latestAfgelost: number | null = null;
+    for (const sim of simulations) {
+      totalBalansAflossStart += sim.balansOpAflossStart;
+      totalKwijtschelding    += sim.kwijtscheldingsBedrag;
+      totalBetaald           += sim.betaaldTotaal;
+      totalRenteTotaal       += sim.renteTotaal;
+      if (sim.afgelosdJaar === null) allAfgelost = false;
+      else latestAfgelost = latestAfgelost === null ? sim.afgelosdJaar : Math.max(latestAfgelost, sim.afgelosdJaar);
+    }
 
-  // Phase legend entries that appear in the chart
-  const hasLening     = chartPoints.some(p => p.fase === 'lening');
-  const hasAangroei   = chartPoints.some(p => p.fase === 'aangroei');
-  const hasAflossing  = chartPoints.some(p => p.fase === 'aflossing');
-  const hasKwijtschelding = chartPoints.some(p => p.fase === 'kwijtschelding');
+    // Phase legend entries that appear in the chart — single pass
+    let hasLening = false, hasAangroei = false, hasAflossing = false, hasKwijtschelding = false;
+    let maxBal = Math.max(totalStartDebt, 1);
+    for (const p of chartPoints) {
+      if (p.fase === 'lening')             hasLening = true;
+      else if (p.fase === 'aangroei')      hasAangroei = true;
+      else if (p.fase === 'aflossing')     hasAflossing = true;
+      else if (p.fase === 'kwijtschelding') hasKwijtschelding = true;
+      if (p.balans > maxBal) maxBal = p.balans;
+    }
 
-  const maxBal = Math.max(...chartPoints.map(p => p.balans), totalStartDebt, 1);
+    return {
+      activeDuo, chartStart, chartPoints, totalStartDebt, totalBalansAflossStart, totalKwijtschelding,
+      totalBetaald, totalRenteTotaal, allAfgelost, latestAfgelost,
+      hasLening, hasAangroei, hasAflossing, hasKwijtschelding, maxBal,
+    };
+  }, [duo, grossSalary, inkomensstijging, taxYear, isPartner]);
 
   const noIncome = grossSalary <= drempel;
 

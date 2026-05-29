@@ -3,7 +3,7 @@ import type { TaxFormData, PrognoseConfig } from '../types';
 import { berekenHypotheek } from '../utils/hypotheek';
 import { computePositions } from '../utils/taxCalculations';
 import { simuleerDuo } from '../utils/duo';
-import { gereserveerdTotNu } from '../utils/afschrijvingen';
+import { gereserveerdTotNu, jaarDeposit } from '../utils/afschrijvingen';
 import { useLanguage } from '../i18n/LanguageContext';
 import SectionCard from './SectionCard';
 import { TrendingUp } from 'lucide-react';
@@ -235,13 +235,17 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
       overigByYear[i] = s;
     }
 
-    // Afschrijvingen reserve per year (was reduce inside loop)
+    // Afschrijvingen reserve per year — computed incrementally (O(years) instead of O(years²)).
+    // Base (i=0) is the full cumulative reserve up to currentYear; each subsequent year only
+    // adds that year's deposit, since gereserveerdTotNu(y) − gereserveerdTotNu(y−1) = jaarDeposit(y).
     const afschrByYear = new Float64Array(numYears + 1);
-    for (let i = 0; i <= numYears; i++) {
+    let afschrAccum = 0;
+    for (const item of afschrijvingItems) afschrAccum += gereserveerdTotNu(item, afschrijvingRate, currentYear);
+    afschrByYear[0] = afschrAccum;
+    for (let i = 1; i <= numYears; i++) {
       const y = currentYear + i;
-      let s = 0;
-      for (const item of afschrijvingItems) s += gereserveerdTotNu(item, afschrijvingRate, y);
-      afschrByYear[i] = s;
+      for (const item of afschrijvingItems) afschrAccum += jaarDeposit(item, afschrijvingRate, y);
+      afschrByYear[i] = afschrAccum;
     }
 
     const swrDecimal      = swr / 100;
