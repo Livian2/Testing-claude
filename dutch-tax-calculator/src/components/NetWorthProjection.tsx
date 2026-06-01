@@ -9,7 +9,7 @@ import SectionCard from './SectionCard';
 import { TrendingUp, Flame } from 'lucide-react';
 import {
   PanelCard, StatTile, StatGrid, PanelSection, KeyValueRow,
-  ProgressBar, ResultBar, InteractiveAreaChart, type ChartPoint,
+  ProgressBar, ResultBar,
 } from './shared/Showcase';
 
 interface Props {
@@ -766,63 +766,39 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
         )}
       </div>
 
-      {/* ── FIRE Summary Card (shared Showcase components) ── */}
+      {/* ── FIRE Summary Card ── */}
       {(() => {
-        const startLiquid  = (points[0]?.savings ?? 0) + (points[0]?.investments ?? 0);
-        const endLiquid    = (last?.savings ?? 0) + (last?.investments ?? 0);
-        const monthlyExp   = annualExpenses / 12;
-        const monthlyInv   = jaarlijksBeleggen / 12;
-        const chartPts: ChartPoint[] = points.map(p => ({
-          x: p.year,
-          y: p.savings + p.investments,
-          label: String(p.year),
-        }));
+        const startLiquid = (points[0]?.savings ?? 0) + (points[0]?.investments ?? 0);
+        const endLiquid   = (last?.savings ?? 0) + (last?.investments ?? 0);
+        const monthlyExp  = annualExpenses / 12;
+        const monthlyInv  = jaarlijksBeleggen / 12;
         return (
           <PanelCard
             accent="#fb923c"
-            icon={<Flame size={16} />}
+            icon={<Flame size={15} />}
             title={t.forecastExtra.fireCardTitle}
             badge={fireYear !== null ? (
               <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full border border-emerald-300 dark:border-emerald-700/50 bg-emerald-50 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400">
-                FI {fireYear}
+                FI {fireYear} · {t.forecastExtra.currentAge.toLowerCase()} {leeftijd + (fireYear - currentYear)}
               </span>
             ) : undefined}
-            footer={
-              <ResultBar
-                label={t.forecastExtra.expectedFiYear}
-                value={fireYear !== null ? String(fireYear) : '—'}
-                accent={fireYear !== null ? '#10b981' : '#fb923c'}
-                suffix={fireYear !== null ? ` · ${t.forecastExtra.currentAge.toLowerCase()} ${leeftijd + (fireYear - currentYear)}` : undefined}
-              />
-            }
+            footer={<ResultBar label={t.forecastExtra.progressToFire} value={`${fireProgress.toFixed(1)}%`} accent="#fb923c" />}
           >
             <StatGrid cols={4}>
               <StatTile label={t.forecastExtra.startCapital}     value={nl0.format(startLiquid)}            accent="#fdba74" />
-              <StatTile label={t.forecastExtra.fireDrempelLabel} value={nl0.format(fireNumber)}            accent="#fdba74" />
-              <StatTile label={t.forecastExtra.monthlyInvest}    value={`${nl0.format(monthlyInv)}/mnd`}   accent="#6ee7b7" />
-              <StatTile label={t.forecast.investReturn}          value={`${config.rendementBeleggingen}%`} accent="#6ee7b7" />
+              <StatTile label={t.forecastExtra.fireDrempelLabel} value={nl0.format(fireNumber)}             accent="#fdba74" />
+              <StatTile label={t.forecastExtra.monthlyInvest}    value={`${nl0.format(monthlyInv)}/mnd`}    accent="#6ee7b7" />
+              <StatTile label={t.forecast.investReturn}          value={`${config.rendementBeleggingen}%`}  accent="#6ee7b7" />
             </StatGrid>
-
-            <PanelSection title={t.forecastExtra.fireCardTitle} tint accent="#fb923c">
-              <InteractiveAreaChart
-                points={chartPts}
-                accent="#fb923c"
-                target={fireNumber}
-                targetLabel="FIRE"
-                formatY={(v) => v >= 1_000_000 ? `€${(v / 1_000_000).toFixed(2)}m` : `€${(v / 1000).toFixed(0)}k`}
-                height={160}
-                ariaLabel={t.forecastExtra.fireCardTitle}
-              />
-            </PanelSection>
-
+            <ProgressBar pct={fireProgress} accent="#fb923c" />
             <PanelSection>
               <KeyValueRow label={t.forecastExtra.monthlyExpenses} value={`${nl0.format(monthlyExp)}/mnd`} />
               <KeyValueRow label="SWR" value={`${swr}%`} />
-              <KeyValueRow label={`${t.forecastExtra.projectedWealthEnd} ${currentYear + config.jaren}`}
-                           value={nl0.format(endLiquid)} accent="#fb923c" bold last />
+              <KeyValueRow
+                label={`${t.forecastExtra.projectedWealthEnd} ${currentYear + config.jaren}`}
+                value={nl0.format(endLiquid)} accent="#fb923c" bold last
+              />
             </PanelSection>
-
-            <ProgressBar pct={fireProgress} accent="#fb923c" label={t.forecastExtra.progressToFire} />
           </PanelCard>
         );
       })()}

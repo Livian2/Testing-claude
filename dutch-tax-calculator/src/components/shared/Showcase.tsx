@@ -1,6 +1,6 @@
 import {
   useEffect, useMemo, useRef, useState,
-  type CSSProperties, type ReactNode,
+  type ReactNode,
 } from 'react';
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -282,7 +282,7 @@ export function InteractiveAreaChart({
   height?: number;
   ariaLabel?: string;
 }) {
-  const W = 320;
+  const W = 600;
   const padL = 4;
   const padR = 4;
   const padT = 8;
@@ -360,17 +360,21 @@ export function InteractiveAreaChart({
   const tipX = hxy ? (flipLeft ? hxy[0] - tipW - 8 : hxy[0] + 8) : 0;
   const tipY = hxy ? Math.max(padT, Math.min(padT + chartH - tipH, hxy[1] - tipH / 2)) : 0;
 
+  // Aspect-ratio wrapper keeps the chart proportional at any container width.
+  // W=600 × height means 600:height native aspect; the container enforces this
+  // so the chart never looks squat at wide widths.
   return (
-    <svg
-      ref={svgRef}
-      viewBox={`0 0 ${W} ${height}`}
-      role="img"
-      aria-label={ariaLabel}
-      preserveAspectRatio="none"
-      style={{ width: '100%', height, display: 'block', cursor: 'crosshair' } as CSSProperties}
-      onMouseMove={onMove}
-      onMouseLeave={() => setHoverIdx(null)}
-    >
+    <div style={{ position: 'relative', width: '100%', aspectRatio: `${W} / ${height}` }}>
+      <svg
+        ref={svgRef}
+        viewBox={`0 0 ${W} ${height}`}
+        role="img"
+        aria-label={ariaLabel}
+        preserveAspectRatio="none"
+        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block', cursor: 'crosshair' }}
+        onMouseMove={onMove}
+        onMouseLeave={() => setHoverIdx(null)}
+      >
       <defs>
         <linearGradient id={gradId} x1="0" y1={padT} x2="0" y2={padT + chartH} gradientUnits="userSpaceOnUse">
           <stop offset="0%"   stopColor={accent} stopOpacity="0.4" />
@@ -450,6 +454,7 @@ export function InteractiveAreaChart({
           </g>
         </g>
       )}
-    </svg>
+      </svg>
+    </div>
   );
 }
