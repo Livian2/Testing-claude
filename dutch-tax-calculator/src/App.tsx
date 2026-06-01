@@ -1,6 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
-import { Flag, RefreshCw, Users, Download, Upload, Home, Moon, Sun, HelpCircle, Sparkles, BookOpen } from 'lucide-react';
-import WelcomeModal from './components/WelcomeModal';
+import { Flag, RefreshCw, Users, Download, Upload, Home, Moon, Sun } from 'lucide-react';
 import type { TaxFormData, FilingStatus, PrognoseConfig } from './types';
 import { calculateTaxes } from './utils/taxCalculations';
 import { useLanguage } from './i18n/LanguageContext';
@@ -17,7 +16,6 @@ import SchenkingenSection from './components/SchenkingenSection';
 import BankRekeningenSection from './components/BankRekeningenSection';
 import MarginaleDrukChart from './components/MarginaleDrukChart';
 import JaarruimteSection from './components/JaarruimteSection';
-import LandingPage from './components/LandingPage';
 import './index.css';
 
 const DEFAULT_DATA: TaxFormData = {
@@ -53,13 +51,11 @@ const DEFAULT_DATA: TaxFormData = {
   schenkingen: { schenkingen: [] },
 };
 
-const APP_VERSION         = 'v1.25.1';
-
-const STORAGE_KEY         = 'nl-belasting-data-v1';
+const APP_VERSION          = 'v1.26.0';
+const STORAGE_KEY          = 'nl-belasting-data-v1';
 const PROGNOSE_STORAGE_KEY = 'nl-belasting-prognose-v1';
-const TABS_STORAGE_KEY    = 'nl-belasting-tabs-v1';
-const THEME_STORAGE_KEY   = 'nl-belasting-theme';
-const LANDING_SEEN_KEY    = 'nl-belasting-landing-seen';
+const TABS_STORAGE_KEY     = 'nl-belasting-tabs-v1';
+const THEME_STORAGE_KEY    = 'nl-belasting-theme';
 
 function loadInitialDark(): boolean {
   try {
@@ -67,7 +63,7 @@ function loadInitialDark(): boolean {
     if (stored === 'dark') return true;
     if (stored === 'light') return false;
   } catch { /* ignore */ }
-  return window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false;
+  return window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? true;
 }
 
 const DEFAULT_PROGNOSE: PrognoseConfig = {
@@ -82,13 +78,11 @@ function loadSavedData(): TaxFormData {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return DEFAULT_DATA;
     const saved = JSON.parse(raw) as Partial<TaxFormData>;
-    // Deep-merge with defaults so newly added top-level fields are always present
     return {
       ...DEFAULT_DATA,
       ...saved,
       personal:  { ...DEFAULT_DATA.personal,  ...saved.personal  },
       woon:      { ...DEFAULT_DATA.woon,       ...saved.woon,
-                   // Migrate hypotheek.looptijd from years (legacy, ≤40) to months
                    hypotheken: (saved.woon?.hypotheken ?? DEFAULT_DATA.woon.hypotheken).map(h =>
                      h.looptijd > 0 && h.looptijd <= 40 ? { ...h, looptijd: h.looptijd * 12 } : h
                    ) },
@@ -110,7 +104,7 @@ function loadSavedData(): TaxFormData {
 type Tab = 'income' | 'woon' | 'waardes' | 'expenses' | 'schulden' | 'bank' | 'portfolio' | 'afschrijvingen' | 'schenkingen' | 'jaarruimte' | 'prognose' | 'results' | 'marginale';
 type AnyTab = Tab | 'home';
 
-interface TabMeta { id: Tab; emoji: string; description: string }
+interface TabMeta { id: Tab; description: string }
 
 const ALL_TAB_IDS: Tab[] = [
   'income', 'woon', 'waardes', 'expenses', 'schulden', 'bank',
@@ -142,25 +136,15 @@ function loadSavedPrognose(): PrognoseConfig {
 
 export default function App() {
   const { lang, setLang, t } = useLanguage();
-  const [data, setData]           = useState<TaxFormData>(loadSavedData);
-  const [prognose, setPrognose]   = useState<PrognoseConfig>(loadSavedPrognose);
+  const [data, setData]               = useState<TaxFormData>(loadSavedData);
+  const [prognose, setPrognose]       = useState<PrognoseConfig>(loadSavedPrognose);
   const [enabledTabs, setEnabledTabs] = useState<Set<Tab>>(loadEnabledTabs);
-  const [tab, setTab]             = useState<AnyTab>('home');
-  const [isDark, setIsDark]       = useState<boolean>(loadInitialDark);
-  const [showWelcome, setShowWelcome]   = useState<boolean>(false);
-  const [showLanding, setShowLanding]   = useState<boolean>(() => {
-    try { return !localStorage.getItem(LANDING_SEEN_KEY); } catch { return true; }
-  });
-  const [panelWidth, setPanelWidth]     = useState(() => Math.round(window.innerWidth * 0.35));
+  const [tab, setTab]                 = useState<AnyTab>('income');
+  const [isDark, setIsDark]           = useState<boolean>(loadInitialDark);
+  const [panelWidth, setPanelWidth]   = useState(() => Math.round(window.innerWidth * 0.35));
   const [panelVisible, setPanelVisible] = useState(true);
-  const importRef                       = useRef<HTMLInputElement>(null);
-  const resizeDragRef                   = useRef<{ startX: number; startWidth: number } | null>(null);
-
-  const closeWelcome = () => setShowWelcome(false);
-  const closeLanding = () => {
-    try { localStorage.setItem(LANDING_SEEN_KEY, '1'); } catch { /* ignore */ }
-    setShowLanding(false);
-  };
+  const importRef                     = useRef<HTMLInputElement>(null);
+  const resizeDragRef                 = useRef<{ startX: number; startWidth: number } | null>(null);
 
   const onResizeStart = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -170,12 +154,15 @@ export default function App() {
       const dx = resizeDragRef.current.startX - me.clientX;
       setPanelWidth(Math.max(280, Math.min(Math.round(window.innerWidth * 0.92), resizeDragRef.current.startWidth + dx)));
     };
-    const onUp = () => { resizeDragRef.current = null; window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+    const onUp = () => {
+      resizeDragRef.current = null;
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', onUp);
   };
 
-  // Apply / remove .dark class on <html> and persist preference
   useEffect(() => {
     if (isDark) {
       document.documentElement.classList.add('dark');
@@ -195,8 +182,7 @@ export default function App() {
       const next = new Set(prev);
       if (next.has(id)) {
         next.delete(id);
-        // If currently viewing this tab, go home
-        if (tab === id) setTab('home');
+        if (tab === id) setTab('income');
       } else {
         next.add(id);
       }
@@ -205,19 +191,19 @@ export default function App() {
   };
 
   const ALL_TABS = useMemo<TabMeta[]>(() => [
-    { id: 'income',         emoji: '💼', description: t.tabDescriptions.income },
-    { id: 'woon',           emoji: '🏠', description: t.tabDescriptions.woon },
-    { id: 'waardes',        emoji: '📋', description: t.tabDescriptions.waardes },
-    { id: 'expenses',       emoji: '🛒', description: t.tabDescriptions.expenses },
-    { id: 'schulden',       emoji: '💳', description: t.tabDescriptions.schulden },
-    { id: 'bank',           emoji: '🏦', description: t.tabDescriptions.bank },
-    { id: 'portfolio',      emoji: '📈', description: t.tabDescriptions.portfolio },
-    { id: 'afschrijvingen', emoji: '🔄', description: t.tabDescriptions.afschrijvingen },
-    { id: 'schenkingen',   emoji: '🎁', description: t.tabDescriptions.schenkingen },
-    { id: 'jaarruimte',     emoji: '🏛️', description: t.tabDescriptions.jaarruimte },
-    { id: 'prognose',       emoji: '🔮', description: t.tabDescriptions.prognose },
-    { id: 'results',        emoji: '🧮', description: t.tabDescriptions.results },
-    { id: 'marginale',      emoji: '📊', description: t.tabDescriptions.marginale },
+    { id: 'income',         description: t.tabDescriptions.income },
+    { id: 'woon',           description: t.tabDescriptions.woon },
+    { id: 'waardes',        description: t.tabDescriptions.waardes },
+    { id: 'expenses',       description: t.tabDescriptions.expenses },
+    { id: 'schulden',       description: t.tabDescriptions.schulden },
+    { id: 'bank',           description: t.tabDescriptions.bank },
+    { id: 'portfolio',      description: t.tabDescriptions.portfolio },
+    { id: 'afschrijvingen', description: t.tabDescriptions.afschrijvingen },
+    { id: 'schenkingen',    description: t.tabDescriptions.schenkingen },
+    { id: 'jaarruimte',     description: t.tabDescriptions.jaarruimte },
+    { id: 'prognose',       description: t.tabDescriptions.prognose },
+    { id: 'results',        description: t.tabDescriptions.results },
+    { id: 'marginale',      description: t.tabDescriptions.marginale },
   ], [t]);
 
   const visibleTabs = useMemo(
@@ -234,7 +220,7 @@ export default function App() {
     bank:           t.tabs.bank,
     portfolio:      t.tabs.portfolio,
     afschrijvingen: t.tabs.depreciation,
-    schenkingen:   t.tabs.gifts,
+    schenkingen:    t.tabs.gifts,
     jaarruimte:     t.tabs.jaarruimte,
     prognose:       t.tabs.forecast,
     results:        t.tabs.results,
@@ -282,25 +268,24 @@ export default function App() {
         if (Array.isArray(parsed.bankTxs) && parsed.bankTxs.length > 0) {
           try { localStorage.setItem('dutch-tax-bank-txs-v1', JSON.stringify(parsed.bankTxs)); } catch { /* quota */ }
         }
-      } catch { /* invalid file — ignore */ }
+      } catch { /* invalid file */ }
     };
     reader.readAsText(file);
     e.target.value = '';
   };
 
-  // Persist to localStorage 1s after every change (was 500ms — typing latency dominated by stringify)
   useEffect(() => {
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch { /* quota */ }
     }, 1000);
-    return () => clearTimeout(t);
+    return () => clearTimeout(timer);
   }, [data]);
 
   useEffect(() => {
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       try { localStorage.setItem(PROGNOSE_STORAGE_KEY, JSON.stringify(prognose)); } catch { /* quota */ }
     }, 1000);
-    return () => clearTimeout(t);
+    return () => clearTimeout(timer);
   }, [prognose]);
 
   const result = useMemo(() => calculateTaxes(data), [data]);
@@ -310,289 +295,216 @@ export default function App() {
 
   const showSidePanel = tab !== 'home' && tab !== 'results' && tab !== 'prognose' && tab !== 'marginale';
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200 dark:from-slate-950 dark:via-slate-900 dark:to-slate-900">
-      {showWelcome && <WelcomeModal onClose={closeWelcome} />}
-      {showLanding && (
-        <LandingPage
-          ALL_TABS={ALL_TABS}
-          TAB_LABELS={TAB_LABELS}
-          enabledTabs={enabledTabs}
-          lang={lang}
-          t={t}
-          onClose={closeLanding}
-          onOpenTab={(id) => { setTab(id as Tab); closeLanding(); }}
-          setLang={setLang}
-        />
-      )}
+  const hBg     = isDark ? '#111111' : '#fafafa';
+  const hBorder = isDark ? '#1e1e1e' : '#e4e4e7';
+  const rootBg  = isDark ? '#0c0c0c' : '#f5f5f5';
+  const rootFg  = isDark ? '#d4d4d4' : '#1a1a1a';
 
-      {/* Header */}
-      <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-200/80 dark:border-slate-700/80 sticky top-0 z-20 shadow-sm">
-        <div className="px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1.5 bg-gradient-to-br from-orange-500 to-amber-500 text-white rounded-xl px-3 py-1.5 shadow-md shadow-orange-500/20">
-              <Flag size={16} />
-              <span className="text-sm font-bold tracking-tight">NL Belasting</span>
-            </div>
-            <div className="hidden sm:block">
-              <div className="flex items-center gap-2">
-                <h1 className="text-base font-semibold text-slate-800 dark:text-slate-100 m-0 tracking-tight">{t.appTitle}</h1>
-                <span className="text-[10px] font-mono text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800 rounded px-1.5 py-0.5">{APP_VERSION}</span>
-              </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 m-0">{t.appSubtitle}</p>
-            </div>
+  return (
+    <div style={{ minHeight: '100vh', background: rootBg, color: rootFg }}>
+
+      {/* ── Header ── */}
+      <header style={{ background: hBg, borderBottom: `1px solid ${hBorder}` }} className="sticky top-0 z-20">
+        <div className="px-4 sm:px-6 py-2 flex items-center justify-between gap-4">
+
+          {/* Wordmark */}
+          <div className="flex items-center gap-2">
+            <Flag size={13} className="text-amber-500 flex-shrink-0" />
+            <span className="text-sm font-semibold text-amber-500 tracking-tight">NL Belasting</span>
+            <span style={{ color: isDark ? '#444' : '#aaa' }} className="text-[10px] hidden sm:inline">{APP_VERSION}</span>
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-0 bg-slate-100 dark:bg-slate-800 rounded-xl p-1">
+          {/* Controls */}
+          <div className="flex items-center gap-1 sm:gap-2">
+            {/* Filing status */}
+            <div className="flex items-center" style={{ border: `1px solid ${isDark ? '#2a2a2a' : '#d4d4d8'}`, borderRadius: 2 }}>
               {(['single', 'partner'] as FilingStatus[]).map(s => (
                 <button
                   key={s}
                   onClick={() => setPersonal({ filingStatus: s })}
-                  className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg transition-colors cursor-pointer border-0 ${
-                    data.personal.filingStatus === s
-                      ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 font-medium shadow-sm'
-                      : 'bg-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
-                  }`}
+                  style={{
+                    background: data.personal.filingStatus === s
+                      ? (isDark ? '#1e1e1e' : '#e4e4e7')
+                      : 'transparent',
+                    color: data.personal.filingStatus === s
+                      ? (isDark ? '#f59e0b' : '#b45309')
+                      : (isDark ? '#555' : '#999'),
+                  }}
+                  className="flex items-center gap-1 text-[11px] px-2 py-1 transition-colors cursor-pointer border-0"
                 >
-                  <Users size={12} />
+                  <Users size={10} />
                   {s === 'single' ? t.personal.single : t.personal.partner}
                 </button>
               ))}
             </div>
 
+            <button
+              onClick={handleExport}
+              style={{ color: isDark ? '#555' : '#999' }}
+              className="flex items-center gap-1 text-[11px] px-2 py-1 bg-transparent border-0 cursor-pointer hover:text-amber-500 transition-colors"
+              title={t.export}
+            >
+              <Download size={12} />
+              <span className="hidden sm:inline">{t.export}</span>
+            </button>
+
             <label
-              className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors px-2 py-1.5 cursor-pointer"
+              style={{ color: isDark ? '#555' : '#999' }}
+              className="flex items-center gap-1 text-[11px] px-2 py-1 cursor-pointer hover:text-amber-500 transition-colors"
               title={t.import}
             >
-              <Download size={14} />
+              <Upload size={12} />
               <span className="hidden sm:inline">{t.import}</span>
               <input ref={importRef} type="file" accept=".json" className="hidden" onChange={handleImport} />
             </label>
 
             <button
-              onClick={handleExport}
-              className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors px-2 py-1.5 bg-transparent border-0 cursor-pointer"
-              title={t.export}
-            >
-              <Upload size={14} />
-              <span className="hidden sm:inline">{t.export}</span>
-            </button>
-
-            <button
               onClick={() => setData(DEFAULT_DATA)}
-              className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors px-2 py-1.5 bg-transparent border-0 cursor-pointer"
+              style={{ color: isDark ? '#555' : '#999' }}
+              className="flex items-center gap-1 text-[11px] px-2 py-1 bg-transparent border-0 cursor-pointer hover:text-amber-500 transition-colors"
               title={t.reset}
             >
-              <RefreshCw size={14} />
+              <RefreshCw size={12} />
               <span className="hidden sm:inline">{t.reset}</span>
             </button>
 
             <button
               onClick={() => setLang(lang === 'nl' ? 'en' : 'nl')}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors cursor-pointer"
+              style={{
+                border: `1px solid ${isDark ? '#2a2a2a' : '#d4d4d8'}`,
+                color: isDark ? '#666' : '#888',
+                borderRadius: 2,
+              }}
+              className="text-[11px] px-2 py-0.5 bg-transparent cursor-pointer hover:text-amber-500 hover:border-amber-700 transition-colors"
             >
-              {lang === 'nl' ? '🇬🇧 EN' : '🇳🇱 NL'}
-            </button>
-
-            <button
-              onClick={() => setShowLanding(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-white border-0 cursor-pointer transition-colors"
-              title="Uitleg"
-            >
-              <BookOpen size={13} />
-              <span className="hidden sm:inline">Uitleg</span>
-            </button>
-
-            <button
-              onClick={() => setShowWelcome(true)}
-              className="flex items-center justify-center w-8 h-8 rounded-lg text-slate-500 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors bg-transparent border-0 cursor-pointer"
-              title={t.home.viewGuide}
-              aria-label={t.home.viewGuide}
-            >
-              <HelpCircle size={16} />
+              {lang === 'nl' ? 'EN' : 'NL'}
             </button>
 
             <button
               onClick={() => setIsDark(d => !d)}
-              className="flex items-center justify-center w-8 h-8 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors bg-transparent border-0 cursor-pointer"
-              title={isDark ? 'Schakel naar lichte modus' : 'Schakel naar donkere modus'}
-              aria-label={isDark ? 'Lichte modus' : 'Donkere modus'}
+              style={{ color: isDark ? '#555' : '#999' }}
+              className="flex items-center justify-center w-7 h-7 bg-transparent border-0 cursor-pointer hover:text-amber-500 transition-colors"
+              aria-label={isDark ? 'Light mode' : 'Dark mode'}
             >
-              {isDark ? <Sun size={16} /> : <Moon size={16} />}
+              {isDark ? <Sun size={13} /> : <Moon size={13} />}
             </button>
           </div>
         </div>
 
-        {/* Tabs */}
-        <div className="px-4 sm:px-6 flex overflow-x-auto">
-          {/* Home tab — always visible */}
+        {/* ── Tab bar ── */}
+        <div
+          className="px-4 sm:px-6 flex overflow-x-auto"
+          style={{ borderTop: `1px solid ${isDark ? '#191919' : '#e4e4e7'}` }}
+        >
           <button
             onClick={() => setTab('home')}
-            className={`flex items-center gap-1.5 px-3 py-2.5 text-sm whitespace-nowrap border-b-2 transition-colors cursor-pointer bg-transparent border-x-0 border-t-0 ${
-              tab === 'home'
-                ? 'border-orange-500 text-orange-600 font-medium'
-                : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600'
-            }`}
+            style={{
+              borderBottom: `2px solid ${tab === 'home' ? '#f59e0b' : 'transparent'}`,
+              color: tab === 'home' ? '#f59e0b' : (isDark ? '#555' : '#aaa'),
+            }}
+            className="flex items-center gap-1 px-3 py-2 text-[11px] whitespace-nowrap border-x-0 border-t-0 bg-transparent cursor-pointer hover:text-amber-500 transition-colors uppercase tracking-wider"
           >
-            <Home size={14} />
-            Start
+            <Home size={11} />
+            Config
           </button>
 
-          {/* User-selected tabs */}
           {visibleTabs.map(tabMeta => (
             <button
               key={tabMeta.id}
               onClick={() => setTab(tabMeta.id)}
-              className={`flex items-center gap-1.5 px-3 py-2.5 text-sm whitespace-nowrap border-b-2 transition-all duration-150 cursor-pointer bg-transparent border-x-0 border-t-0 ${
-                tab === tabMeta.id
-                  ? 'border-orange-500 text-orange-600 dark:text-orange-400 font-semibold'
-                  : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-100 hover:border-slate-300 dark:hover:border-slate-600'
-              }`}
+              style={{
+                borderBottom: `2px solid ${tab === tabMeta.id ? '#f59e0b' : 'transparent'}`,
+                color: tab === tabMeta.id ? '#f59e0b' : (isDark ? '#555' : '#aaa'),
+              }}
+              className="flex items-center gap-1 px-3 py-2 text-[11px] whitespace-nowrap border-x-0 border-t-0 bg-transparent cursor-pointer hover:text-amber-500 transition-colors uppercase tracking-wider"
             >
-              <span>{tabMeta.emoji}</span>
               {TAB_LABELS[tabMeta.id]}
               {tabMeta.id === 'results' && (
-                <span className="ml-1 bg-gradient-to-r from-orange-500 to-amber-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm">
-                  Live
-                </span>
+                <span className="text-amber-500 text-[8px] ml-0.5">●</span>
               )}
             </button>
           ))}
 
-          {/* Panel toggle — only shown when a side panel would appear */}
           {showSidePanel && (
             <button
               onClick={() => setPanelVisible(v => !v)}
-              className="ml-auto shrink-0 flex items-center gap-1.5 px-3 py-2.5 text-xs whitespace-nowrap border-b-2 border-transparent text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors cursor-pointer bg-transparent border-x-0 border-t-0"
+              style={{ color: isDark ? '#444' : '#bbb' }}
+              className="ml-auto shrink-0 flex items-center gap-1 px-3 py-2 text-[11px] whitespace-nowrap border-b-2 border-transparent border-x-0 border-t-0 bg-transparent cursor-pointer hover:text-amber-500 transition-colors"
               title={panelVisible ? 'Verberg berekening' : 'Toon berekening'}
             >
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
-                <rect x="1" y="1" width="12" height="12" rx="2"/>
+              <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <rect x="1" y="1" width="12" height="12" rx="1"/>
                 <line x1="9" y1="1" x2="9" y2="13"/>
               </svg>
-              {panelVisible ? 'Verberg' : 'Toon berekening'}
+              <span className="hidden sm:inline">{panelVisible ? 'Verberg' : 'Toon'}</span>
             </button>
           )}
         </div>
       </header>
 
-      {/* Main content */}
-      <main className="px-4 sm:px-6 py-6">
-        <div key={tab} className="animate-slide-up-fade">
+      {/* ── Main ── */}
+      <main className="px-4 sm:px-6 py-5">
+
+        {/* Config / tab management */}
         {tab === 'home' && (
-          <div className="space-y-6">
-            {/* Hero */}
-            <div className="relative overflow-hidden bg-gradient-to-br from-orange-500 via-amber-500 to-orange-600 rounded-2xl px-6 py-8 sm:px-8 sm:py-10 shadow-xl shadow-orange-500/20">
-              <div className="absolute -top-12 -right-12 w-64 h-64 bg-white/10 rounded-full blur-3xl pointer-events-none animate-float-1" />
-              <div className="absolute -bottom-12 -left-12 w-64 h-64 bg-amber-300/20 rounded-full blur-3xl pointer-events-none animate-float-2" />
-              <div className="shimmer-sweep" />
-              <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div className="text-white">
-                  <div className="flex items-center gap-2 mb-2 animate-hero-item" style={{ '--hero-delay': '0ms' } as React.CSSProperties}>
-                    <Sparkles size={18} className="text-white/90" />
-                    <span className="text-xs font-semibold uppercase tracking-wider text-white/90">{t.home.taxYear}</span>
-                  </div>
-                  <h2 className="text-2xl sm:text-3xl font-bold tracking-tight m-0 animate-hero-item" style={{ '--hero-delay': '80ms' } as React.CSSProperties}>{t.home.welcome}</h2>
-                  <p className="text-sm sm:text-base text-white/85 mt-1.5 max-w-2xl animate-hero-item" style={{ '--hero-delay': '160ms' } as React.CSSProperties}>
-                    {t.home.subtitle}
-                  </p>
-                </div>
-                <button
-                  onClick={() => setShowLanding(true)}
-                  className="flex items-center gap-2 bg-white/15 hover:bg-white/25 backdrop-blur-sm text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors border border-white/20 cursor-pointer whitespace-nowrap animate-hero-item"
-                  style={{ '--hero-delay': '260ms' } as React.CSSProperties}
-                >
-                  <BookOpen size={16} /> Uitleg
-                </button>
-              </div>
-            </div>
-
-            {/* Section header */}
-            <div className="flex items-end justify-between gap-2 px-1">
-              <div>
-                <h3 className="text-base font-semibold text-slate-800 dark:text-slate-100 m-0">{t.home.yourTabs}</h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{t.home.toggleHint}</p>
-              </div>
-              <span className="text-xs font-mono text-slate-400 dark:text-slate-500">{visibleTabs.length} / {ALL_TABS.length} {t.home.active}</span>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
-              {ALL_TABS.map((tabMeta, index) => {
+          <div className="max-w-2xl">
+            <p style={{ color: isDark ? '#555' : '#aaa' }} className="text-[11px] mb-4">
+              Belastingjaar 2026 · {visibleTabs.length}/{ALL_TABS.length} tabbladen actief
+            </p>
+            <div style={{ borderTop: `1px solid ${isDark ? '#1e1e1e' : '#e4e4e7'}` }}>
+              {ALL_TABS.map(tabMeta => {
                 const enabled = enabledTabs.has(tabMeta.id);
                 return (
                   <div
                     key={tabMeta.id}
-                    className={`group relative bg-white dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl p-4 flex flex-col gap-3 border animate-card-entrance home-tab-card ${
-                      enabled
-                        ? 'card-enabled border-slate-200 dark:border-slate-700 hover:border-orange-300 dark:hover:border-orange-700'
-                        : 'border-slate-200/60 dark:border-slate-700/60 opacity-50 hover:opacity-75'
-                    }`}
-                    style={{ '--card-delay': `${index * 40}ms` } as React.CSSProperties}
+                    className="flex items-center justify-between py-2"
+                    style={{ borderBottom: `1px solid ${isDark ? '#191919' : '#ececec'}` }}
                   >
-                    {enabled && (
-                      <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-orange-400 to-amber-400 rounded-t-2xl" />
-                    )}
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-2.5">
-                        <span className="text-2xl leading-none">{tabMeta.emoji}</span>
-                        <span className="font-semibold text-slate-800 dark:text-slate-100 text-sm tracking-tight">{TAB_LABELS[tabMeta.id]}</span>
-                      </div>
+                    <div className="flex items-center gap-3">
                       <button
                         onClick={() => toggleTab(tabMeta.id)}
-                        className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-0 transition-colors focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-offset-2 dark:focus:ring-offset-slate-800 ${
-                          enabled ? 'bg-orange-500' : 'bg-slate-300 dark:bg-slate-600'
-                        }`}
-                        role="switch"
-                        aria-checked={enabled}
+                        style={{
+                          border: `1px solid ${enabled ? '#92400e' : (isDark ? '#2a2a2a' : '#d4d4d8')}`,
+                          color: enabled ? '#f59e0b' : (isDark ? '#3a3a3a' : '#bbb'),
+                          borderRadius: 1,
+                        }}
+                        className="text-[9px] px-1.5 py-0.5 bg-transparent cursor-pointer hover:border-amber-600 hover:text-amber-500 transition-colors font-bold tracking-wider"
                       >
-                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform mt-0.5 ${enabled ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                        {enabled ? 'ON' : 'OFF'}
                       </button>
+                      <span
+                        style={{ color: enabled ? (isDark ? '#ccc' : '#333') : (isDark ? '#3a3a3a' : '#ccc') }}
+                        className="text-[11px] uppercase tracking-wide"
+                      >
+                        {TAB_LABELS[tabMeta.id]}
+                      </span>
                     </div>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed flex-1">{tabMeta.description}</p>
-                    {enabled && (
-                      <button
-                        onClick={() => setTab(tabMeta.id)}
-                        className="text-xs text-orange-600 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-300 font-semibold text-left bg-transparent border-0 cursor-pointer p-0 transition-all duration-200 group-hover:translate-x-1"
+                    <div className="flex items-center gap-4">
+                      <span
+                        style={{ color: isDark ? '#383838' : '#ccc' }}
+                        className="text-[10px] hidden sm:block max-w-xs truncate"
                       >
-                        {t.home.openTab} {TAB_LABELS[tabMeta.id]} →
-                      </button>
-                    )}
+                        {tabMeta.description}
+                      </span>
+                      {enabled && (
+                        <button
+                          onClick={() => setTab(tabMeta.id)}
+                          className="text-[10px] text-amber-700 hover:text-amber-500 cursor-pointer bg-transparent border-0 transition-colors"
+                        >
+                          open →
+                        </button>
+                      )}
+                    </div>
                   </div>
                 );
               })}
             </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-2">
-              <div className="bg-white dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 flex items-start gap-3 animate-info-card-in" style={{ '--info-delay': '420ms' } as React.CSSProperties}>
-                <div className="bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-lg p-2 flex-shrink-0">🔒</div>
-                <div>
-                  <p className="text-xs font-semibold text-slate-800 dark:text-slate-100 m-0">{t.home.localTitle}</p>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 m-0 leading-relaxed">{t.home.localDesc}</p>
-                </div>
-              </div>
-              <div className="bg-white dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 flex items-start gap-3 animate-info-card-in" style={{ '--info-delay': '520ms' } as React.CSSProperties}>
-                <div className="bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg p-2 flex-shrink-0">⚡</div>
-                <div>
-                  <p className="text-xs font-semibold text-slate-800 dark:text-slate-100 m-0">{t.home.liveTitle}</p>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 m-0 leading-relaxed">{t.home.liveDesc}</p>
-                </div>
-              </div>
-              <div className="bg-white dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 flex items-start gap-3 animate-info-card-in" style={{ '--info-delay': '620ms' } as React.CSSProperties}>
-                <div className="bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-lg p-2 flex-shrink-0">💾</div>
-                <div>
-                  <p className="text-xs font-semibold text-slate-800 dark:text-slate-100 m-0">{t.home.autoSaveTitle}</p>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 m-0 leading-relaxed">{t.home.autoSaveDesc}</p>
-                </div>
-              </div>
-            </div>
           </div>
         )}
 
-        {/* Two-column layout for input tabs on wide screens */}
+        {/* Two-column layout for input tabs */}
         {showSidePanel && (
-          <div className="flex flex-col xl:flex-row xl:items-stretch gap-y-6">
-            {/* Left: tab content */}
+          <div className="flex flex-col xl:flex-row xl:items-stretch gap-y-5">
             <div className="min-w-0 flex-1">
               {tab === 'income' && (
                 <div className="space-y-4">
@@ -600,7 +512,7 @@ export default function App() {
                     data={data.income}
                     onChange={income => setData(d => ({ ...d, income }))}
                   />
-                  <InfoBox>
+                  <InfoBox isDark={isDark}>
                     <strong>Box 1</strong> — 35,82% (t/m €38.441) · 37,48% (€38.441–€78.426) · 49,50% (boven €78.426).
                     Hypotheekrente wordt automatisch meegenomen als aftrekpost vanuit het <em>Wonen</em>-tabblad.
                   </InfoBox>
@@ -619,7 +531,7 @@ export default function App() {
                     data={data.waardes}
                     onChange={waardes => setData(d => ({ ...d, waardes }))}
                   />
-                  <InfoBox>
+                  <InfoBox isDark={isDark}>
                     <strong>Box 3</strong> — peildatum <strong>1 januari {data.personal.taxYear}</strong>.
                     Fictief rendement 2026: spaargeld <strong>1,03%</strong> · beleggingen <strong>5,88%</strong> · schulden <strong>2,62%</strong>.
                     Heffingvrij: <strong>€57.684</strong> / <strong>€115.368</strong> (partners).
@@ -673,14 +585,16 @@ export default function App() {
               {tab === 'jaarruimte' && <JaarruimteSection data={data} />}
             </div>
 
-            {/* Resize handle + right panel — hidden when user collapses them */}
             {panelVisible && (
               <>
                 <div
                   onMouseDown={onResizeStart}
                   className="hidden xl:flex flex-col items-center w-3 flex-none cursor-col-resize group select-none"
                 >
-                  <div className="w-px flex-1 bg-slate-200 dark:bg-slate-700 group-hover:bg-indigo-400 transition-colors rounded-full" />
+                  <div
+                    style={{ background: isDark ? '#222' : '#e4e4e7' }}
+                    className="w-px flex-1 group-hover:bg-amber-700 transition-colors rounded-full"
+                  />
                 </div>
                 <div
                   className="xl:sticky xl:top-[89px] xl:max-h-[calc(100vh-100px)] xl:overflow-y-auto flex-none min-w-0"
@@ -702,19 +616,28 @@ export default function App() {
           />
         )}
         {tab === 'marginale' && <MarginaleDrukChart data={data} />}
-        </div>
       </main>
 
-      <footer className="px-4 sm:px-6 py-6 text-center text-xs text-slate-400 dark:text-slate-500 border-t border-slate-200 dark:border-slate-700 mt-4">
-        Indicatieve berekening o.b.v. belastingregels 2026. Raadpleeg altijd een belastingadviseur voor persoonlijk advies.
+      <footer
+        style={{ borderTop: `1px solid ${isDark ? '#191919' : '#e4e4e7'}`, color: isDark ? '#383838' : '#bbb' }}
+        className="px-4 sm:px-6 py-4 text-[10px] mt-4"
+      >
+        Indicatieve berekening o.b.v. belastingregels 2026. Raadpleeg een belastingadviseur voor persoonlijk advies.
       </footer>
     </div>
   );
 }
 
-function InfoBox({ children }: { children: React.ReactNode }) {
+function InfoBox({ children, isDark }: { children: React.ReactNode; isDark: boolean }) {
   return (
-    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl px-4 py-3 text-xs text-blue-800 dark:text-blue-300">
+    <div
+      style={{
+        borderLeft: '2px solid #92400e',
+        background: isDark ? '#111' : '#fffbeb',
+        color: isDark ? '#888' : '#78350f',
+      }}
+      className="px-3 py-2 text-[11px] leading-relaxed"
+    >
       {children}
     </div>
   );
