@@ -51,7 +51,7 @@ const DEFAULT_DATA: TaxFormData = {
   schenkingen: { schenkingen: [] },
 };
 
-const APP_VERSION          = 'v1.26.2';
+const APP_VERSION          = 'v1.26.3';
 const STORAGE_KEY          = 'nl-belasting-data-v1';
 const PROGNOSE_STORAGE_KEY = 'nl-belasting-prognose-v1';
 const TABS_STORAGE_KEY     = 'nl-belasting-tabs-v1';
@@ -445,47 +445,87 @@ export default function App() {
       {/* ── Main ── */}
       <main className="px-4 sm:px-6 py-5">
 
-        {/* Config / tab management */}
+        {/* Config / module picker */}
         {tab === 'home' && (
-          <div className="max-w-lg">
-            <p className="text-sm text-slate-500 dark:text-slate-400 mb-5">
-              Belastingjaar 2026 — zet aan wat je nodig hebt. Gegevens blijven bewaard als je een sectie uitzet.
-            </p>
-            <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-700/60">
-              {ALL_TABS.map(tabMeta => {
-                const enabled = enabledTabs.has(tabMeta.id);
-                return (
-                  <div key={tabMeta.id} className="flex items-start gap-4 px-4 py-3.5">
-                    <button
-                      onClick={() => toggleTab(tabMeta.id)}
-                      role="switch"
-                      aria-checked={enabled}
-                      className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-0 transition-colors mt-0.5 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-1 ${
-                        enabled ? 'bg-amber-500' : 'bg-slate-200 dark:bg-slate-600'
-                      }`}
-                    >
-                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform mt-0.5 ${enabled ? 'translate-x-4' : 'translate-x-0.5'}`} />
-                    </button>
-                    <div className="flex-1 min-w-0">
-                      <p className={`text-sm font-medium leading-tight ${enabled ? 'text-slate-800 dark:text-slate-100' : 'text-slate-400 dark:text-slate-500'}`}>
-                        {TAB_LABELS[tabMeta.id]}
-                      </p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">
-                        {tabMeta.description}
-                      </p>
-                    </div>
-                    {enabled && (
-                      <button
-                        onClick={() => setTab(tabMeta.id)}
-                        className="text-xs text-amber-600 hover:text-amber-700 dark:text-amber-500 dark:hover:text-amber-400 cursor-pointer bg-transparent border-0 mt-0.5 shrink-0 transition-colors font-medium"
-                      >
-                        Open →
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
+          <div>
+            <div className="mb-6">
+              <h2 className="text-base font-semibold text-slate-800 dark:text-slate-100">Modules</h2>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                Zet aan wat je nodig hebt. Gegevens blijven bewaard als je een module uitzet.
+              </p>
             </div>
+
+            {([
+              {
+                group: lang === 'nl' ? 'Inkomen & Uitgaven' : 'Income & Expenses',
+                ids: ['income', 'expenses', 'schulden', 'schenkingen'] as Tab[],
+              },
+              {
+                group: lang === 'nl' ? 'Bezittingen & Wonen' : 'Assets & Housing',
+                ids: ['woon', 'waardes', 'bank', 'portfolio', 'afschrijvingen'] as Tab[],
+              },
+              {
+                group: lang === 'nl' ? 'Berekeningen' : 'Calculations',
+                ids: ['jaarruimte', 'prognose', 'results', 'marginale'] as Tab[],
+              },
+            ] as { group: string; ids: Tab[] }[]).map(({ group, ids }) => {
+              const groupTabs = ALL_TABS.filter(t => ids.includes(t.id));
+              return (
+                <div key={group} className="mb-8">
+                  <h3 className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-3">{group}</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
+                    {groupTabs.map(tabMeta => {
+                      const enabled = enabledTabs.has(tabMeta.id);
+                      return (
+                        <div
+                          key={tabMeta.id}
+                          className={`group relative rounded-lg border p-4 flex flex-col gap-2 transition-colors ${
+                            enabled
+                              ? 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'
+                              : 'bg-slate-50/60 dark:bg-slate-900/40 border-slate-100 dark:border-slate-800/60'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <p className={`text-sm font-medium leading-tight ${
+                              enabled ? 'text-slate-800 dark:text-slate-100' : 'text-slate-400 dark:text-slate-500'
+                            }`}>
+                              {TAB_LABELS[tabMeta.id]}
+                            </p>
+                            <button
+                              onClick={() => toggleTab(tabMeta.id)}
+                              role="switch"
+                              aria-checked={enabled}
+                              className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-0 transition-colors focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-1 mt-0.5 ${
+                                enabled ? 'bg-amber-500' : 'bg-slate-200 dark:bg-slate-600'
+                              }`}
+                            >
+                              <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform mt-0.5 ${
+                                enabled ? 'translate-x-4' : 'translate-x-0.5'
+                              }`} />
+                            </button>
+                          </div>
+
+                          <p className={`text-xs leading-relaxed flex-1 ${
+                            enabled ? 'text-slate-500 dark:text-slate-400' : 'text-slate-400 dark:text-slate-600'
+                          }`}>
+                            {tabMeta.description}
+                          </p>
+
+                          {enabled && (
+                            <button
+                              onClick={() => setTab(tabMeta.id)}
+                              className="text-xs font-medium text-amber-600 hover:text-amber-700 dark:text-amber-500 dark:hover:text-amber-400 bg-transparent border-0 cursor-pointer text-left p-0 transition-colors mt-1"
+                            >
+                              Open →
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
 
