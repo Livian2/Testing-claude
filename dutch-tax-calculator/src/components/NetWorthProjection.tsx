@@ -6,7 +6,11 @@ import { simuleerDuo } from '../utils/duo';
 import { gereserveerdTotNu, jaarDeposit } from '../utils/afschrijvingen';
 import { useLanguage } from '../i18n/LanguageContext';
 import SectionCard from './SectionCard';
-import { TrendingUp } from 'lucide-react';
+import { TrendingUp, Flame } from 'lucide-react';
+import {
+  PanelCard, StatTile, StatGrid, PanelSection, KeyValueRow,
+  ProgressBar, ResultBar, InteractiveAreaChart, type ChartPoint,
+} from './shared/Showcase';
 
 interface Props {
   data: TaxFormData;
@@ -762,79 +766,64 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
         )}
       </div>
 
-      {/* ── FIRE Summary Card ── */}
+      {/* ── FIRE Summary Card (shared Showcase components) ── */}
       {(() => {
         const startLiquid  = (points[0]?.savings ?? 0) + (points[0]?.investments ?? 0);
         const endLiquid    = (last?.savings ?? 0) + (last?.investments ?? 0);
         const monthlyExp   = annualExpenses / 12;
         const monthlyInv   = jaarlijksBeleggen / 12;
+        const chartPts: ChartPoint[] = points.map(p => ({
+          x: p.year,
+          y: p.savings + p.investments,
+          label: String(p.year),
+        }));
         return (
-          <div className="rounded-2xl border border-orange-200 dark:border-orange-900/40 bg-gradient-to-br from-orange-50 to-amber-50 dark:from-slate-800 dark:to-slate-900 p-5 space-y-4">
-            {/* Header */}
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-bold text-orange-600 dark:text-orange-400 tracking-wide">{t.forecastExtra.fireCardTitle}</span>
-              {fireYear !== null && (
-                <span className="ml-auto text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-700/50">
-                  FI {fireYear}
-                </span>
-              )}
-            </div>
+          <PanelCard
+            accent="#fb923c"
+            icon={<Flame size={16} />}
+            title={t.forecastExtra.fireCardTitle}
+            badge={fireYear !== null ? (
+              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full border border-emerald-300 dark:border-emerald-700/50 bg-emerald-50 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400">
+                FI {fireYear}
+              </span>
+            ) : undefined}
+            footer={
+              <ResultBar
+                label={t.forecastExtra.expectedFiYear}
+                value={fireYear !== null ? String(fireYear) : '—'}
+                accent={fireYear !== null ? '#10b981' : '#fb923c'}
+                suffix={fireYear !== null ? ` · ${t.forecastExtra.currentAge.toLowerCase()} ${leeftijd + (fireYear - currentYear)}` : undefined}
+              />
+            }
+          >
+            <StatGrid cols={4}>
+              <StatTile label={t.forecastExtra.startCapital}     value={nl0.format(startLiquid)}            accent="#fdba74" />
+              <StatTile label={t.forecastExtra.fireDrempelLabel} value={nl0.format(fireNumber)}            accent="#fdba74" />
+              <StatTile label={t.forecastExtra.monthlyInvest}    value={`${nl0.format(monthlyInv)}/mnd`}   accent="#6ee7b7" />
+              <StatTile label={t.forecast.investReturn}          value={`${config.rendementBeleggingen}%`} accent="#6ee7b7" />
+            </StatGrid>
 
-            {/* 4 stat tiles */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {[
-                { label: t.forecastExtra.startCapital,    val: nl0.format(startLiquid),         accent: 'text-orange-600 dark:text-orange-300' },
-                { label: t.forecastExtra.fireDrempelLabel, val: nl0.format(fireNumber),          accent: 'text-amber-600 dark:text-amber-400' },
-                { label: t.forecastExtra.monthlyInvest,   val: `${nl0.format(monthlyInv)}/mnd`, accent: 'text-emerald-600 dark:text-emerald-400' },
-                { label: t.forecast.investReturn,         val: `${config.rendementBeleggingen}%`, accent: 'text-emerald-600 dark:text-emerald-400' },
-              ].map(({ label, val, accent }) => (
-                <div key={label} className="rounded-xl border border-orange-100 dark:border-orange-900/30 bg-white/70 dark:bg-slate-700/50 px-3 py-2.5">
-                  <p className="text-[10px] text-slate-500 dark:text-slate-400 mb-1 truncate">{label}</p>
-                  <p className={`text-sm font-bold tabular-nums truncate ${accent}`}>{val}</p>
-                </div>
-              ))}
-            </div>
+            <PanelSection title={t.forecastExtra.fireCardTitle} tint accent="#fb923c">
+              <InteractiveAreaChart
+                points={chartPts}
+                accent="#fb923c"
+                target={fireNumber}
+                targetLabel="FIRE"
+                formatY={(v) => v >= 1_000_000 ? `€${(v / 1_000_000).toFixed(2)}m` : `€${(v / 1000).toFixed(0)}k`}
+                height={160}
+                ariaLabel={t.forecastExtra.fireCardTitle}
+              />
+            </PanelSection>
 
-            {/* Parameters row */}
-            <div className="rounded-xl border border-orange-100 dark:border-orange-900/30 bg-white/70 dark:bg-slate-700/50 px-4 py-2.5 space-y-1.5">
-              {[
-                { label: t.forecastExtra.monthlyExpenses,    val: `${nl0.format(monthlyExp)}/mnd` },
-                { label: `SWR`,                               val: `${swr}%` },
-                { label: `${t.forecastExtra.projectedWealthEnd} ${currentYear + config.jaren}`, val: nl0.format(endLiquid), highlight: true },
-              ].map(({ label, val, highlight }) => (
-                <div key={label} className={`flex items-center justify-between text-xs ${highlight ? 'border-t border-orange-200 dark:border-orange-700/40 pt-1.5 mt-1' : ''}`}>
-                  <span className={highlight ? 'font-semibold text-slate-700 dark:text-slate-200' : 'text-slate-600 dark:text-slate-400'}>{label}</span>
-                  <span className={highlight ? 'font-bold text-orange-600 dark:text-orange-400 tabular-nums' : 'text-slate-700 dark:text-slate-300 tabular-nums'}>{val}</span>
-                </div>
-              ))}
-            </div>
+            <PanelSection>
+              <KeyValueRow label={t.forecastExtra.monthlyExpenses} value={`${nl0.format(monthlyExp)}/mnd`} />
+              <KeyValueRow label="SWR" value={`${swr}%`} />
+              <KeyValueRow label={`${t.forecastExtra.projectedWealthEnd} ${currentYear + config.jaren}`}
+                           value={nl0.format(endLiquid)} accent="#fb923c" bold last />
+            </PanelSection>
 
-            {/* Progress bar + FI year */}
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">{t.forecastExtra.progressToFire}</span>
-                <span className="text-[11px] font-bold text-orange-600 dark:text-orange-400">{fireProgress.toFixed(1)}%</span>
-              </div>
-              <div className="h-2.5 w-full bg-orange-100 dark:bg-slate-700 rounded-full overflow-hidden">
-                <div className="h-full rounded-full transition-all duration-500"
-                  style={{
-                    width: `${fireProgress}%`,
-                    background: fireProgress >= 100 ? 'linear-gradient(90deg,#10b981,#059669)' : 'linear-gradient(90deg,#f97316,#f59e0b)',
-                  }}
-                />
-              </div>
-              <div className="flex items-center justify-between text-[11px]">
-                <span className="text-slate-500 dark:text-slate-400">{t.forecastExtra.expectedFiYear}</span>
-                {fireYear !== null ? (
-                  <span className="font-bold text-emerald-600 dark:text-emerald-400">
-                    {fireYear} <span className="font-normal text-slate-400">({t.forecastExtra.currentAge.toLowerCase()} {leeftijd + (fireYear - currentYear)})</span>
-                  </span>
-                ) : (
-                  <span className="text-slate-400 dark:text-slate-500">{t.forecastExtra.outsidePeriod}</span>
-                )}
-              </div>
-            </div>
-          </div>
+            <ProgressBar pct={fireProgress} accent="#fb923c" label={t.forecastExtra.progressToFire} />
+          </PanelCard>
         );
       })()}
 
