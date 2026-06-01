@@ -51,7 +51,7 @@ const DEFAULT_DATA: TaxFormData = {
   schenkingen: { schenkingen: [] },
 };
 
-const APP_VERSION          = 'v1.26.1';
+const APP_VERSION          = 'v1.26.2';
 const STORAGE_KEY          = 'nl-belasting-data-v1';
 const PROGNOSE_STORAGE_KEY = 'nl-belasting-prognose-v1';
 const TABS_STORAGE_KEY     = 'nl-belasting-tabs-v1';
@@ -295,10 +295,10 @@ export default function App() {
 
   const showSidePanel = tab !== 'home' && tab !== 'results' && tab !== 'prognose' && tab !== 'marginale';
 
-  const hBg     = isDark ? '#111111' : '#fafafa';
-  const hBorder = isDark ? '#1e1e1e' : '#e4e4e7';
-  const rootBg  = isDark ? '#0c0c0c' : '#f5f5f5';
-  const rootFg  = isDark ? '#d4d4d4' : '#1a1a1a';
+  const hBg     = isDark ? '#0f172a' : '#ffffff';
+  const hBorder = isDark ? '#1e293b' : '#e5e7eb';
+  const rootBg  = isDark ? '#0f172a' : '#f9fafb';
+  const rootFg  = isDark ? '#e2e8f0' : '#111827';
 
   return (
     <div style={{ minHeight: '100vh', background: rootBg, color: rootFg }}>
@@ -311,7 +311,7 @@ export default function App() {
           <div className="flex items-center gap-2">
             <Flag size={13} className="text-amber-500 flex-shrink-0" />
             <span className="text-sm font-semibold text-amber-500 tracking-tight">NL Belasting</span>
-            <span style={{ color: isDark ? '#444' : '#aaa' }} className="text-[10px] hidden sm:inline">{APP_VERSION}</span>
+            <span className="text-[11px] text-slate-400 dark:text-slate-500 hidden sm:inline">{APP_VERSION}</span>
           </div>
 
           {/* Controls */}
@@ -324,11 +324,11 @@ export default function App() {
                   onClick={() => setPersonal({ filingStatus: s })}
                   style={{
                     background: data.personal.filingStatus === s
-                      ? (isDark ? '#1e1e1e' : '#e4e4e7')
+                      ? (isDark ? '#1e293b' : '#f3f4f6')
                       : 'transparent',
                     color: data.personal.filingStatus === s
-                      ? (isDark ? '#f59e0b' : '#b45309')
-                      : (isDark ? '#555' : '#999'),
+                      ? (isDark ? '#f59e0b' : '#92400e')
+                      : (isDark ? '#64748b' : '#6b7280'),
                   }}
                   className="flex items-center gap-1 text-[11px] px-2 py-1 transition-colors cursor-pointer border-0"
                 >
@@ -400,9 +400,9 @@ export default function App() {
             onClick={() => setTab('home')}
             style={{
               borderBottom: `2px solid ${tab === 'home' ? '#f59e0b' : 'transparent'}`,
-              color: tab === 'home' ? '#f59e0b' : (isDark ? '#555' : '#aaa'),
+              color: tab === 'home' ? '#d97706' : (isDark ? '#94a3b8' : '#6b7280'),
             }}
-            className="flex items-center gap-1 px-3 py-2 text-[11px] whitespace-nowrap border-x-0 border-t-0 bg-transparent cursor-pointer hover:text-amber-500 transition-colors uppercase tracking-wider"
+            className="flex items-center gap-1 px-3 py-2 text-xs whitespace-nowrap border-x-0 border-t-0 bg-transparent cursor-pointer hover:text-amber-600 transition-colors"
           >
             <Home size={11} />
             Config
@@ -414,9 +414,9 @@ export default function App() {
               onClick={() => setTab(tabMeta.id)}
               style={{
                 borderBottom: `2px solid ${tab === tabMeta.id ? '#f59e0b' : 'transparent'}`,
-                color: tab === tabMeta.id ? '#f59e0b' : (isDark ? '#555' : '#aaa'),
+                color: tab === tabMeta.id ? '#d97706' : (isDark ? '#94a3b8' : '#6b7280'),
               }}
-              className="flex items-center gap-1 px-3 py-2 text-[11px] whitespace-nowrap border-x-0 border-t-0 bg-transparent cursor-pointer hover:text-amber-500 transition-colors uppercase tracking-wider"
+              className="flex items-center gap-1 px-3 py-2 text-xs whitespace-nowrap border-x-0 border-t-0 bg-transparent cursor-pointer hover:text-amber-600 transition-colors"
             >
               {TAB_LABELS[tabMeta.id]}
               {tabMeta.id === 'results' && (
@@ -447,54 +447,41 @@ export default function App() {
 
         {/* Config / tab management */}
         {tab === 'home' && (
-          <div className="max-w-2xl">
-            <p style={{ color: isDark ? '#555' : '#aaa' }} className="text-[11px] mb-4">
-              Belastingjaar 2026 · {visibleTabs.length}/{ALL_TABS.length} tabbladen actief
+          <div className="max-w-lg">
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-5">
+              Belastingjaar 2026 — zet aan wat je nodig hebt. Gegevens blijven bewaard als je een sectie uitzet.
             </p>
-            <div style={{ borderTop: `1px solid ${isDark ? '#1e1e1e' : '#e4e4e7'}` }}>
+            <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-700/60">
               {ALL_TABS.map(tabMeta => {
                 const enabled = enabledTabs.has(tabMeta.id);
                 return (
-                  <div
-                    key={tabMeta.id}
-                    className="flex items-center justify-between py-2"
-                    style={{ borderBottom: `1px solid ${isDark ? '#191919' : '#ececec'}` }}
-                  >
-                    <div className="flex items-center gap-3">
-                      <button
-                        onClick={() => toggleTab(tabMeta.id)}
-                        style={{
-                          border: `1px solid ${enabled ? '#92400e' : (isDark ? '#2a2a2a' : '#d4d4d8')}`,
-                          color: enabled ? '#f59e0b' : (isDark ? '#3a3a3a' : '#bbb'),
-                          borderRadius: 1,
-                        }}
-                        className="text-[9px] px-1.5 py-0.5 bg-transparent cursor-pointer hover:border-amber-600 hover:text-amber-500 transition-colors font-bold tracking-wider"
-                      >
-                        {enabled ? 'ON' : 'OFF'}
-                      </button>
-                      <span
-                        style={{ color: enabled ? (isDark ? '#ccc' : '#333') : (isDark ? '#3a3a3a' : '#ccc') }}
-                        className="text-[11px] uppercase tracking-wide"
-                      >
+                  <div key={tabMeta.id} className="flex items-start gap-4 px-4 py-3.5">
+                    <button
+                      onClick={() => toggleTab(tabMeta.id)}
+                      role="switch"
+                      aria-checked={enabled}
+                      className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-0 transition-colors mt-0.5 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-1 ${
+                        enabled ? 'bg-amber-500' : 'bg-slate-200 dark:bg-slate-600'
+                      }`}
+                    >
+                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform mt-0.5 ${enabled ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                    </button>
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-sm font-medium leading-tight ${enabled ? 'text-slate-800 dark:text-slate-100' : 'text-slate-400 dark:text-slate-500'}`}>
                         {TAB_LABELS[tabMeta.id]}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <span
-                        style={{ color: isDark ? '#383838' : '#ccc' }}
-                        className="text-[10px] hidden sm:block max-w-xs truncate"
-                      >
+                      </p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">
                         {tabMeta.description}
-                      </span>
-                      {enabled && (
-                        <button
-                          onClick={() => setTab(tabMeta.id)}
-                          className="text-[10px] text-amber-700 hover:text-amber-500 cursor-pointer bg-transparent border-0 transition-colors"
-                        >
-                          open →
-                        </button>
-                      )}
+                      </p>
                     </div>
+                    {enabled && (
+                      <button
+                        onClick={() => setTab(tabMeta.id)}
+                        className="text-xs text-amber-600 hover:text-amber-700 dark:text-amber-500 dark:hover:text-amber-400 cursor-pointer bg-transparent border-0 mt-0.5 shrink-0 transition-colors font-medium"
+                      >
+                        Open →
+                      </button>
+                    )}
                   </div>
                 );
               })}
