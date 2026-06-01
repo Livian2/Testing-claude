@@ -103,9 +103,7 @@ export default function TaxResults({ result }: Props) {
     <div className="space-y-4">
 
       {/* ── Hero (full width, shared StatTile aesthetic) ── */}
-      <div className="relative overflow-hidden rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/80 backdrop-blur shadow-md p-5"
-        style={{ backgroundImage: 'radial-gradient(120% 80% at 0% 0%, rgba(251,146,60,0.10) 0%, transparent 60%)' }}>
-        <span aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-px" style={{ background: 'linear-gradient(90deg, transparent, #fb923c, transparent)' }} />
+      <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5">
         <div className="flex items-center gap-2 mb-4">
           <Calculator size={20} className="text-orange-500 dark:text-orange-400" />
           <h2 className="text-base font-semibold text-slate-700 dark:text-slate-200">{t.resultsExtra.taxCalcTitle}</h2>
@@ -134,13 +132,13 @@ export default function TaxResults({ result }: Props) {
         <div className="space-y-4">
 
           {/* ── Box 1 ── */}
-          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
-            <div className="flex items-center gap-3 px-6 py-4 border-b-2 border-blue-400 bg-gradient-to-r from-blue-50 to-white dark:from-slate-800 dark:to-slate-800">
-              <TrendingUp size={18} className="text-blue-500" />
+          <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
+            <div className="flex items-center gap-3 px-5 py-3.5 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60">
+              <TrendingUp size={16} className="text-slate-400 dark:text-slate-500" />
               <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">{t.results.box1Title}</h3>
               <span className="ml-auto text-xs text-slate-400 shrink-0">{fmtPct(box1.effectiveRate)} {t.results.effectiveRate.toLowerCase()}</span>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="p-5 space-y-4">
 
               {/* ── Summary pills ── */}
               <div className="grid grid-cols-2 gap-3">
@@ -150,7 +148,7 @@ export default function TaxResults({ result }: Props) {
 
               {/* ── Income breakdown (only if deductions apply) ── */}
               {(box1.ewEffect !== 0 || box1.pensionDeduction > 0) && (
-                <div className="bg-slate-50 dark:bg-slate-900 rounded-xl p-4 border border-slate-100 dark:border-slate-700">
+                <div className="bg-slate-50 dark:bg-slate-900/60 rounded-md p-4 border border-slate-100 dark:border-slate-700/50">
                   <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-3">{t.resultsExtra.incomeBreakdown}</p>
                   <div className="space-y-0 max-w-sm">
                     <Row label={t.resultsExtra.grossIncomeLine} value={fmt(box1.grossIncomeBeforeDeductions)} />
@@ -170,7 +168,7 @@ export default function TaxResults({ result }: Props) {
 
               {/* ── Inkomstenbelasting box 1 (OLA-style) ── */}
               {box1.ibSchijven.length > 0 && (
-                <div className="bg-slate-50 dark:bg-slate-900 rounded-xl p-4 border border-slate-100 dark:border-slate-700">
+                <div className="bg-slate-50 dark:bg-slate-900/60 rounded-md p-4 border border-slate-100 dark:border-slate-700/50">
                   <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-3 uppercase tracking-wide">{t.results.ibTitle}</p>
                   <div className="space-y-0">
                     {box1.ibSchijven.map((s, i) => (
@@ -193,7 +191,7 @@ export default function TaxResults({ result }: Props) {
 
               {/* ── Premie volksverzekeringen (OLA-style) ── */}
               {box1.premieGrondslag > 0 && (
-                <div className="bg-slate-50 dark:bg-slate-900 rounded-xl p-4 border border-slate-100 dark:border-slate-700">
+                <div className="bg-slate-50 dark:bg-slate-900/60 rounded-md p-4 border border-slate-100 dark:border-slate-700/50">
                   <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-3 uppercase tracking-wide">{t.results.premieTitle}</p>
                   <div className="space-y-0">
                     {[
@@ -255,12 +253,12 @@ export default function TaxResults({ result }: Props) {
           </div>
 
           {/* ── Box 3 grondslag ── */}
-          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
-            <div className="flex items-center gap-3 px-6 py-4 border-b-2 border-purple-400 bg-gradient-to-r from-purple-50 to-white dark:from-slate-800 dark:to-slate-800">
-              <TrendingUp size={18} className="text-purple-500" />
+          <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
+            <div className="flex items-center gap-3 px-5 py-3.5 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60">
+              <TrendingUp size={16} className="text-slate-400 dark:text-slate-500" />
               <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">{t.results.box3Title}</h3>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="p-5 space-y-4">
               <div className="flex items-start gap-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-3 text-xs text-amber-800 dark:text-amber-300">
                 <Info size={14} className="mt-0.5 shrink-0" />
                 <span>
@@ -334,9 +332,9 @@ export default function TaxResults({ result }: Props) {
         <div className="space-y-4">
 
           {/* ── Net worth visual ── */}
-          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
-            <div className="flex items-center gap-3 px-6 py-4 border-b-2 border-emerald-400 bg-gradient-to-r from-emerald-50 to-white dark:from-slate-800 dark:to-slate-800">
-              <Wallet size={18} className="text-emerald-500" />
+          <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
+            <div className="flex items-center gap-3 px-5 py-3.5 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60">
+              <Wallet size={16} className="text-slate-400 dark:text-slate-500" />
               <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">{t.results.netWorth}</h3>
             </div>
             <div className="p-6 space-y-5">
@@ -392,9 +390,9 @@ export default function TaxResults({ result }: Props) {
           </div>
 
           {/* ── Cash flow ── */}
-          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
-            <div className="flex items-center gap-3 px-6 py-4 border-b-2 border-green-400 bg-gradient-to-r from-green-50 to-white dark:from-slate-800 dark:to-slate-800">
-              <TrendingDown size={18} className="text-green-500" />
+          <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
+            <div className="flex items-center gap-3 px-5 py-3.5 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60">
+              <TrendingDown size={16} className="text-slate-400 dark:text-slate-500" />
               <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100 flex-1">{t.results.cashflow}</h3>
               {hasBankData && (
                 <div className="flex gap-0 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden text-xs">
@@ -530,9 +528,9 @@ export default function TaxResults({ result }: Props) {
 
           {/* ── Toeslagen ── */}
           {hasToeslagen && (
-            <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
-              <div className="flex items-center gap-3 px-6 py-4 border-b-2 border-teal-400 bg-gradient-to-r from-teal-50 to-white dark:from-slate-800 dark:to-slate-800">
-                <Gift size={18} className="text-teal-500" />
+            <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
+              <div className="flex items-center gap-3 px-5 py-3.5 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60">
+                <Gift size={16} className="text-slate-400 dark:text-slate-500" />
                 <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">{t.resultsExtra.toeslagenTitle}</h3>
               </div>
               <div className="p-6 space-y-3">

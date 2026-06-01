@@ -7,16 +7,16 @@ interface Props {
   accent?: string;
 }
 
-export default function SectionCard({ title, icon, children, accent = 'border-orange-400' }: Props) {
+export default function SectionCard({ title, icon, children }: Props) {
   return (
-    <div className="bg-white dark:bg-slate-800/80 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 shadow-sm hover:shadow-md transition-shadow overflow-hidden backdrop-blur-sm">
-      <div className={`flex items-center gap-3 px-6 py-4 border-b ${accent} bg-gradient-to-r from-slate-50 via-white to-slate-50 dark:from-slate-800/50 dark:via-slate-800 dark:to-slate-800/50`}>
-        <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-orange-100 to-amber-50 dark:from-orange-900/40 dark:to-amber-900/40 text-orange-600 dark:text-orange-400 shadow-sm">
+    <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
+      <div className="flex items-center gap-3 px-5 py-3.5 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60">
+        <span className="text-slate-400 dark:text-slate-500 flex-shrink-0">
           {icon}
         </span>
-        <h2 className="text-base font-semibold text-slate-800 dark:text-slate-100 tracking-tight">{title}</h2>
+        <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-200 tracking-tight">{title}</h2>
       </div>
-      <div className="p-6">{children}</div>
+      <div className="p-5">{children}</div>
     </div>
   );
 }

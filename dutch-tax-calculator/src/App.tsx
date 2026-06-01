@@ -51,7 +51,7 @@ const DEFAULT_DATA: TaxFormData = {
   schenkingen: { schenkingen: [] },
 };
 
-const APP_VERSION          = 'v1.26.0';
+const APP_VERSION          = 'v1.26.1';
 const STORAGE_KEY          = 'nl-belasting-data-v1';
 const PROGNOSE_STORAGE_KEY = 'nl-belasting-prognose-v1';
 const TABS_STORAGE_KEY     = 'nl-belasting-tabs-v1';
@@ -63,7 +63,7 @@ function loadInitialDark(): boolean {
     if (stored === 'dark') return true;
     if (stored === 'light') return false;
   } catch { /* ignore */ }
-  return window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? true;
+  return window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false;
 }
 
 const DEFAULT_PROGNOSE: PrognoseConfig = {
@@ -632,11 +632,12 @@ function InfoBox({ children, isDark }: { children: React.ReactNode; isDark: bool
   return (
     <div
       style={{
-        borderLeft: '2px solid #92400e',
-        background: isDark ? '#111' : '#fffbeb',
-        color: isDark ? '#888' : '#78350f',
+        border: `1px solid ${isDark ? '#2d3748' : '#e5e7eb'}`,
+        background: isDark ? '#1e293b' : '#f9fafb',
+        color: isDark ? '#94a3b8' : '#6b7280',
+        borderRadius: 6,
       }}
-      className="px-3 py-2 text-[11px] leading-relaxed"
+      className="px-3 py-2.5 text-xs leading-relaxed"
     >
       {children}
     </div>

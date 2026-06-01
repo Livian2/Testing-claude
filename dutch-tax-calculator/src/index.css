@@ -1,22 +1,18 @@
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 @import "tailwindcss";
 
 @variant dark (&:where(.dark, .dark *));
 
-*, *::before, *::after {
-  font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
-}
-
 body {
   margin: 0;
-  font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
-  background: #0c0c0c;
-  color: #d4d4d4;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  background: #f9fafb;
+  color: #111827;
 }
 
 .dark body {
-  background: #0c0c0c;
-  color: #d4d4d4;
+  background: #0f172a;
+  color: #e2e8f0;
 }
 
 #root {
@@ -24,17 +20,22 @@ body {
   min-height: 100vh;
 }
 
-::-webkit-scrollbar { width: 4px; height: 4px; }
-::-webkit-scrollbar-track { background: #111; }
-::-webkit-scrollbar-thumb { background: #2a2a2a; }
-::-webkit-scrollbar-thumb:hover { background: #444; }
+/* Monospace only for numeric/code content */
+.font-mono, code, .tabular-nums {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+}
 
-.dark ::-webkit-scrollbar-track { background: #111; }
-.dark ::-webkit-scrollbar-thumb { background: #2a2a2a; }
-.dark ::-webkit-scrollbar-thumb:hover { background: #444; }
+/* Scrollbar */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+
+.dark ::-webkit-scrollbar-thumb { background: #334155; }
+.dark ::-webkit-scrollbar-thumb:hover { background: #475569; }
 
 .dark {
-  background: #0c0c0c;
+  background: #0f172a;
   color-scheme: dark;
 }
 
@@ -49,6 +50,6 @@ body {
 button:focus-visible,
 input:focus-visible,
 select:focus-visible {
-  outline: 1px solid #f59e0b;
+  outline: 2px solid #f59e0b;
   outline-offset: 2px;
 }
