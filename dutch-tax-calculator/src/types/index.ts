@@ -166,6 +166,7 @@ export interface PrognoseConfig {
   spaarrente: number;           // % e.g. 2.0
   jaren: number;                // 10, 20, 30, 40, or 50
   inkomensstijging: number;     // % annual income growth for DUO simulation, e.g. 2.0
+  inflatie: number;             // % annual expense inflation for projection, e.g. 2.0
 }
 
 export interface SchuldenData {

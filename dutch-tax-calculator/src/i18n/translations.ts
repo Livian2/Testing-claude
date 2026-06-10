@@ -487,6 +487,7 @@ export const translations = {
       savingsRate:      'Spaarrente',
       years:            'Jaren',
       incomeGrowth:     'Inkomensstijging/jr',
+      inflation:        'Inflatie/jr',
     },
 
     // ── Bank accounts ────────────────────────────────────────────────────────
@@ -1386,6 +1387,7 @@ export const translations = {
       savingsRate:      'Savings rate',
       years:            'Years',
       incomeGrowth:     'Income growth/yr',
+      inflation:        'Inflation/yr',
     },
 
     // ── Bank accounts ────────────────────────────────────────────────────────

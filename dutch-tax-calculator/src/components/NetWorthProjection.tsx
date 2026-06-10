@@ -253,6 +253,7 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
     }
 
     const swrDecimal      = swr / 100;
+    const inflationFactor = 1 + config.inflatie / 100;
     const heffingsvrij    = isPartner ? 118_714 : 59_357;
     // Index at which forced retirement kicks in (stop contributing, start withdrawing)
     const retirementIdx   = Math.max(1, gewensteFireLeeftijd - leeftijd);
@@ -267,7 +268,7 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
 
       // FIRE uses only liquid (investable) assets — WOZ is excluded.
       // Threshold is year-specific: expenses drop when mortgage is paid off.
-      const yearExp      = baseExp + housingByYear[i];
+      const yearExp      = (baseExp + housingByYear[i]) * Math.pow(inflationFactor, i);
       const taxableW_y   = Math.max(0, yearExp / swrDecimal - heffingsvrij);
       const box3Drag_y   = taxableW_y * 0.0600 * 0.36;
       const fireNum_y    = (yearExp + box3Drag_y) / swrDecimal;
@@ -286,8 +287,8 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
         savings     = prevSavings     * savingsGrowth + jaarlijksSparen;
         investments = prevInvestments * investGrowth  + jaarlijksBeleggen;
       } else {
-        const aowIncome      = year > aowCalendarYear      ? aowJaar      : 0;
-        const pensioenIncome = year > pensioenCalendarYear ? pensioenJaar : 0;
+        const aowIncome      = year > aowCalendarYear      ? aowJaar      * Math.pow(inflationFactor, i) : 0;
+        const pensioenIncome = year > pensioenCalendarYear ? pensioenJaar * Math.pow(inflationFactor, i) : 0;
         const required       = Math.max(0, yearExp - aowIncome - pensioenIncome);
         const grownSavings     = Math.max(0, prevSavings)     * savingsGrowth;
         const grownInvestments = Math.max(0, prevInvestments) * investGrowth;
@@ -459,6 +460,7 @@ export default function NetWorthProjection({ data, config, onConfigChange }: Pro
           { label: t.forecast.investReturn, key: 'rendementBeleggingen' as const, max: 30 },
           { label: t.forecast.savingsRate,  key: 'spaarrente'           as const, max: 20 },
           { label: t.forecast.incomeGrowth, key: 'inkomensstijging'     as const, max: 20 },
+          { label: t.forecast.inflation,    key: 'inflatie'             as const, max: 20 },
         ] as const).map(({ label, key, max }) => (
           <label key={key} className="flex items-center gap-1.5 cursor-pointer">
             <span className="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">{label}</span>

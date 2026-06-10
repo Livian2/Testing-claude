@@ -51,7 +51,7 @@ const DEFAULT_DATA: TaxFormData = {
   schenkingen: { schenkingen: [] },
 };
 
-const APP_VERSION          = 'v1.27.0';
+const APP_VERSION          = 'v1.28.0';
 const STORAGE_KEY          = 'nl-belasting-data-v1';
 const PROGNOSE_STORAGE_KEY = 'nl-belasting-prognose-v1';
 const TABS_STORAGE_KEY     = 'nl-belasting-tabs-v1';
@@ -71,6 +71,7 @@ const DEFAULT_PROGNOSE: PrognoseConfig = {
   spaarrente:           2.0,
   jaren:                20,
   inkomensstijging:     2.0,
+  inflatie:             2.0,
 };
 
 function loadSavedData(): TaxFormData {
