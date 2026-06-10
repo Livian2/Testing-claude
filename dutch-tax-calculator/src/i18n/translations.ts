@@ -58,6 +58,14 @@ export const translations = {
       duoLening:           'DUO lening (maandelijks ontvangen)',
       duoLeningHint:       'Maandelijks bedrag dat u ontvangt van DUO',
       duoLeningTip:        'Een studielening van DUO is geen belastbaar inkomen — het is een lening die u later terugbetaalt. Vul hier het maandbedrag in dat u ontvangt.',
+      addField:            'Toevoegen',
+      removeField:         'Verwijderen',
+      totalGross:          'Totaal bruto Box 1',
+      deductions:          'aftrek',
+      perMonthShort:       '/mnd',
+      perYearShort:        '/jr',
+      box1Info:            'Box 1 — 35,75% (t/m €38.883) · 37,56% (€38.883–€78.426) · 49,50% (boven €78.426). Hypotheekrente wordt automatisch meegenomen als aftrekpost vanuit het Wonen-tabblad.',
+      box3Info:            'Box 3 — peildatum 1 januari. Fictief rendement 2026: spaargeld 1,28% · beleggingen 6,00% · schulden 2,70%. Heffingvrij: €59.357 / €118.714 (partners).',
     },
 
     // ── Housing ─────────────────────────────────────────────────────────────
@@ -332,6 +340,8 @@ export const translations = {
       monthlySavingsTip:  'Het bedrag dat u maandelijks overmaakt naar uw spaarrekening. Telt mee als \'sparen\' in uw maandbudget.',
       monthlyInvestTip:   'Het bedrag dat u maandelijks inlegt in uw beleggingsportefeuille (bijv. automatisch aankoopplan bij een broker).',
       savingsContribDesc: 'Deze bijdragen worden ook gebruikt in de Prognose om uw toekomstig vermogen te berekenen.',
+      allocation:         'Verdeling per categorie',
+      hoverHint:          'beweeg over de balk voor details',
       // Bank import tab
       budgetTab:          'Budget',
       werkelijkTab:       'Werkelijk',
@@ -947,6 +957,14 @@ export const translations = {
       duoLening:           'DUO loan (monthly received)',
       duoLeningHint:       'Monthly amount you receive from DUO',
       duoLeningTip:        'A student loan from DUO is not taxable income — it is a loan you will repay later. Enter the monthly amount you receive.',
+      addField:            'Add',
+      removeField:         'Remove',
+      totalGross:          'Total gross Box 1',
+      deductions:          'deduction',
+      perMonthShort:       '/mo',
+      perYearShort:        '/yr',
+      box1Info:            'Box 1 — 35.75% (up to €38,883) · 37.56% (€38,883–€78,426) · 49.50% (above €78,426). Mortgage interest is automatically applied as a deduction from the Housing tab.',
+      box3Info:            'Box 3 — reference date 1 January. Notional return 2026: savings 1.28% · investments 6.00% · debts 2.70%. Exemption: €59,357 / €118,714 (partners).',
     },
 
     // ── Housing ─────────────────────────────────────────────────────────────
@@ -1221,6 +1239,8 @@ export const translations = {
       monthlySavingsTip:  'The amount you transfer monthly to your savings account. Counts as \'savings\' in your monthly budget.',
       monthlyInvestTip:   'The amount you invest monthly in your portfolio (e.g. via an automatic purchase plan at a broker).',
       savingsContribDesc: 'These contributions are also used in the Forecast tab to calculate your future net worth.',
+      allocation:         'Allocation by category',
+      hoverHint:          'hover the bar for details',
       // Bank import tab
       budgetTab:          'Budget',
       werkelijkTab:       'Actual',

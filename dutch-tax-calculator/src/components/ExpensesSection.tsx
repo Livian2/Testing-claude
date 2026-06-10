@@ -22,6 +22,7 @@ type Tab = 'budget' | 'werkelijk';
 export default function ExpensesSection({ data, onChange, savings, onSavingsChange, woon }: Props) {
   const { t } = useLanguage();
   const [tab, setTab] = useState<Tab>('budget');
+  const [hovered, setHovered] = useState<keyof ExpensesData | null>(null);
   const set = (key: keyof ExpensesData) => (v: number) => onChange({ ...data, [key]: v });
 
   const FIELDS: { key: keyof ExpensesData; label: string; tip?: string }[] = [
@@ -39,6 +40,11 @@ export default function ExpensesSection({ data, onChange, savings, onSavingsChan
   const monthlyTotal    = monthlyExpenses + savings.monthlySavingsContribution + savings.maandelijksBeleggen;
   const yearlyTotal     = monthlyTotal * 12;
 
+  const segments = FIELDS
+    .map(f => ({ ...f, value: data[f.key] }))
+    .filter(s => s.value > 0);
+  const hoveredSeg = segments.find(s => s.key === hovered) ?? null;
+
   const TABS: { key: Tab; label: string; icon: React.ReactNode }[] = [
     { key: 'budget',    label: t.expenses.budgetTab,    icon: <ShoppingCart size={14} /> },
     { key: 'werkelijk', label: t.expenses.werkelijkTab, icon: <BarChart2 size={14} /> },
@@ -46,16 +52,16 @@ export default function ExpensesSection({ data, onChange, savings, onSavingsChan
 
   return (
     <div className="space-y-4">
-      {/* Tab switcher */}
-      <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 rounded-xl p-1 w-fit">
+      {/* Tab switcher — underline style, consistent with the app header */}
+      <div className="flex gap-1 border-b border-slate-200 dark:border-slate-700">
         {TABS.map(tb => (
           <button
             key={tb.key}
             onClick={() => setTab(tb.key)}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors
+            className={`flex items-center gap-1.5 px-3 py-2 -mb-px text-sm bg-transparent border-x-0 border-t-0 border-b-2 cursor-pointer transition-colors
               ${tab === tb.key
-                ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 shadow-sm'
-                : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
+                ? 'border-amber-500 text-amber-700 dark:text-amber-400 font-medium'
+                : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
           >
             {tb.icon}
             {tb.label}
@@ -65,31 +71,73 @@ export default function ExpensesSection({ data, onChange, savings, onSavingsChan
 
       {tab === 'budget' && (
         <>
-          <SectionCard title={t.expenses.sectionTitle} icon={<ShoppingCart size={20} />} accent="border-rose-400">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <SectionCard title={t.expenses.sectionTitle} icon={<ShoppingCart size={20} />}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
               {FIELDS.map(f => (
-                <CurrencyInput key={f.key} label={f.label} value={data[f.key]} onChange={set(f.key)}
-                  tooltip={f.tip ? <InfoTooltip tip={f.tip} /> : undefined}
-                />
+                <div
+                  key={f.key}
+                  onMouseEnter={() => setHovered(f.key)}
+                  onMouseLeave={() => setHovered(null)}
+                  className={`transition-opacity ${hovered !== null && hovered !== f.key ? 'opacity-40' : ''}`}
+                >
+                  <CurrencyInput label={f.label} value={data[f.key]} onChange={set(f.key)}
+                    suffix="/mnd"
+                    tooltip={f.tip ? <InfoTooltip tip={f.tip} /> : undefined}
+                  />
+                </div>
               ))}
             </div>
-            <div className="mt-4 grid grid-cols-2 gap-3">
-              <div className="flex justify-between items-center bg-rose-50 dark:bg-rose-900/20 rounded-xl px-4 py-3 border border-rose-100 dark:border-rose-800">
-                <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{t.expenses.monthlyTotal}</span>
-                <span className="text-base font-bold text-rose-600">{nl.format(monthlyExpenses)}</span>
+
+            {/* Allocation bar — hover a segment (or an input above) to inspect */}
+            {monthlyExpenses > 0 && (
+              <div className="mt-5">
+                <div className="flex items-baseline justify-between mb-1.5">
+                  <span className="text-[11px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                    {t.expenses.allocation}
+                  </span>
+                  <span className="text-[11px] text-slate-400 dark:text-slate-500 font-mono tabular-nums">
+                    {hoveredSeg
+                      ? `${hoveredSeg.label} · ${nl.format(hoveredSeg.value)} · ${Math.round(hoveredSeg.value / monthlyExpenses * 100)}%`
+                      : t.expenses.hoverHint}
+                  </span>
+                </div>
+                <div className="flex h-3 rounded-sm overflow-hidden">
+                  {segments.map((s, i) => (
+                    <div
+                      key={s.key}
+                      onMouseEnter={() => setHovered(s.key)}
+                      onMouseLeave={() => setHovered(null)}
+                      className="h-full transition-colors cursor-default"
+                      style={{
+                        width: `${(s.value / monthlyExpenses) * 100}%`,
+                        background: hovered === s.key
+                          ? '#f59e0b'
+                          : i % 2 === 0 ? 'rgba(100,116,139,0.55)' : 'rgba(100,116,139,0.3)',
+                      }}
+                    />
+                  ))}
+                </div>
               </div>
-              <div className="flex justify-between items-center bg-rose-50 dark:bg-rose-900/20 rounded-xl px-4 py-3 border border-rose-100 dark:border-rose-800">
-                <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{t.expenses.yearlyTotal}</span>
-                <span className="text-base font-bold text-rose-700">{nl.format(monthlyExpenses * 12)}</span>
+            )}
+
+            {/* Ledger totals */}
+            <div className="mt-4 pt-3 border-t border-slate-200 dark:border-slate-700 space-y-1">
+              <div className="flex items-baseline justify-between">
+                <span className="text-xs text-slate-500 dark:text-slate-400">{t.expenses.monthlyTotal}</span>
+                <span className="font-mono tabular-nums text-sm font-semibold text-slate-800 dark:text-slate-100">{nl.format(monthlyExpenses)}</span>
+              </div>
+              <div className="flex items-baseline justify-between">
+                <span className="text-xs text-slate-500 dark:text-slate-400">{t.expenses.yearlyTotal}</span>
+                <span className="font-mono tabular-nums text-sm text-slate-500 dark:text-slate-400">{nl.format(monthlyExpenses * 12)}</span>
               </div>
             </div>
           </SectionCard>
 
-          <SectionCard title={t.expenses.savingsTitle} icon={<PiggyBank size={20} />} accent="border-emerald-400">
-            <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
+          <SectionCard title={t.expenses.savingsTitle} icon={<PiggyBank size={20} />}>
+            <p className="text-xs text-slate-400 dark:text-slate-500 mb-4">
               {t.expenses.savingsContribDesc}
             </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
               <CurrencyInput
                 label={t.expenses.monthlySavings}
                 hint={t.expenses.monthlySavingsHint}
@@ -107,28 +155,18 @@ export default function ExpensesSection({ data, onChange, savings, onSavingsChan
                 tooltip={<InfoTooltip tip={t.expenses.monthlyInvestTip} />}
               />
             </div>
-            <div className="mt-4 grid grid-cols-3 gap-3">
-              <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 rounded-xl px-3 py-2.5">
-                <p className="text-xs text-slate-500 dark:text-slate-400">{t.expenses.savingsPerMonth}</p>
-                <p className="text-base font-bold text-emerald-700">{nl.format(savings.monthlySavingsContribution)}</p>
-              </div>
-              <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-800 rounded-xl px-3 py-2.5">
-                <p className="text-xs text-slate-500 dark:text-slate-400">{t.expenses.investPerMonth}</p>
-                <p className="text-base font-bold text-purple-700">{nl.format(savings.maandelijksBeleggen)}</p>
-              </div>
-              <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5">
-                <p className="text-xs text-slate-500 dark:text-slate-400">{t.expenses.totalOutPerYear}</p>
-                <p className="text-base font-bold text-slate-700 dark:text-slate-200">{nl.format(yearlyTotal)}</p>
-              </div>
+            <div className="mt-4 pt-3 border-t border-slate-200 dark:border-slate-700 flex items-baseline justify-between">
+              <span className="text-xs text-slate-500 dark:text-slate-400">{t.expenses.totalOutPerYear}</span>
+              <span className="font-mono tabular-nums text-sm font-semibold text-slate-800 dark:text-slate-100">{nl.format(yearlyTotal)}</span>
             </div>
           </SectionCard>
         </>
       )}
 
       {tab === 'werkelijk' && (
-        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-6">
+        <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-5">
           <div className="flex items-center gap-2 mb-5">
-            <BarChart2 size={18} className="text-blue-500" />
+            <BarChart2 size={16} className="text-slate-400 dark:text-slate-500" />
             <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">{t.expenses.werkelijkTab}</h3>
             <span className="text-xs text-slate-400 dark:text-slate-500 ml-1">— {t.expenses.importSubtitle}</span>
           </div>

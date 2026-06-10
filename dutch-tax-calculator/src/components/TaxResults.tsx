@@ -3,7 +3,6 @@ import { Calculator, TrendingUp, TrendingDown, Info, Gift, Wallet } from 'lucide
 import type { TaxResult } from '../types';
 import { fmt, fmtPct } from '../utils/taxCalculations';
 import { useLanguage } from '../i18n/LanguageContext';
-import { StatTile, StatGrid } from './shared/Showcase';
 
 interface Props { result: TaxResult }
 
@@ -102,18 +101,25 @@ export default function TaxResults({ result }: Props) {
   return (
     <div className="space-y-4">
 
-      {/* ── Hero (full width, shared StatTile aesthetic) ── */}
+      {/* ── Hero (full width) — flat ledger strip ── */}
       <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5">
         <div className="flex items-center gap-2 mb-4">
-          <Calculator size={20} className="text-orange-500 dark:text-orange-400" />
-          <h2 className="text-base font-semibold text-slate-700 dark:text-slate-200">{t.resultsExtra.taxCalcTitle}</h2>
+          <Calculator size={16} className="text-slate-400 dark:text-slate-500" />
+          <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-200">{t.resultsExtra.taxCalcTitle}</h2>
         </div>
-        <StatGrid cols={4}>
-          <StatTile label={t.results.totalTax}      value={fmt(totalTax)}            accent="#ef4444" />
-          <StatTile label={t.results.box1Tax}       value={fmt(box1.netTax)}         accent="#fb923c" />
-          <StatTile label={t.results.box3Tax}       value={fmt(box3.netTax)}         accent="#c084fc" />
-          <StatTile label={t.results.netDisposable} value={fmt(netDisposableIncome)} accent={netDisposableIncome >= 0 ? '#10b981' : '#ef4444'} />
-        </StatGrid>
+        <div className="grid grid-cols-2 lg:grid-cols-4 divide-x divide-slate-200 dark:divide-slate-700">
+          {[
+            { label: t.results.totalTax,      value: fmt(totalTax),            cls: 'text-slate-800 dark:text-slate-100' },
+            { label: t.results.box1Tax,       value: fmt(box1.netTax),         cls: 'text-slate-800 dark:text-slate-100' },
+            { label: t.results.box3Tax,       value: fmt(box3.netTax),         cls: 'text-slate-800 dark:text-slate-100' },
+            { label: t.results.netDisposable, value: fmt(netDisposableIncome), cls: netDisposableIncome >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400' },
+          ].map(({ label, value, cls }, i) => (
+            <div key={label} className={`min-w-0 px-4 ${i === 0 ? 'pl-0' : ''}`}>
+              <p className="text-[11px] text-slate-400 dark:text-slate-500 mb-1 truncate">{label}</p>
+              <p className={`text-lg lg:text-xl font-semibold font-mono tabular-nums truncate ${cls}`}>{value}</p>
+            </div>
+          ))}
+        </div>
         {hasToeslagen && (
           <div className="mt-4 pt-4 border-t border-slate-200 dark:border-white/10 flex items-center gap-2">
             <Gift size={15} className="text-teal-500 dark:text-teal-400 shrink-0" />

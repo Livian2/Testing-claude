@@ -51,7 +51,7 @@ const DEFAULT_DATA: TaxFormData = {
   schenkingen: { schenkingen: [] },
 };
 
-const APP_VERSION          = 'v1.26.2';
+const APP_VERSION          = 'v1.27.0';
 const STORAGE_KEY          = 'nl-belasting-data-v1';
 const PROGNOSE_STORAGE_KEY = 'nl-belasting-prognose-v1';
 const TABS_STORAGE_KEY     = 'nl-belasting-tabs-v1';
@@ -499,10 +499,7 @@ export default function App() {
                     data={data.income}
                     onChange={income => setData(d => ({ ...d, income }))}
                   />
-                  <InfoBox isDark={isDark}>
-                    <strong>Box 1</strong> — 35,82% (t/m €38.441) · 37,48% (€38.441–€78.426) · 49,50% (boven €78.426).
-                    Hypotheekrente wordt automatisch meegenomen als aftrekpost vanuit het <em>Wonen</em>-tabblad.
-                  </InfoBox>
+                  <InfoBox isDark={isDark}>{t.income.box1Info}</InfoBox>
                 </div>
               )}
               {tab === 'woon' && (
@@ -518,11 +515,7 @@ export default function App() {
                     data={data.waardes}
                     onChange={waardes => setData(d => ({ ...d, waardes }))}
                   />
-                  <InfoBox isDark={isDark}>
-                    <strong>Box 3</strong> — peildatum <strong>1 januari {data.personal.taxYear}</strong>.
-                    Fictief rendement 2026: spaargeld <strong>1,03%</strong> · beleggingen <strong>5,88%</strong> · schulden <strong>2,62%</strong>.
-                    Heffingvrij: <strong>€57.684</strong> / <strong>€115.368</strong> (partners).
-                  </InfoBox>
+                  <InfoBox isDark={isDark}>{t.income.box3Info}</InfoBox>
                 </div>
               )}
               {tab === 'expenses' && (
