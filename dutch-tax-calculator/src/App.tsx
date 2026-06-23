@@ -58,7 +58,7 @@ const DEFAULT_DATA: TaxFormData = {
   schenkingen: { schenkingen: [] },
 };
 
-const APP_VERSION          = 'v1.34.0';
+const APP_VERSION          = 'v1.34.1';
 const STORAGE_KEY          = 'nl-belasting-data-v1';
 const PROGNOSE_STORAGE_KEY = 'nl-belasting-prognose-v1';
 const TABS_STORAGE_KEY     = 'nl-belasting-tabs-v1';
@@ -352,6 +352,7 @@ export default function App() {
           {/* Controls */}
           <div className="flex items-center gap-1 sm:gap-2">
             {/* Filing status */}
+            {tab !== 'landing' && (
             <div className="flex items-center" style={{ border: `1px solid ${isDark ? '#2a2a2a' : '#d4d4d8'}`, borderRadius: 2 }}>
               {(['single', 'partner'] as FilingStatus[]).map(s => (
                 <button
@@ -372,7 +373,9 @@ export default function App() {
                 </button>
               ))}
             </div>
+            )}
 
+            {tab !== 'landing' && (
             <button
               onClick={handleExport}
               style={{ color: isDark ? '#555' : '#999' }}
@@ -382,7 +385,9 @@ export default function App() {
               <Download size={12} />
               <span className="hidden sm:inline">{t.export}</span>
             </button>
+            )}
 
+            {tab !== 'landing' && (
             <label
               style={{ color: isDark ? '#555' : '#999' }}
               className="flex items-center gap-1 text-[11px] px-2 py-1 cursor-pointer hover:text-amber-500 transition-colors"
@@ -392,7 +397,9 @@ export default function App() {
               <span className="hidden sm:inline">{t.import}</span>
               <input ref={importRef} type="file" accept=".json" className="hidden" onChange={handleImport} />
             </label>
+            )}
 
+            {tab !== 'landing' && (
             <button
               onClick={() => setData(DEFAULT_DATA)}
               style={{ color: isDark ? '#555' : '#999' }}
@@ -402,6 +409,7 @@ export default function App() {
               <RefreshCw size={12} />
               <span className="hidden sm:inline">{t.reset}</span>
             </button>
+            )}
 
             <button
               onClick={() => setLang(lang === 'nl' ? 'en' : 'nl')}
@@ -427,6 +435,7 @@ export default function App() {
         </div>
 
         {/* ── Tab bar ── */}
+        {tab !== 'landing' && (
         <div
           className="px-4 sm:px-6 flex overflow-x-auto"
           style={{ borderTop: `1px solid ${isDark ? '#191919' : '#e4e4e7'}` }}
@@ -475,6 +484,7 @@ export default function App() {
             </button>
           )}
         </div>
+        )}
       </header>
 
       {/* ── Main ── */}
