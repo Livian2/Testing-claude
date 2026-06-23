@@ -39,12 +39,17 @@ export async function onRequestPost(context: PagesContext): Promise<Response> {
     return json({ error: `Bug report email is not configured on the server. Missing: ${missing.join(', ')}` }, 500);
   }
 
-  let payload: { message?: string; email?: string; page?: string; userAgent?: string; appVersion?: string };
+  let payload: { type?: string; message?: string; email?: string; page?: string; userAgent?: string; appVersion?: string };
   try {
     payload = await request.json();
   } catch {
     return json({ error: 'Invalid request body.' }, 400);
   }
+
+  const isFeature = payload.type === 'feature';
+  const theme = isFeature
+    ? { emoji: '💡', heading: 'New feature request', subject: 'Feature request', gradient: '#0ea5e9,#6366f1', boxBg: '#eff6ff', boxBorder: '#0ea5e9', boxLabel: '#075985', fromName: 'Feature Requests' }
+    : { emoji: '🐞', heading: 'New bug report',     subject: 'Bug report',     gradient: '#f59e0b,#ea580c', boxBg: '#fffbeb', boxBorder: '#f59e0b', boxLabel: '#92400e', fromName: 'Bug Reports' };
 
   const message = (payload.message ?? '').trim();
   if (!message) {
@@ -68,9 +73,9 @@ export async function onRequestPost(context: PagesContext): Promise<Response> {
   const html = `
   <div style="background:#f1f5f9; padding:24px; font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;">
     <div style="max-width:600px; margin:0 auto; background:#ffffff; border:1px solid #e2e8f0; border-radius:14px; overflow:hidden;">
-      <div style="background:linear-gradient(135deg,#f59e0b,#ea580c); padding:20px 24px;">
-        <div style="color:#ffffff; font-size:18px; font-weight:700;">🐞 New bug report</div>
-        <div style="color:#fff7ed; font-size:13px; margin-top:4px;">
+      <div style="background:linear-gradient(135deg,${theme.gradient}); padding:20px 24px;">
+        <div style="color:#ffffff; font-size:18px; font-weight:700;">${theme.emoji} ${theme.heading}</div>
+        <div style="color:#ffffff; opacity:.9; font-size:13px; margin-top:4px;">
           Dutch Tax Calculator
           <span style="display:inline-block; margin-left:6px; padding:1px 8px; background:rgba(255,255,255,.25); border-radius:999px; font-weight:600;">${escapeHtml(appVersion) || '—'}</span>
         </div>
@@ -81,8 +86,8 @@ export async function onRequestPost(context: PagesContext): Promise<Response> {
           ${row('Reporter', escapeHtml(email) || '—')}
           ${row('Browser', escapeHtml(userAgent) || '—')}
         </table>
-        <div style="margin-top:18px; padding:16px; background:#fffbeb; border-left:4px solid #f59e0b; border-radius:6px;">
-          <div style="color:#92400e; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; margin-bottom:8px;">Message</div>
+        <div style="margin-top:18px; padding:16px; background:${theme.boxBg}; border-left:4px solid ${theme.boxBorder}; border-radius:6px;">
+          <div style="color:${theme.boxLabel}; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; margin-bottom:8px;">Message</div>
           <div style="white-space:pre-wrap; color:#1e293b; font-size:14px; line-height:1.55;">${escapeHtml(message)}</div>
         </div>
       </div>
@@ -96,16 +101,16 @@ export async function onRequestPost(context: PagesContext): Promise<Response> {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      from:     'Bug Reports <onboarding@resend.dev>',
+      from:     `${theme.fromName} <onboarding@resend.dev>`,
       to:       [env.BUG_REPORT_EMAIL],
       reply_to: email || undefined,
-      subject:  `Bug report — Dutch Tax Calculator${page ? ` (${page})` : ''}`,
+      subject:  `${theme.subject} — Dutch Tax Calculator${page ? ` (${page})` : ''}`,
       html,
     }),
   }).catch(() => null);
 
   if (!resendRes || !resendRes.ok) {
-    return json({ error: 'Failed to send bug report.' }, 502);
+    return json({ error: 'Failed to send feedback.' }, 502);
   }
 
   return json({ ok: true });
