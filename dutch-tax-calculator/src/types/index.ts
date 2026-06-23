@@ -10,7 +10,9 @@ export interface Holding {
   name: string;
   type: AssetType;
   quantity: number;
-  pricePerUnit: number;    // purchase price, EUR
+  pricePerUnit: number;    // purchase price, in `currency` (EUR if currency is unset)
+  currency?: string;       // purchase currency (USD, GBP, GBp, …) — default EUR
+  fxRate?: number;         // exchange rate at purchase: 1 unit `currency` = fxRate EUR (default 1)
   broker: string;
   ticker: string;
   isin?: string;               // ISIN for auto-resolution to Yahoo ticker
@@ -34,6 +36,8 @@ export interface Transaction {
   date: string;
   quantity: number;
   pricePerUnit: number;
+  currency?: string;  // trade currency (USD, GBP, GBp, …) — default EUR
+  fxRate?: number;    // exchange rate at trade date: 1 unit `currency` = fxRate EUR (default 1)
   broker: string;
   orderId?: string;   // external broker ID for deduplication
 }

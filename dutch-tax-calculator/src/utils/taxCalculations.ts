@@ -400,6 +400,12 @@ export function calculateToeslagen(data: TaxFormData, box1: Box1Result, box3: Bo
 
 // ─── Portfolio positions ────────────────────────────────────────────────────
 
+// 1 unit of `currency` = `fxRate` EUR. EUR (or unset currency) always converts 1:1.
+export function toEurPrice(pricePerUnit: number, currency: string | undefined, fxRate: number | undefined): number {
+  if (!currency || currency === 'EUR') return pricePerUnit;
+  return pricePerUnit * (fxRate || 1);
+}
+
 export function computePositions(holdings: Holding[], transactions: Transaction[]): Position[] {
   type InternalPos = { name: string; type: AssetType; broker: string; ticker: string; quantity: number; avgCost: number; currentPrice: number };
 
@@ -412,7 +418,7 @@ export function computePositions(holdings: Holding[], transactions: Transaction[
     const key = h.id || h.name;
     byId.set(key, {
       name: h.name, type: h.type, broker: h.broker, ticker: h.ticker,
-      quantity: h.quantity, avgCost: h.pricePerUnit, currentPrice: h.currentPrice,
+      quantity: h.quantity, avgCost: toEurPrice(h.pricePerUnit, h.currency, h.fxRate), currentPrice: h.currentPrice,
     });
     if (!nameToId.has(h.name)) nameToId.set(h.name, key);
   }
@@ -421,9 +427,10 @@ export function computePositions(holdings: Holding[], transactions: Transaction[
   for (const tx of sorted) {
     const key = nameToId.get(tx.holdingName) ?? tx.holdingName;
     const pos = byId.get(key) ?? { name: tx.holdingName, type: 'other' as AssetType, broker: tx.broker, ticker: '', quantity: 0, avgCost: 0, currentPrice: 0 };
+    const txPriceEur = toEurPrice(tx.pricePerUnit, tx.currency, tx.fxRate);
     if (tx.type === 'buy') {
       const totalQty  = pos.quantity + tx.quantity;
-      const totalCost = pos.quantity * pos.avgCost + tx.quantity * tx.pricePerUnit;
+      const totalCost = pos.quantity * pos.avgCost + tx.quantity * txPriceEur;
       byId.set(key, { ...pos, broker: tx.broker || pos.broker, quantity: totalQty, avgCost: totalQty > 0 ? totalCost / totalQty : 0 });
     } else {
       byId.set(key, { ...pos, broker: tx.broker || pos.broker, quantity: Math.max(0, pos.quantity - tx.quantity) });

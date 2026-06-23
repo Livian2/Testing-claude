@@ -5,7 +5,7 @@ import {
   ChevronUp, ChevronDown, ChevronsUpDown, Search, Building2,
 } from 'lucide-react';
 import type { PortfolioData, Holding, Transaction, AssetType, TransactionType } from '../types';
-import { computePositions } from '../utils/taxCalculations';
+import { computePositions, toEurPrice } from '../utils/taxCalculations';
 import { fetchPricesWithFX, resolveIsins, resolveBareTickers, looksLikeIsin, fetchEtfHoldings, countryFromSuffix } from '../utils/priceFetcher';
 import type { EtfHoldingsResult } from '../utils/priceFetcher';
 import { useLanguage } from '../i18n/LanguageContext';
@@ -33,6 +33,8 @@ function uid() { return Math.random().toString(36).slice(2); }
 
 const nl  = new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR', maximumFractionDigits: 2 });
 const nl0 = new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
+
+const CURRENCY_OPTIONS = ['EUR', 'USD', 'GBP', 'GBp', 'CHF'];
 
 type InnerTab = 'holdings' | 'transactions' | 'import' | 'overview' | 'analyse';
 type FetchState = 'idle' | 'loading' | 'ok' | 'error';
@@ -310,6 +312,10 @@ export default function PortfolioSection({ data, onChange }: Props) {
 
   const setHoldings = (holdings: Holding[])         => onChange({ ...data, holdings });
   const setTxs      = (transactions: Transaction[]) => onChange({ ...data, transactions });
+
+  // Suggest a sensible starting FX rate when the user switches a holding/transaction
+  // to a foreign currency — falls back to 1 (i.e. "please fill in") when unknown.
+  const defaultFxRate = (currency: string) => currency === 'EUR' ? 1 : (fxRates[currency] ?? 1);
 
   const resetPortfolio = () => {
     if (!resetArmed) {
@@ -729,10 +735,32 @@ export default function PortfolioSection({ data, onChange }: Props) {
                     </div>
                     <div className="col-span-7 sm:col-span-2 flex flex-col gap-1">
                       <label className="text-xs text-slate-500">{t.portfolioExtra.colBuyPrice}</label>
-                      <input type="number" min={0}
-                        className="border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1.5 text-sm bg-white dark:bg-slate-700 dark:text-slate-100 outline-none focus:ring-2 focus:ring-purple-400"
-                        placeholder="0" value={h.pricePerUnit || ''}
-                        onChange={e => updateHolding(h.id, { pricePerUnit: parseFloat(e.target.value) || 0 })} />
+                      <div className="flex gap-1">
+                        <input type="number" min={0}
+                          className="flex-1 min-w-0 border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1.5 text-sm bg-white dark:bg-slate-700 dark:text-slate-100 outline-none focus:ring-2 focus:ring-purple-400"
+                          placeholder="0" value={h.pricePerUnit || ''}
+                          onChange={e => updateHolding(h.id, { pricePerUnit: parseFloat(e.target.value) || 0 })} />
+                        <select
+                          className="w-16 shrink-0 border border-slate-300 dark:border-slate-600 rounded-lg px-1 text-sm bg-white dark:bg-slate-700 dark:text-slate-100 outline-none focus:ring-2 focus:ring-purple-400"
+                          value={h.currency || 'EUR'}
+                          onChange={e => {
+                            const currency = e.target.value;
+                            updateHolding(h.id, { currency, fxRate: currency === 'EUR' ? undefined : defaultFxRate(currency) });
+                          }}
+                        >
+                          {CURRENCY_OPTIONS.map(c => <option key={c} value={c}>{c}</option>)}
+                        </select>
+                      </div>
+                      {h.currency && h.currency !== 'EUR' && (
+                        <div className="flex items-center gap-1 text-[11px] text-slate-400">
+                          <span className="whitespace-nowrap">1 {h.currency} =</span>
+                          <input type="number" min={0} step="0.0001"
+                            className="w-20 border border-slate-300 dark:border-slate-600 rounded px-1 py-0.5 text-xs bg-white dark:bg-slate-700 dark:text-slate-100 outline-none focus:ring-2 focus:ring-purple-400"
+                            value={h.fxRate ?? ''}
+                            onChange={e => updateHolding(h.id, { fxRate: parseFloat(e.target.value) || 0 })} />
+                          <span>{t.portfolioExtra.fxRateSuffix}</span>
+                        </div>
+                      )}
                     </div>
                     <div className="col-span-6 sm:col-span-2 flex flex-col gap-1">
                       <label className="text-xs text-slate-500">Div/aandeel/jr (€)</label>
@@ -772,12 +800,15 @@ export default function PortfolioSection({ data, onChange }: Props) {
                             {h.quantity > 0 && (
                               <span className="text-slate-500">→ {nl0.format(h.quantity * h.currentPrice)}</span>
                             )}
-                            {h.pricePerUnit > 0 && (
-                              <span className={`font-semibold ${h.currentPrice >= h.pricePerUnit ? 'text-green-600' : 'text-red-500'}`}>
-                                {h.currentPrice >= h.pricePerUnit ? '▲' : '▼'}{' '}
-                                {(Math.abs((h.currentPrice - h.pricePerUnit) / h.pricePerUnit) * 100).toFixed(1)}%
-                              </span>
-                            )}
+                            {h.pricePerUnit > 0 && (() => {
+                              const buyPriceEur = toEurPrice(h.pricePerUnit, h.currency, h.fxRate);
+                              return (
+                                <span className={`font-semibold ${h.currentPrice >= buyPriceEur ? 'text-green-600' : 'text-red-500'}`}>
+                                  {h.currentPrice >= buyPriceEur ? '▲' : '▼'}{' '}
+                                  {(Math.abs((h.currentPrice - buyPriceEur) / buyPriceEur) * 100).toFixed(1)}%
+                                </span>
+                              );
+                            })()}
                           </>
                         ) : (
                           <span className="text-slate-400">
@@ -908,10 +939,32 @@ export default function PortfolioSection({ data, onChange }: Props) {
                   </div>
                   <div className="col-span-5 sm:col-span-2 flex flex-col gap-1">
                     <label className="text-xs text-slate-500">{t.portfolioExtra.colPrice}</label>
-                    <input type="number" min={0}
-                      className="border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1.5 text-sm bg-white dark:bg-slate-700 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-400"
-                      placeholder="0" value={tx.pricePerUnit || ''}
-                      onChange={e => updateTx(tx.id, { pricePerUnit: parseFloat(e.target.value) || 0 })} />
+                    <div className="flex gap-1">
+                      <input type="number" min={0}
+                        className="flex-1 min-w-0 border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1.5 text-sm bg-white dark:bg-slate-700 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-400"
+                        placeholder="0" value={tx.pricePerUnit || ''}
+                        onChange={e => updateTx(tx.id, { pricePerUnit: parseFloat(e.target.value) || 0 })} />
+                      <select
+                        className="w-16 shrink-0 border border-slate-300 dark:border-slate-600 rounded-lg px-1 text-sm bg-white dark:bg-slate-700 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-400"
+                        value={tx.currency || 'EUR'}
+                        onChange={e => {
+                          const currency = e.target.value;
+                          updateTx(tx.id, { currency, fxRate: currency === 'EUR' ? undefined : defaultFxRate(currency) });
+                        }}
+                      >
+                        {CURRENCY_OPTIONS.map(c => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                    </div>
+                    {tx.currency && tx.currency !== 'EUR' && (
+                      <div className="flex items-center gap-1 text-[11px] text-slate-400">
+                        <span className="whitespace-nowrap">1 {tx.currency} =</span>
+                        <input type="number" min={0} step="0.0001"
+                          className="w-20 border border-slate-300 dark:border-slate-600 rounded px-1 py-0.5 text-xs bg-white dark:bg-slate-700 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-400"
+                          value={tx.fxRate ?? ''}
+                          onChange={e => updateTx(tx.id, { fxRate: parseFloat(e.target.value) || 0 })} />
+                        <span>{t.portfolioExtra.fxRateSuffix}</span>
+                      </div>
+                    )}
                   </div>
                   <div className="col-span-1 flex items-end justify-center">
                     <button onClick={() => removeTx(tx.id)}
@@ -920,7 +973,7 @@ export default function PortfolioSection({ data, onChange }: Props) {
                     </button>
                   </div>
                   <div className="col-span-12 text-right text-xs text-slate-500">
-                    {t.portfolioExtra.txTotal} {nl0.format(tx.quantity * tx.pricePerUnit)}
+                    {t.portfolioExtra.txTotal} {nl0.format(tx.quantity * tx.pricePerUnit * (tx.currency && tx.currency !== 'EUR' ? (tx.fxRate || 1) : 1))}
                   </div>
                 </div>
               ))}
