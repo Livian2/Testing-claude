@@ -1,5 +1,10 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
-import { Flag, RefreshCw, Users, Download, Upload, Home, Moon, Sun } from 'lucide-react';
+import {
+  Flag, RefreshCw, Users, Download, Upload, Home, Moon, Sun,
+  Wallet, Coins, Receipt, CreditCard, Landmark, TrendingUp, Wrench,
+  Gift, PiggyBank, LineChart, Calculator, Percent, ArrowRight,
+} from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import type { TaxFormData, FilingStatus, PrognoseConfig } from './types';
 import { calculateTaxes } from './utils/taxCalculations';
 import { useLanguage } from './i18n/LanguageContext';
@@ -17,6 +22,7 @@ import BankRekeningenSection from './components/BankRekeningenSection';
 import MarginaleDrukChart from './components/MarginaleDrukChart';
 import JaarruimteSection from './components/JaarruimteSection';
 import BugReportWidget from './components/BugReportWidget';
+import WelcomeModal from './components/WelcomeModal';
 import './index.css';
 
 const DEFAULT_DATA: TaxFormData = {
@@ -52,11 +58,20 @@ const DEFAULT_DATA: TaxFormData = {
   schenkingen: { schenkingen: [] },
 };
 
-const APP_VERSION          = 'v1.31.2';
+const APP_VERSION          = 'v1.32.0';
 const STORAGE_KEY          = 'nl-belasting-data-v1';
 const PROGNOSE_STORAGE_KEY = 'nl-belasting-prognose-v1';
 const TABS_STORAGE_KEY     = 'nl-belasting-tabs-v1';
 const THEME_STORAGE_KEY    = 'nl-belasting-theme';
+const ONBOARD_STORAGE_KEY  = 'nl-belasting-onboarded-v1';
+
+function loadOnboarded(): boolean {
+  try {
+    return localStorage.getItem(ONBOARD_STORAGE_KEY) === '1';
+  } catch {
+    return true;
+  }
+}
 
 function loadInitialDark(): boolean {
   try {
@@ -141,7 +156,8 @@ export default function App() {
   const [data, setData]               = useState<TaxFormData>(loadSavedData);
   const [prognose, setPrognose]       = useState<PrognoseConfig>(loadSavedPrognose);
   const [enabledTabs, setEnabledTabs] = useState<Set<Tab>>(loadEnabledTabs);
-  const [tab, setTab]                 = useState<AnyTab>('income');
+  const [showWelcome, setShowWelcome] = useState<boolean>(() => !loadOnboarded());
+  const [tab, setTab]                 = useState<AnyTab>(() => (loadOnboarded() ? 'income' : 'home'));
   const [isDark, setIsDark]           = useState<boolean>(loadInitialDark);
   const [panelWidth, setPanelWidth]   = useState(() => Math.round(window.innerWidth * 0.35));
   const [panelVisible, setPanelVisible] = useState(true);
@@ -192,6 +208,11 @@ export default function App() {
     });
   };
 
+  const dismissWelcome = () => {
+    try { localStorage.setItem(ONBOARD_STORAGE_KEY, '1'); } catch { /* ignore */ }
+    setShowWelcome(false);
+  };
+
   const ALL_TABS = useMemo<TabMeta[]>(() => [
     { id: 'income',         description: t.tabDescriptions.income },
     { id: 'woon',           description: t.tabDescriptions.woon },
@@ -228,6 +249,29 @@ export default function App() {
     results:        t.tabs.results,
     marginale:      t.tabs.marginale,
   }), [t]);
+
+  const TAB_ICONS: Record<Tab, LucideIcon> = {
+    income:         Wallet,
+    woon:           Home,
+    waardes:        Coins,
+    expenses:       Receipt,
+    schulden:       CreditCard,
+    bank:           Landmark,
+    portfolio:      TrendingUp,
+    afschrijvingen: Wrench,
+    schenkingen:    Gift,
+    jaarruimte:     PiggyBank,
+    prognose:       LineChart,
+    results:        Calculator,
+    marginale:      Percent,
+  };
+
+  const CONFIG_GROUPS = useMemo<{ title: string; ids: Tab[] }[]>(() => [
+    { title: t.config.groupIncome,   ids: ['income', 'woon', 'expenses', 'schulden'] },
+    { title: t.config.groupWealth,   ids: ['waardes', 'bank', 'portfolio'] },
+    { title: t.config.groupPlanning, ids: ['afschrijvingen', 'schenkingen', 'jaarruimte', 'prognose'] },
+    { title: t.config.groupResults,  ids: ['results', 'marginale'] },
+  ], [t]);
 
   const handleExport = () => {
     let bankTxs: unknown[] = [];
@@ -449,45 +493,97 @@ export default function App() {
 
         {/* Config / tab management */}
         {tab === 'home' && (
-          <div className="max-w-lg">
-            <p className="text-sm text-slate-500 dark:text-slate-400 mb-5">
-              Belastingjaar 2026 — zet aan wat je nodig hebt. Gegevens blijven bewaard als je een sectie uitzet.
-            </p>
-            <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-700/60">
-              {ALL_TABS.map(tabMeta => {
-                const enabled = enabledTabs.has(tabMeta.id);
-                return (
-                  <div key={tabMeta.id} className="flex items-start gap-4 px-4 py-3.5">
-                    <button
-                      onClick={() => toggleTab(tabMeta.id)}
-                      role="switch"
-                      aria-checked={enabled}
-                      className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-0 transition-colors mt-0.5 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-1 ${
-                        enabled ? 'bg-amber-500' : 'bg-slate-200 dark:bg-slate-600'
-                      }`}
-                    >
-                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform mt-0.5 ${enabled ? 'translate-x-4' : 'translate-x-0.5'}`} />
-                    </button>
-                    <div className="flex-1 min-w-0">
-                      <p className={`text-sm font-medium leading-tight ${enabled ? 'text-slate-800 dark:text-slate-100' : 'text-slate-400 dark:text-slate-500'}`}>
-                        {TAB_LABELS[tabMeta.id]}
-                      </p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">
-                        {tabMeta.description}
-                      </p>
-                    </div>
-                    {enabled && (
-                      <button
-                        onClick={() => setTab(tabMeta.id)}
-                        className="text-xs text-amber-600 hover:text-amber-700 dark:text-amber-500 dark:hover:text-amber-400 cursor-pointer bg-transparent border-0 mt-0.5 shrink-0 transition-colors font-medium"
-                      >
-                        Open →
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
+          <div className="w-full space-y-8 pb-4">
+            {/* Hero */}
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+              <div className="min-w-0">
+                <h1 className="text-xl sm:text-2xl font-bold text-slate-800 dark:text-slate-100 leading-tight">
+                  {t.config.heading}
+                </h1>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1.5 max-w-2xl leading-relaxed">
+                  {t.config.intro}
+                </p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="text-xs font-medium text-slate-400 dark:text-slate-500 tabular-nums">
+                  {enabledTabs.size}/{ALL_TAB_IDS.length} {t.config.active}
+                </span>
+                <button
+                  onClick={() => setEnabledTabs(new Set(ALL_TAB_IDS))}
+                  className="text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-800 hover:text-amber-600 hover:border-amber-400 cursor-pointer transition-colors"
+                >
+                  {t.config.enableAll}
+                </button>
+                <button
+                  onClick={() => setEnabledTabs(new Set())}
+                  className="text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-800 hover:text-amber-600 hover:border-amber-400 cursor-pointer transition-colors"
+                >
+                  {t.config.disableAll}
+                </button>
+              </div>
             </div>
+
+            {/* Grouped section cards */}
+            {CONFIG_GROUPS.map(group => (
+              <div key={group.title}>
+                <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500 mb-3">
+                  {group.title}
+                </h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3">
+                  {group.ids.map(id => {
+                    const enabled = enabledTabs.has(id);
+                    const Icon = TAB_ICONS[id];
+                    return (
+                      <div
+                        key={id}
+                        onClick={() => (enabled ? setTab(id) : toggleTab(id))}
+                        className={`group relative flex flex-col gap-3 p-4 rounded-xl border cursor-pointer transition-all ${
+                          enabled
+                            ? 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-amber-400 hover:shadow-md hover:-translate-y-0.5'
+                            : 'border-dashed bg-slate-50/40 dark:bg-slate-800/30 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <span
+                            className={`flex items-center justify-center w-10 h-10 rounded-lg transition-colors ${
+                              enabled
+                                ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
+                                : 'bg-slate-200/60 dark:bg-slate-700/50 text-slate-400 dark:text-slate-500'
+                            }`}
+                          >
+                            <Icon size={20} />
+                          </span>
+                          <button
+                            onClick={e => { e.stopPropagation(); toggleTab(id); }}
+                            role="switch"
+                            aria-checked={enabled}
+                            aria-label={TAB_LABELS[id]}
+                            className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-0 transition-colors mt-0.5 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-1 ${
+                              enabled ? 'bg-amber-500' : 'bg-slate-300 dark:bg-slate-600'
+                            }`}
+                          >
+                            <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform mt-0.5 ${enabled ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                          </button>
+                        </div>
+                        <div className="min-w-0">
+                          <p className={`text-sm font-semibold leading-tight ${enabled ? 'text-slate-800 dark:text-slate-100' : 'text-slate-400 dark:text-slate-500'}`}>
+                            {TAB_LABELS[id]}
+                          </p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                            {t.tabDescriptions[id]}
+                          </p>
+                        </div>
+                        {enabled && (
+                          <span className="flex items-center gap-1 text-xs font-medium text-amber-600 dark:text-amber-500 mt-auto sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                            {t.config.open} <ArrowRight size={12} />
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
         )}
 
@@ -608,6 +704,8 @@ export default function App() {
       </footer>
 
       <BugReportWidget appVersion={APP_VERSION} />
+
+      {showWelcome && <WelcomeModal onClose={dismissWelcome} />}
     </div>
   );
 }
