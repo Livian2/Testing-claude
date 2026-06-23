@@ -16,6 +16,7 @@ import SchenkingenSection from './components/SchenkingenSection';
 import BankRekeningenSection from './components/BankRekeningenSection';
 import MarginaleDrukChart from './components/MarginaleDrukChart';
 import JaarruimteSection from './components/JaarruimteSection';
+import BugReportWidget from './components/BugReportWidget';
 import './index.css';
 
 const DEFAULT_DATA: TaxFormData = {
@@ -51,7 +52,7 @@ const DEFAULT_DATA: TaxFormData = {
   schenkingen: { schenkingen: [] },
 };
 
-const APP_VERSION          = 'v1.30.0';
+const APP_VERSION          = 'v1.31.0';
 const STORAGE_KEY          = 'nl-belasting-data-v1';
 const PROGNOSE_STORAGE_KEY = 'nl-belasting-prognose-v1';
 const TABS_STORAGE_KEY     = 'nl-belasting-tabs-v1';
@@ -605,6 +606,8 @@ export default function App() {
       >
         Indicatieve berekening o.b.v. belastingregels 2026. Raadpleeg een belastingadviseur voor persoonlijk advies.
       </footer>
+
+      <BugReportWidget appVersion={APP_VERSION} />
     </div>
   );
 }

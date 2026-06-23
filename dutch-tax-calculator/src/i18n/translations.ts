@@ -903,6 +903,22 @@ export const translations = {
       defaultCategoryName:'Categorie',
       sinkingFundTip:     'Reserveer maandelijks een bedrag voor toekomstige vervangingen (auto, witgoed, etc.). Dit bedrag wordt van uw Box 3 vermogen afgetrokken als \'gereserveerd\'.',
     },
+
+    // ── Bug report widget ────────────────────────────────────────────────────
+    bugReport: {
+      button:           'Bug melden',
+      title:            'Bug melden',
+      description:      'Beschrijf wat er misging. Technische details (pagina, browser) worden automatisch toegevoegd.',
+      placeholder:      'Wat ging er mis?',
+      emailLabel:       'Je e-mailadres (optioneel, voor een reactie)',
+      emailPlaceholder: 'jij@voorbeeld.nl',
+      cancel:           'Annuleren',
+      submit:           'Versturen',
+      sending:          'Versturen…',
+      success:          'Bedankt! Je melding is verstuurd.',
+      errorEmpty:       'Vul een beschrijving in.',
+      errorGeneric:     'Versturen mislukt. Probeer het later opnieuw.',
+    },
   },
 
   en: {
@@ -1806,6 +1822,22 @@ export const translations = {
       addProductLabel:    'product',
       defaultCategoryName:'Category',
       sinkingFundTip:     'Reserve a monthly amount for future replacements (car, appliances, etc.). This amount is deducted from your Box 3 wealth as \'reserved\'.',
+    },
+
+    // ── Bug report widget ────────────────────────────────────────────────────
+    bugReport: {
+      button:           'Report bug',
+      title:            'Report a bug',
+      description:      "Describe what went wrong. Technical details (page, browser) are added automatically.",
+      placeholder:      'What went wrong?',
+      emailLabel:       'Your email (optional, for a reply)',
+      emailPlaceholder: 'you@example.com',
+      cancel:           'Cancel',
+      submit:           'Send',
+      sending:          'Sending…',
+      success:          'Thanks! Your report has been sent.',
+      errorEmpty:       'Please enter a description.',
+      errorGeneric:     'Failed to send. Please try again later.',
     },
   },
 } as const;
