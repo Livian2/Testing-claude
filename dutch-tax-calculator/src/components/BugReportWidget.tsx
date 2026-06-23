@@ -52,9 +52,9 @@ export default function BugReportWidget({ appVersion }: { appVersion: string }) 
       <button
         onClick={() => setOpen(true)}
         title={t.bugReport.button}
-        className="fixed bottom-4 right-4 z-30 flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 shadow-sm hover:text-amber-600 hover:border-amber-400 dark:hover:text-amber-400 cursor-pointer transition-colors"
+        className="fixed bottom-5 right-5 z-30 flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold rounded-full border-0 bg-amber-600 hover:bg-amber-700 text-white shadow-lg shadow-amber-600/30 hover:shadow-amber-600/40 hover:-translate-y-0.5 cursor-pointer transition-all"
       >
-        <Bug size={14} />
+        <Bug size={15} />
         <span className="hidden sm:inline">{t.bugReport.button}</span>
       </button>
 
