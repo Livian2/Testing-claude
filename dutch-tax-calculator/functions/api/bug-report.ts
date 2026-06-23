@@ -25,18 +25,6 @@ function escapeHtml(s: string): string {
   return s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
 }
 
-// Diagnostic endpoint: open https://geldprognose.nl/api/bug-report in a browser (GET).
-// Reports which function version is live and whether the secrets are visible at
-// runtime — without ever exposing the secret values themselves.
-export async function onRequestGet(context: PagesContext): Promise<Response> {
-  const { env } = context;
-  return json({
-    fn: 'v1.32.2',
-    hasResendKey: !!env.RESEND_API_KEY,
-    hasEmail:     !!env.BUG_REPORT_EMAIL,
-  });
-}
-
 export async function onRequestOptions(): Promise<Response> {
   return new Response(null, { status: 204, headers: { ...CORS_HEADERS, 'Access-Control-Max-Age': '86400' } });
 }
