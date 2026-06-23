@@ -58,7 +58,7 @@ const DEFAULT_DATA: TaxFormData = {
   schenkingen: { schenkingen: [] },
 };
 
-const APP_VERSION          = 'v1.32.0';
+const APP_VERSION          = 'v1.32.1';
 const STORAGE_KEY          = 'nl-belasting-data-v1';
 const PROGNOSE_STORAGE_KEY = 'nl-belasting-prognose-v1';
 const TABS_STORAGE_KEY     = 'nl-belasting-tabs-v1';
@@ -266,11 +266,11 @@ export default function App() {
     marginale:      Percent,
   };
 
-  const CONFIG_GROUPS = useMemo<{ title: string; ids: Tab[] }[]>(() => [
-    { title: t.config.groupIncome,   ids: ['income', 'woon', 'expenses', 'schulden'] },
-    { title: t.config.groupWealth,   ids: ['waardes', 'bank', 'portfolio'] },
-    { title: t.config.groupPlanning, ids: ['afschrijvingen', 'schenkingen', 'jaarruimte', 'prognose'] },
-    { title: t.config.groupResults,  ids: ['results', 'marginale'] },
+  const CONFIG_GROUPS = useMemo<{ title: string; ids: Tab[]; bar: string; ring: string }[]>(() => [
+    { title: t.config.groupIncome,   ids: ['income', 'woon', 'expenses', 'schulden'],            bar: 'bg-amber-500',   ring: 'hover:border-amber-400' },
+    { title: t.config.groupWealth,   ids: ['waardes', 'bank', 'portfolio'],                      bar: 'bg-emerald-500', ring: 'hover:border-emerald-400' },
+    { title: t.config.groupPlanning, ids: ['afschrijvingen', 'schenkingen', 'jaarruimte', 'prognose'], bar: 'bg-sky-500', ring: 'hover:border-sky-400' },
+    { title: t.config.groupResults,  ids: ['results', 'marginale'],                              bar: 'bg-violet-500',  ring: 'hover:border-violet-400' },
   ], [t]);
 
   const handleExport = () => {
@@ -524,11 +524,23 @@ export default function App() {
             </div>
 
             {/* Grouped section cards */}
-            {CONFIG_GROUPS.map(group => (
-              <div key={group.title}>
-                <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500 mb-3">
-                  {group.title}
-                </h2>
+            {CONFIG_GROUPS.map(group => {
+              const activeInGroup = group.ids.filter(id => enabledTabs.has(id)).length;
+              return (
+              <section
+                key={group.title}
+                className="rounded-2xl border border-slate-200/70 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/20 p-4 sm:p-5"
+              >
+                <div className="flex items-center gap-3 mb-4">
+                  <span className={`h-4 w-1 rounded-full ${group.bar}`} />
+                  <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                    {group.title}
+                  </h2>
+                  <span className="text-[11px] font-medium text-slate-400 dark:text-slate-500 tabular-nums">
+                    {activeInGroup}/{group.ids.length}
+                  </span>
+                  <div className="flex-1 h-px bg-slate-200/80 dark:bg-slate-700/60" />
+                </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3">
                   {group.ids.map(id => {
                     const enabled = enabledTabs.has(id);
@@ -539,8 +551,8 @@ export default function App() {
                         onClick={() => (enabled ? setTab(id) : toggleTab(id))}
                         className={`group relative flex flex-col gap-3 p-4 rounded-xl border cursor-pointer transition-all ${
                           enabled
-                            ? 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-amber-400 hover:shadow-md hover:-translate-y-0.5'
-                            : 'border-dashed bg-slate-50/40 dark:bg-slate-800/30 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
+                            ? `bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 ${group.ring} hover:shadow-md hover:-translate-y-0.5`
+                            : 'border-dashed bg-transparent border-slate-300/70 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-600'
                         }`}
                       >
                         <div className="flex items-start justify-between gap-2">
@@ -582,8 +594,9 @@ export default function App() {
                     );
                   })}
                 </div>
-              </div>
-            ))}
+              </section>
+              );
+            })}
           </div>
         )}
 
