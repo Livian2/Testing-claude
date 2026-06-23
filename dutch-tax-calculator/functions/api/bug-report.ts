@@ -32,8 +32,11 @@ export async function onRequestOptions(): Promise<Response> {
 export async function onRequestPost(context: PagesContext): Promise<Response> {
   const { request, env } = context;
 
-  if (!env.RESEND_API_KEY || !env.BUG_REPORT_EMAIL) {
-    return json({ error: 'Bug report email is not configured on the server.' }, 500);
+  const missing: string[] = [];
+  if (!env.RESEND_API_KEY)   missing.push('RESEND_API_KEY');
+  if (!env.BUG_REPORT_EMAIL) missing.push('BUG_REPORT_EMAIL');
+  if (missing.length > 0) {
+    return json({ error: `Bug report email is not configured on the server. Missing: ${missing.join(', ')}` }, 500);
   }
 
   let payload: { message?: string; email?: string; page?: string; userAgent?: string; appVersion?: string };
