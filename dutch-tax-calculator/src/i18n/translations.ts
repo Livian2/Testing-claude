@@ -676,6 +676,9 @@ export const translations = {
     portfolioExtra: {
       holdingsDescFull:  'Voeg posities toe voor live koersopvolging. Vul de ticker in (bijv. VWCE.AS) voor automatisch ophalen.',
       holdingsDescTax:   'Belastingwaardes (1 jan) invullen op het tabblad Waardes 1 jan.',
+      resetAll:          'Alles wissen',
+      resetConfirm:      'Klik om te bevestigen',
+      resetAllHint:      'Verwijdert alle posities en transacties uit de portefeuille',
       colName:           'Naam',
       colTicker:         'Ticker',
       colAutoViaIsin:    '(auto via ISIN)',
@@ -1576,6 +1579,9 @@ export const translations = {
     portfolioExtra: {
       holdingsDescFull:  'Add positions for live price tracking. Enter the ticker (e.g. VWCE.AS) for automatic fetching.',
       holdingsDescTax:   'Enter tax values (Jan 1) on the Values Jan 1 tab.',
+      resetAll:          'Clear all',
+      resetConfirm:      'Click to confirm',
+      resetAllHint:      'Removes all positions and transactions from the portfolio',
       colName:           'Name',
       colTicker:         'Ticker',
       colAutoViaIsin:    '(auto via ISIN)',

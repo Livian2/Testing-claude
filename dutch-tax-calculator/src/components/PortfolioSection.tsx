@@ -306,9 +306,22 @@ export default function PortfolioSection({ data, onChange }: Props) {
   });
   const [etfFetchState, setEtfFetchState] = useState<FetchState>('idle');
   const [etfProgress, setEtfProgress]     = useState<{ done: number; total: number } | null>(null);
+  const [resetArmed, setResetArmed]       = useState(false);
 
   const setHoldings = (holdings: Holding[])         => onChange({ ...data, holdings });
   const setTxs      = (transactions: Transaction[]) => onChange({ ...data, transactions });
+
+  const resetPortfolio = () => {
+    if (!resetArmed) {
+      setResetArmed(true);
+      setTimeout(() => setResetArmed(false), 4000);
+      return;
+    }
+    setResetArmed(false);
+    onChange({ holdings: [], transactions: [] });
+    setEtfHoldings({});
+    localStorage.removeItem('dutch-tax-etf-holdings-v2');
+  };
 
   const addHolding = () =>
     setHoldings([...data.holdings, {
@@ -627,16 +640,32 @@ export default function PortfolioSection({ data, onChange }: Props) {
       )}
 
       {/* Inner tabs */}
-      <div className="flex gap-0 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden mb-5">
-        {INNER_TABS.map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium transition-colors cursor-pointer border-0 ${
-              tab === t.id ? 'bg-purple-600 text-white' : 'bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'
+      <div className="flex items-center gap-2 mb-5">
+        <div className="flex flex-1 gap-0 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
+          {INNER_TABS.map(t => (
+            <button key={t.id} onClick={() => setTab(t.id)}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium transition-colors cursor-pointer border-0 ${
+                tab === t.id ? 'bg-purple-600 text-white' : 'bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'
+              }`}
+            >
+              {t.icon}{t.label}
+            </button>
+          ))}
+        </div>
+        {(data.holdings.length > 0 || data.transactions.length > 0) && (
+          <button
+            onClick={resetPortfolio}
+            title={t.portfolioExtra.resetAllHint}
+            className={`shrink-0 flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-xl border cursor-pointer transition-colors ${
+              resetArmed
+                ? 'bg-red-600 text-white border-red-600 hover:bg-red-700'
+                : 'text-red-600 dark:text-red-400 border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/20'
             }`}
           >
-            {t.icon}{t.label}
+            <Trash2 size={13} />
+            {resetArmed ? t.portfolioExtra.resetConfirm : t.portfolioExtra.resetAll}
           </button>
-        ))}
+        )}
       </div>
 
       {/* ── Holdings ── */}
