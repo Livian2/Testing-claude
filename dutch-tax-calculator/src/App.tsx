@@ -22,7 +22,7 @@ import BankRekeningenSection from './components/BankRekeningenSection';
 import MarginaleDrukChart from './components/MarginaleDrukChart';
 import JaarruimteSection from './components/JaarruimteSection';
 import BugReportWidget from './components/BugReportWidget';
-import WelcomeModal from './components/WelcomeModal';
+import LandingPage from './components/LandingPage';
 import './index.css';
 
 const DEFAULT_DATA: TaxFormData = {
@@ -58,20 +58,11 @@ const DEFAULT_DATA: TaxFormData = {
   schenkingen: { schenkingen: [] },
 };
 
-const APP_VERSION          = 'v1.33.0';
+const APP_VERSION          = 'v1.34.0';
 const STORAGE_KEY          = 'nl-belasting-data-v1';
 const PROGNOSE_STORAGE_KEY = 'nl-belasting-prognose-v1';
 const TABS_STORAGE_KEY     = 'nl-belasting-tabs-v1';
 const THEME_STORAGE_KEY    = 'nl-belasting-theme';
-const ONBOARD_STORAGE_KEY  = 'nl-belasting-onboarded-v1';
-
-function loadOnboarded(): boolean {
-  try {
-    return localStorage.getItem(ONBOARD_STORAGE_KEY) === '1';
-  } catch {
-    return true;
-  }
-}
 
 function loadInitialDark(): boolean {
   try {
@@ -119,7 +110,7 @@ function loadSavedData(): TaxFormData {
 }
 
 type Tab = 'income' | 'woon' | 'waardes' | 'expenses' | 'schulden' | 'bank' | 'portfolio' | 'afschrijvingen' | 'schenkingen' | 'jaarruimte' | 'prognose' | 'results' | 'marginale';
-type AnyTab = Tab | 'home';
+type AnyTab = Tab | 'home' | 'landing';
 
 interface TabMeta { id: Tab; description: string }
 
@@ -156,8 +147,7 @@ export default function App() {
   const [data, setData]               = useState<TaxFormData>(loadSavedData);
   const [prognose, setPrognose]       = useState<PrognoseConfig>(loadSavedPrognose);
   const [enabledTabs, setEnabledTabs] = useState<Set<Tab>>(loadEnabledTabs);
-  const [showWelcome, setShowWelcome] = useState<boolean>(() => !loadOnboarded());
-  const [tab, setTab]                 = useState<AnyTab>(() => (loadOnboarded() ? 'income' : 'home'));
+  const [tab, setTab]                 = useState<AnyTab>('landing');
   const [isDark, setIsDark]           = useState<boolean>(loadInitialDark);
   const [panelWidth, setPanelWidth]   = useState(() => Math.round(window.innerWidth * 0.35));
   const [panelVisible, setPanelVisible] = useState(true);
@@ -206,11 +196,6 @@ export default function App() {
       }
       return next;
     });
-  };
-
-  const dismissWelcome = () => {
-    try { localStorage.setItem(ONBOARD_STORAGE_KEY, '1'); } catch { /* ignore */ }
-    setShowWelcome(false);
   };
 
   const ALL_TABS = useMemo<TabMeta[]>(() => [
@@ -339,7 +324,7 @@ export default function App() {
   const setPersonal = (patch: Partial<TaxFormData['personal']>) =>
     setData(d => ({ ...d, personal: { ...d.personal, ...patch } }));
 
-  const showSidePanel = tab !== 'home' && tab !== 'results' && tab !== 'prognose' && tab !== 'marginale';
+  const showSidePanel = tab !== 'home' && tab !== 'landing' && tab !== 'results' && tab !== 'prognose' && tab !== 'marginale';
 
   const hBg     = isDark ? '#0f172a' : '#ffffff';
   const hBorder = isDark ? '#1e293b' : '#e5e7eb';
@@ -354,11 +339,15 @@ export default function App() {
         <div className="px-4 sm:px-6 py-2 flex items-center justify-between gap-4">
 
           {/* Wordmark */}
-          <div className="flex items-center gap-2">
+          <button
+            onClick={() => setTab('landing')}
+            title={t.config.welcomeTitle}
+            className="flex items-center gap-2 bg-transparent border-0 cursor-pointer p-0 group"
+          >
             <Flag size={13} className="text-amber-500 flex-shrink-0" />
-            <span className="text-sm font-semibold text-amber-500 tracking-tight">NL Belasting</span>
+            <span className="text-sm font-semibold text-amber-500 tracking-tight group-hover:text-amber-600 transition-colors">NL Belasting</span>
             <span className="text-[11px] text-slate-400 dark:text-slate-500 hidden sm:inline">{APP_VERSION}</span>
-          </div>
+          </button>
 
           {/* Controls */}
           <div className="flex items-center gap-1 sm:gap-2">
@@ -490,6 +479,14 @@ export default function App() {
 
       {/* ── Main ── */}
       <main className="px-4 sm:px-6 py-5">
+
+        {/* Landing / home page */}
+        {tab === 'landing' && (
+          <LandingPage
+            onStart={() => setTab('home')}
+            onCalc={() => setTab('results')}
+          />
+        )}
 
         {/* Config / tab management */}
         {tab === 'home' && (
@@ -717,8 +714,6 @@ export default function App() {
       </footer>
 
       <BugReportWidget appVersion={APP_VERSION} />
-
-      {showWelcome && <WelcomeModal onClose={dismissWelcome} />}
     </div>
   );
 }

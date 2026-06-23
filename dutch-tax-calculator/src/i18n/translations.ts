@@ -593,6 +593,8 @@ export const translations = {
       welcomeFeat4Desc:  'Al je gegevens blijven in deze browser. Exporteer of importeer wanneer je wilt.',
       welcomeNote:      'Tip: je kunt onderdelen altijd later aan- of uitzetten op de Config-pagina.',
       welcomeCta:       'Aan de slag',
+      welcomeBadge:     'Gratis · Belastingjaar 2026',
+      welcomeStartCalc: 'Direct naar berekening',
     },
 
     // ── Marginale druk ───────────────────────────────────────────────────────
@@ -1545,6 +1547,8 @@ export const translations = {
       welcomeFeat4Desc:  'All your data stays in this browser. Export or import whenever you like.',
       welcomeNote:      'Tip: you can always enable or disable sections later on the Config page.',
       welcomeCta:       'Get started',
+      welcomeBadge:     'Free · Tax year 2026',
+      welcomeStartCalc: 'Go to the calculator',
     },
 
     // ── Marginale druk ───────────────────────────────────────────────────────
