@@ -1761,7 +1761,7 @@ function AnalyseTab({
                             </div>
                           </div>
                           {/* Source badges */}
-                          <div className="flex flex-wrap gap-1 justify-end max-w-[140px]">
+                          <div className="flex flex-wrap gap-1 justify-end w-[140px] shrink-0">
                             {row.sources.slice(0, 4).map((s, i) => (
                               <span key={i} className={`text-[10px] px-1.5 py-0.5 rounded font-medium whitespace-nowrap ${
                                 s.label === 'Direct'
